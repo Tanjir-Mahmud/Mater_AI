@@ -11,7 +11,7 @@ export default {
         'surface-bright': '#36393f',
         'on-tertiary-fixed-variant': '#633f00',
         'surface-dim': '#111319',
-        'surface-container-lowest': '#0b0e13',
+        'surface-container-lowest': '#0E1116',
         'on-primary-fixed': '#170065',
         'on-tertiary-container': '#3c2500',
         'primary-fixed': '#e4dfff',

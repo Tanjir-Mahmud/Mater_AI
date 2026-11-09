@@ -247,9 +247,6 @@ export const Sidebar: Component = () => {
             onInput={(e) => setState('sidebarSearchQuery', e.currentTarget.value)}
             class="bg-transparent border-0 outline-none font-body-sm text-[12px] text-on-surface placeholder:text-outline w-full"
           />
-          <span class="text-[9px] font-label-sm text-outline px-1 rounded bg-surface-container-high">
-            ⌘O
-          </span>
         </div>
       </div>
 

@@ -214,55 +214,14 @@ export const MainWorkspace: Component = () => {
                     {currentChannel()?.name || currentAgent()?.name}
                   </span>
                   <span class="px-2 py-0.5 rounded font-label-sm text-[10px] bg-surface-container-high text-primary-fixed-dim font-medium">
-                    {currentAgent()?.model || 'Claude 3.5 Sonnet (BYOK)'}
+                    {currentAgent()?.model || 'Claude 3.5 Sonnet'}
                   </span>
-                </div>
-              </div>
-
-              {/* Telemetry pill */}
-              <div class="hidden xl:flex items-center gap-3 text-label-sm text-[11px] text-outline pl-2 border-l border-outline-variant/20">
-                <div class="flex items-center gap-1">
-                  <span class="material-symbols-outlined text-[14px] text-secondary">speed</span>
-                  <span>142ms</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-[14px]">data_usage</span>
-                  <span>42.4K</span>
-                  <div class="w-12 h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
-                    <div class="w-1/4 h-full bg-primary" />
-                  </div>
                 </div>
               </div>
             </div>
 
             {/* Action buttons */}
             <div class="flex items-center gap-1 flex-shrink-0">
-              <button
-                onClick={() => addToast('success', 'Branched into isolated workspace tree')}
-                class="flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-label-sm text-[11px] transition-colors"
-                title="Branch into isolated work tree"
-              >
-                <span class="material-symbols-outlined text-[15px] text-primary">fork_right</span>
-                <span class="hidden sm:inline">Branch Agent</span>
-              </button>
-
-              <button
-                onClick={() => addToast('success', 'Exported session log as Markdown')}
-                class="flex items-center gap-1 px-2 py-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface text-label-sm text-[11px] transition-colors"
-                title="Export raw session markdown"
-              >
-                <span class="material-symbols-outlined text-[15px]">file_download</span>
-                <span class="hidden md:inline">Export</span>
-              </button>
-
-              <button
-                onClick={() => addToast('warning', 'Cleared current memory window')}
-                class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-error transition-colors"
-                title="Clear current memory window"
-              >
-                <span class="material-symbols-outlined text-[16px]">delete_sweep</span>
-              </button>
-
               <button
                 onClick={() => setState('sidePanelOpen', !state.sidePanelOpen)}
                 class={`p-1.5 rounded transition-colors ${

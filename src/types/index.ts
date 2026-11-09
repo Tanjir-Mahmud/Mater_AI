@@ -149,13 +149,13 @@ export interface Folder {
 }
 
 export type SidePanelTabId =
+  | 'agent_settings'
   | 'files'
-  | 'browser'
-  | 'terminal'
-  | 'subagent'
-  | 'inspect'
-  | 'history'
-  | 'settings';
+  | 'file_preview'
+  | 'side_thread'
+  | 'voice_conversation'
+  | 'question'
+  | 'subagent';
 
 export interface SidePanelTab {
   id: string;

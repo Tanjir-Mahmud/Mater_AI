@@ -4,40 +4,40 @@
 
 :root {
   /* Synthetic Precision Dark (Default) */
-  --canvas: #0b0e13;
-  --frame: #111319;
-  --sidebar: #12151d;
-  --surface: #181c26;
+  --canvas: #0E1116;
+  --frame: #12151D;
+  --sidebar: #12151D;
+  --surface: #181C26;
   --surface-dim: #111319;
   --surface-bright: #36393f;
-  --surface-container-lowest: #0b0e13;
+  --surface-container-lowest: #0E1116;
   --surface-container-low: #191c21;
   --surface-container: #1d2025;
   --surface-container-high: #272a30;
   --surface-container-highest: #32353a;
 
-  --text: #e1e2e9;
-  --text-muted: #8a93a6;
-  --border: #262c38;
+  --text: #E8EAF0;
+  --text-muted: #8A93A6;
+  --border: #262C38;
   --outline: #928f9f;
   --outline-variant: #474554;
 
-  --accent: #8b7cff;
-  --accent-foreground: #0e1116;
+  --accent: #8B7CFF;
+  --accent-foreground: #0E1116;
   --primary: #c7bfff;
   --primary-container: #8e7fff;
   --on-primary: #2a039d;
   --on-primary-container: #24008c;
 
-  --success: #3fb97f;
+  --success: #3FB97F;
   --secondary: #66dc9f;
   --secondary-container: #22a46c;
 
-  --warning: #e5a13b;
+  --warning: #E5A13B;
   --tertiary: #ffb955;
   --tertiary-container: #c3841e;
 
-  --danger: #e5534b;
+  --danger: #E5534B;
   --error: #ffb4ab;
   --error-container: #93000a;
 

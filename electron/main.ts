@@ -101,7 +101,7 @@ function createWindow() {
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
     title: 'OpenBot',
-    backgroundColor: '#0b0e13',
+    backgroundColor: '#0E1116',
     frame: process.platform !== 'darwin',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 12, y: 12 },
