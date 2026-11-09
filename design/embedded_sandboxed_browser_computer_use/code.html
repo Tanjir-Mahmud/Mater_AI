@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "secondary-fixed": "#83f9ba", "on-primary-fixed-variant": "#422db2", "surface-container-lowest": "#0b0e13", "on-tertiary-container": "#3c2500", "on-error-container": "#ffdad6", "inverse-surface": "#e1e2e9", "primary-fixed-dim": "#c7bfff", "primary": "#c7bfff", "on-primary-fixed": "#170065", "error": "#ffb4ab", "on-secondary-fixed-variant": "#005232", "on-primary-container": "#24008c", "on-primary": "#2a039d", "primary-fixed": "#e4dfff", "tertiary": "#ffb955", "error-container": "#93000a", "on-error": "#690005", "on-background": "#e1e2e9", "tertiary-fixed": "#ffddb5", "tertiary-fixed-dim": "#ffb955", "secondary": "#66dc9f", "tertiary-container": "#c3841e", "primary-container": "#8e7fff", "background": "#111319", "on-surface": "#e1e2e9", "surface-dim": "#111319", "on-surface-variant": "#c8c4d6", "surface-container-low": "#191c21", "on-secondary-container": "#00311c", "surface-variant": "#32353a", "on-tertiary-fixed": "#2a1800", "on-tertiary-fixed-variant": "#633f00", "surface-tint": "#c7bfff", "surface-bright": "#36393f", "surface-container-highest": "#32353a", "outline-variant": "#474554", "surface-container-high": "#272a30", "on-secondary": "#003921", "outline": "#928f9f", "secondary-container": "#22a46c", "surface-container": "#1d2025", "on-tertiary": "#452b00", "inverse-primary": "#5a49cb", "on-secondary-fixed": "#002111", "inverse-on-surface": "#2e3036", "secondary-fixed-dim": "#66dc9f", "surface": "#111319" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-xs": "0.25rem", "gutter": "0.5rem", "margin": "0.75rem", "space-lg": "0.75rem", "space-sm": "0.375rem", "space-xl": "1rem", "space-md": "0.5rem" }, "fontFamily": { "label-md": ["JetBrains Mono"], "label-sm": ["JetBrains Mono"], "headline-md": ["Inter"], "headline-lg": ["Inter"], "body-md": ["Inter"], "body-lg": ["Inter"], "body-sm": ["Inter"], "code-block": ["JetBrains Mono"], "headline-sm": ["Inter"], "code-inline": ["JetBrains Mono"] }, "fontSize": { "label-md": ["0.8125rem", { "lineHeight": "1.125rem", "letterSpacing": "-0.01em", "fontWeight": "500" }], "label-sm": ["0.75rem", { "lineHeight": "1rem", "letterSpacing": "0em", "fontWeight": "500" }], "headline-md": ["1.25rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.015em", "fontWeight": "600" }], "headline-lg": ["1.5rem", { "lineHeight": "1.875rem", "letterSpacing": "-0.02em", "fontWeight": "600" }], "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }], "body-lg": ["0.9375rem", { "lineHeight": "1.375rem", "fontWeight": "400" }], "body-sm": ["0.8125rem", { "lineHeight": "1.125rem", "fontWeight": "400" }], "code-block": ["0.8125rem", { "lineHeight": "1.25rem", "fontWeight": "400" }], "headline-sm": ["1rem", { "lineHeight": "1.375rem", "letterSpacing": "-0.01em", "fontWeight": "600" }], "code-inline": ["0.8125rem", { "lineHeight": "1.125rem", "fontWeight": "400" }] } } } };</script></head><body class="bg-surface-container-lowest text-on-surface antialiased select-none"><header class="fixed top-0 left-0 right-0 h-10 z-50 bg-surface-container-low border-b border-surface-variant flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-md"><div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]"></div><div class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]"></div><div class="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]"></div></div><div class="h-4 w-[1px] bg-surface-variant ml-space-xs"></div><div class="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant"><span class="text-primary font-semibold">OpenBot</span><span class="text-outline">/</span><span>station-darwin-arm64</span></div></div><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs px-space-md py-0.5 rounded bg-surface-container border border-surface-variant"><span class="material-symbols-outlined text-[14px] text-outline">search</span><span class="font-label-sm text-label-sm text-outline">Quick Actions</span><kbd class="font-label-sm text-label-sm text-outline bg-surface-variant px-1 rounded">⌘K</kbd></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-1 font-label-sm text-label-sm text-secondary"><span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span><span>Engine Ready</span></div><div class="h-4 w-[1px] bg-surface-variant"></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><aside class="fixed left-0 top-10 bottom-0 w-64 bg-surface-container-low border-r border-surface-variant z-40 flex flex-col justify-between p-space-sm"><div class="flex flex-col gap-space-md"><div class="flex items-center justify-between px-space-sm py-space-xs"><span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Workspace</span><span class="material-symbols-outlined text-[16px] text-outline hover:text-on-surface cursor-pointer">tune</span></div><nav class="flex flex-col gap-0.5" data-active-classes="bg-surface-variant text-on-surface font-semibold border-l-2 border-primary"><a class="flex items-center gap-space-md px-space-sm py-1.5 rounded-lg font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="orchestrator" href="#"><span class="material-symbols-outlined text-[18px]">terminal</span><span>Orchestrator</span></a><a class="flex items-center gap-space-md px-space-sm py-1.5 rounded-lg font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="agent-graph" href="#"><span class="material-symbols-outlined text-[18px]">hub</span><span>Agent Graph</span></a><a aria-current="page" class="flex items-center gap-space-md px-space-sm py-1.5 rounded-lg transition-colors bg-surface-variant text-on-surface font-semibold border-l-2 border-primary" data-path="inference-telemetry" href="#"><span class="material-symbols-outlined text-[18px]">monitoring</span><span>Inference & Telemetry</span></a><a class="flex items-center gap-space-md px-space-sm py-1.5 rounded-lg font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="context-memory" href="#"><span class="material-symbols-outlined text-[18px]">database</span><span>Context & Memory</span></a><a class="flex items-center gap-space-md px-space-sm py-1.5 rounded-lg font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="model-runtime" href="#"><span class="material-symbols-outlined text-[18px]">memory</span><span>Model Runtime</span></a></nav></div><div class="border-t border-surface-variant pt-space-sm flex flex-col gap-space-xs"><div class="flex items-center justify-between px-space-sm py-1 rounded bg-surface-container font-label-sm text-label-sm text-outline"><span>LLAMA-3-70B</span><span class="text-secondary font-mono">48.2 tok/s</span></div><div class="flex items-center justify-between px-space-sm text-outline hover:text-on-surface font-body-sm text-body-sm cursor-pointer"><span class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-[16px]">settings</span><span>Preferences</span></span><kbd class="font-label-sm text-label-sm">⌘,</kbd></div></div></aside><div class="pl-64"><main class="relative pt-10 min-h-screen bg-surface-container-lowest w-full px-space-xl py-space-lg"><div class="flex flex-col w-full h-[calc(100vh-5rem)]">
+<!-- Master Workspace Grid: Browser Viewport + Live Agent Inspector -->
+<div class="flex flex-row w-full h-full gap-gutter min-h-0">
+<!-- LEFT & CENTER: Sandboxed Browser Window Frame -->
+<div class="flex flex-col flex-1 min-w-0 bg-surface-container rounded-xl shadow-2xl overflow-hidden relative">
+<!-- Top Chrome: Tab Strip & Window Handles -->
+<div class="flex items-center justify-between px-space-md py-1.5 bg-surface-container-low select-none">
+<!-- Window Dots & Tab List -->
+<div class="flex items-center gap-space-md min-w-0">
+<div class="flex items-center gap-1.5 px-1">
+<span class="w-2.5 h-2.5 rounded-full bg-[#FF5F56] opacity-80"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-[#FFBD2E] opacity-80"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-[#27C93F] opacity-80"></span>
+</div>
+<!-- Tabs -->
+<div class="flex items-center gap-1 min-w-0 overflow-x-auto">
+<!-- Tab 1 (Active) -->
+<div class="flex items-center gap-space-xs px-space-md py-1 rounded-t-lg bg-surface text-on-surface font-body-sm text-body-sm shadow-sm cursor-pointer min-w-44 max-w-64">
+<span class="material-symbols-outlined text-primary text-[14px]">lock</span>
+<span class="truncate font-medium">Okta SSO Gate · auth.corp</span>
+<span class="px-1.5 py-0.2 rounded bg-primary/10 text-primary font-label-sm text-[10px] tracking-tight">SANDBOX</span>
+<span class="material-symbols-outlined text-outline hover:text-on-surface text-[14px] ml-auto">close</span>
+</div>
+<!-- Tab 2 -->
+<div class="flex items-center gap-space-xs px-space-md py-1 rounded-t-lg bg-surface-container-low hover:bg-surface-container text-on-surface-variant font-body-sm text-body-sm cursor-pointer min-w-36 max-w-56 transition-colors">
+<span class="material-symbols-outlined text-outline text-[14px]">query_stats</span>
+<span class="truncate">Datadog APM Traces</span>
+<span class="material-symbols-outlined text-outline hover:text-on-surface text-[14px] ml-auto opacity-0 hover:opacity-100">close</span>
+</div>
+<!-- Tab 3 -->
+<div class="flex items-center gap-space-xs px-space-md py-1 rounded-t-lg bg-surface-container-low hover:bg-surface-container text-on-surface-variant font-body-sm text-body-sm cursor-pointer min-w-36 max-w-56 transition-colors">
+<span class="material-symbols-outlined text-outline text-[14px]">grid_view</span>
+<span class="truncate">Kubernetes Dashboard</span>
+<span class="material-symbols-outlined text-outline hover:text-on-surface text-[14px] ml-auto opacity-0 hover:opacity-100">close</span>
+</div>
+<!-- New Tab -->
+<button class="w-6 h-6 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container-high transition-colors" title="New Tab (⌘T)">
+<span class="material-symbols-outlined text-[16px]">add</span>
+</button>
+</div>
+</div>
+<!-- Hotkey Indicators -->
+<div class="hidden xl:flex items-center gap-space-sm text-outline font-label-sm text-label-sm pr-space-sm">
+<span>Tabs</span>
+<kbd class="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface-variant text-[10px]">⌘1-⌘9</kbd>
+</div>
+</div>
+<!-- Navigation Toolbar / Omnibox -->
+<div class="flex items-center justify-between gap-space-sm px-space-md py-1.5 bg-surface-container-high">
+<!-- Navigation Buttons -->
+<div class="flex items-center gap-0.5">
+<button class="w-7 h-7 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-variant transition-colors" title="Back">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+</button>
+<button class="w-7 h-7 rounded flex items-center justify-center text-outline/50 cursor-not-allowed" disabled="" title="Forward">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+<button class="w-7 h-7 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-variant transition-colors" id="reloadBtn" title="Reload (⌘R)">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+</button>
+</div>
+<!-- Omnibox URL Bar -->
+<div class="flex items-center flex-1 min-w-0 max-w-3xl h-7 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm gap-space-sm shadow-inner">
+<span class="material-symbols-outlined text-secondary text-[15px]" title="TLS 1.3 Verified">lock</span>
+<span class="text-secondary font-mono">https://</span>
+<span class="text-on-surface font-mono font-medium">auth.corp.internal</span>
+<span class="text-outline font-mono truncate">/login/step-up?challenge_id=chk_9481ae</span>
+<div class="ml-auto flex items-center gap-1.5 flex-shrink-0">
+<span class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-variant text-secondary font-label-sm text-[11px]">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+              gVisor Profile
+            </span>
+<span class="text-outline text-label-sm">TLS v1.3</span>
+</div>
+</div>
+<!-- Utility Action Controls -->
+<div class="flex items-center gap-1 flex-shrink-0">
+<button class="flex items-center gap-1 px-2 py-1 rounded bg-surface-variant hover:bg-surface-bright text-on-surface font-label-sm text-label-sm transition-colors" title="Snapshot accessibility DOM">
+<span class="material-symbols-outlined text-primary text-[15px]">camera</span>
+<span class="hidden sm:inline">DOM Capture</span>
+</button>
+<button class="w-7 h-7 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-variant transition-colors" title="Picture in Picture">
+<span class="material-symbols-outlined text-[16px]">picture_in_picture_alt</span>
+</button>
+<div class="relative group">
+<button class="w-7 h-7 rounded flex items-center justify-center text-secondary hover:bg-surface-variant transition-colors" title="1 download ready">
+<span class="material-symbols-outlined text-[17px]">download_done</span>
+<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+</button>
+</div>
+<div class="h-4 w-[1px] bg-surface-variant mx-1"></div>
+<!-- Browser Profile Chip -->
+<div class="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 text-primary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[15px]">shield_person</span>
+<span class="font-medium hidden md:inline">Isolated: Cipher Agent</span>
+</div>
+</div>
+</div>
+<!-- Main Viewport Canvas (SSO Screen + Live Agent Autonomous Overlay) -->
+<div class="relative flex-1 min-h-0 bg-surface overflow-hidden flex items-center justify-center p-space-xl">
+<!-- Live Agent Control Banner (Sticky Floating Top-Right Overlay) -->
+<div class="absolute top-4 right-4 z-30 flex items-center gap-space-md px-space-md py-1.5 rounded-xl bg-surface-container-high/95 backdrop-blur-md shadow-xl">
+<div class="flex items-center gap-2">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+</span>
+<div class="flex flex-col">
+<span class="font-headline-sm text-[12px] font-semibold text-on-surface">Agent Kestrel Autonomous Pilot</span>
+<span class="font-label-sm text-[10px] text-outline">Session runtime: <span class="text-secondary font-mono" id="sessionTimer">00:48.2s</span></span>
+</div>
+</div>
+<div class="h-6 w-[1px] bg-surface-variant mx-1"></div>
+<!-- Interactive Control Actions -->
+<div class="flex items-center gap-1.5">
+<button class="flex items-center gap-1 px-2.5 py-1 rounded bg-surface-variant hover:bg-surface-bright text-on-surface font-body-sm text-[12px] transition-colors" id="pauseToggleBtn">
+<span class="material-symbols-outlined text-[14px]">pause</span>
+<span>Pause</span>
+</button>
+<button class="flex items-center gap-1 px-2.5 py-1 rounded bg-primary text-on-primary font-body-sm text-[12px] font-semibold hover:bg-primary-fixed-dim transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[14px]">front_hand</span>
+<span>Take Control</span>
+</button>
+<button class="w-7 h-7 rounded flex items-center justify-center bg-error-container text-on-error-container hover:bg-error hover:text-on-error transition-colors" title="Emergency Stop (Esc)">
+<span class="material-symbols-outlined text-[15px]">dangerous</span>
+</button>
+</div>
+</div>
+<!-- Simulated Internal Corporate Identity Application Document -->
+<div class="w-full max-w-lg bg-surface-container-low rounded-xl shadow-2xl p-8 flex flex-col gap-6 relative select-none">
+<!-- Mock Page Header -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary font-headline-md font-bold shadow-md">
+                Ω
+              </div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">CorpHQ Identity Gateway</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Elevated Step-Up Authentication Required</p>
+</div>
+</div>
+<span class="font-label-sm text-[11px] px-2 py-0.5 rounded bg-surface-variant text-outline">Tier-4 Org Shield</span>
+</div>
+<!-- Auth Card Interior -->
+<div class="flex flex-col gap-4 bg-surface rounded-lg p-5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">verified_user</span>
+<span class="font-body-md text-body-md font-medium text-on-surface">Target Service: Production Cluster Admin</span>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary">MFA Challenge #9481</span>
+</div>
+<div class="flex flex-col gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<p>Session identity: <strong class="text-on-surface font-mono">marcus.vance@corp.internal</strong></p>
+<p>Request Origin: <span class="font-mono text-outline">10.244.18.91 (Bastion-Proxy-US-East)</span></p>
+</div>
+<!-- Target Action Container (Targeted by Agent) -->
+<div class="pt-2 flex flex-col gap-2.5">
+<label class="font-label-sm text-label-sm text-outline">Verification Protocol</label>
+<div class="relative">
+<!-- Highlighted Action Button targeted by Agent -->
+<button class="w-full py-2.5 px-4 rounded-lg bg-secondary text-on-secondary font-headline-sm text-headline-sm font-semibold flex items-center justify-center gap-2 shadow-md hover:bg-secondary-fixed transition-colors" id="targetActionButton">
+<span class="material-symbols-outlined text-[18px]">send_to_mobile</span>
+<span>Approve Push Notification</span>
+</button>
+<!-- Agent Visual Computer Use Bounding Box & Target Overlay -->
+<div class="absolute -inset-1.5 rounded-xl border-2 border-primary pointer-events-none flex flex-col justify-between p-1 bg-primary/5 animate-pulse">
+<!-- Coordinate Pill Badge -->
+<div class="flex items-center justify-between text-on-surface font-label-sm text-[10px] bg-surface-container-highest/95 backdrop-blur px-2 py-0.5 rounded shadow-sm self-start">
+<span class="text-primary font-mono">[x: 428, y: 312]</span>
+<span class="ml-2 text-secondary font-mono">99.4% conf</span>
+<span class="ml-1.5 text-outline">#btn-mfa-submit</span>
+</div>
+<!-- Corner anchors -->
+<div class="flex justify-between w-full">
+<span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
+<span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
+</div>
+</div>
+</div>
+<button class="w-full py-2 px-4 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface-variant font-body-sm text-body-sm transition-colors text-center">
+                Use Hardware FIDO2 WebAuthn Key instead
+              </button>
+</div>
+</div>
+<!-- Security Footer Notice -->
+<div class="flex items-center justify-between text-outline font-label-sm text-[11px] pt-1">
+<span>Session Lease: 07m 14s remaining</span>
+<span>Policy: STRICT_AIRGAP_V2</span>
+</div>
+</div>
+<!-- SYNTHETIC AGENT CURSOR (Lavender Pointer Overlay) -->
+<div class="absolute z-40 pointer-events-none transition-all duration-300 ease-out" id="agentCursor" style="left: calc(50% + 70px); top: calc(50% + 105px);">
+<!-- Electric Lavender Glow Pointer -->
+<div class="relative">
+<svg class="filter drop-shadow-[0_2px_8px_rgba(139,124,255,0.7)]" fill="none" height="34" viewbox="0 0 24 24" width="34">
+<path d="M4 2L19 12L12 14L8 21L4 2Z" fill="#8B7CFF" stroke="#0E1116" stroke-linejoin="round" stroke-width="1.5"></path>
+</svg>
+<!-- Agent Tag Label Flag -->
+<div class="absolute left-6 top-3 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-highest/90 backdrop-blur border border-primary/40 shadow-lg whitespace-nowrap">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-ping"></span>
+<span class="font-label-sm text-[11px] font-semibold text-primary">Kestrel</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant font-mono">click()</span>
+</div>
+</div>
+</div>
+<!-- Coordinate Grid Overlay Reticle (Subtle Pro Metric) -->
+<div class="absolute bottom-3 left-4 flex items-center gap-3 text-outline font-label-sm text-[11px] bg-surface-container/70 backdrop-blur px-2.5 py-1 rounded">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">crop_free</span>
+<span>Canvas: 1280 × 800</span>
+</span>
+<span>·</span>
+<span>DPI: 2.0x HiDPI</span>
+<span>·</span>
+<span class="text-secondary font-mono">FPS: 60.0 stable</span>
+</div>
+</div>
+<!-- Bottom Downloads & Sandboxed Tray -->
+<div class="flex items-center justify-between px-space-md py-1.5 bg-surface-container-high select-none">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="flex items-center gap-1.5 text-on-surface font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-secondary text-[16px]">file_download_done</span>
+<span class="font-mono text-on-surface font-medium truncate">mfa_session_token.enc</span>
+<span class="text-outline text-[11px] font-mono">(4.2 KB)</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container text-secondary font-label-sm text-[10px]">
+<span class="material-symbols-outlined text-[12px]">security</span>
+<span class="font-mono">SHA256: 7f83b165...e21a</span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm text-outline font-body-sm text-[12px]">
+<button class="hover:text-on-surface transition-colors">Show in Isolated Storage</button>
+<span>·</span>
+<button class="hover:text-on-surface transition-colors">Clear All</button>
+</div>
+</div>
+</div>
+<!-- RIGHT: Collapsible Browser Telemetry & DOM Inspector Drawer -->
+<div class="w-80 lg:w-96 flex flex-col flex-shrink-0 bg-surface-container-low rounded-xl overflow-hidden shadow-2xl transition-all duration-200" id="inspectorPanel">
+<!-- Drawer Header Bar -->
+<div class="flex items-center justify-between px-space-md py-2 bg-surface-container">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">developer_board</span>
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface">Agent Telemetry</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="w-6 h-6 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-variant transition-colors" title="Filter logs">
+<span class="material-symbols-outlined text-[15px]">filter_list</span>
+</button>
+<button class="w-6 h-6 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-variant transition-colors" title="Settings">
+<span class="material-symbols-outlined text-[15px]">settings</span>
+</button>
+</div>
+</div>
+<!-- Security Isolation Status Banner -->
+<div class="p-space-sm bg-surface-container-lowest">
+<div class="flex flex-col gap-1 p-2 rounded-lg bg-surface-container">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-semibold text-secondary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+              Air-Gapped Isolation
+            </span>
+<span class="font-label-sm text-[10px] text-outline font-mono">Sandbox v4.1</span>
+</div>
+<div class="text-[11px] font-body-sm text-on-surface-variant leading-tight">
+            Ephemeral storage enabled. Zero-leakage MITM forward proxy active. Memory wipe on tab termination.
+          </div>
+</div>
+</div>
+<!-- Scrollable Telemetry Streams -->
+<div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-space-md p-space-sm">
+<!-- Section 1: DOM Distillation Accessible Elements -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between px-1">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">Distilled DOM Nodes</span>
+<span class="font-label-sm text-[11px] text-primary">3 interactive elements</span>
+</div>
+<div class="flex flex-col gap-1 bg-surface-container rounded-lg p-2 font-mono text-label-sm">
+<!-- Node 1 (Active Focused Target) -->
+<div class="flex flex-col gap-0.5 p-1.5 rounded bg-primary/10 text-on-surface">
+<div class="flex items-center justify-between text-[11px]">
+<span class="text-primary font-semibold"><button#btn-mfa-submit></span>
+<span class="text-secondary font-label-sm">FOCUSED</span>
+</div>
+<div class="text-outline text-[11px] pl-2">role="button" · name="Approve Push Notification"</div>
+<div class="text-[10px] text-on-surface-variant pl-2 font-sans flex items-center gap-2">
+<span>bbox: [388, 280, 240, 44]</span>
+<span class="text-secondary">Agent confidence: 99.4%</span>
+</div>
+</div>
+<!-- Node 2 -->
+<div class="flex flex-col gap-0.5 p-1.5 rounded hover:bg-surface-variant text-on-surface-variant transition-colors cursor-pointer">
+<div class="flex items-center justify-between text-[11px]">
+<span class="text-on-surface font-semibold"><button#btn-webauthn-alt></span>
+<span class="text-outline">clickable</span>
+</div>
+<div class="text-outline text-[11px] pl-2">role="button" · name="Use Hardware FIDO2..."</div>
+</div>
+<!-- Node 3 -->
+<div class="flex flex-col gap-0.5 p-1.5 rounded hover:bg-surface-variant text-on-surface-variant transition-colors cursor-pointer">
+<div class="flex items-center justify-between text-[11px]">
+<span class="text-on-surface font-semibold"><a#challenge-details></span>
+<span class="text-outline">link</span>
+</div>
+<div class="text-outline text-[11px] pl-2">role="link" · href="/audit/session-info"</div>
+</div>
+</div>
+</div>
+<!-- Section 2: Real-time Network Inspector Stream -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between px-1">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">Network Trace</span>
+<span class="font-label-sm text-[11px] text-secondary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+              Live Wire
+            </span>
+</div>
+<div class="flex flex-col gap-1 bg-surface-container rounded-lg p-2 font-mono text-[11px]">
+<!-- Row 1 -->
+<div class="flex items-center justify-between p-1 rounded hover:bg-surface-variant transition-colors">
+<div class="flex items-center gap-2 truncate">
+<span class="text-secondary font-bold">200</span>
+<span class="text-outline font-semibold">POST</span>
+<span class="text-on-surface truncate">/api/v2/challenge/poll</span>
+</div>
+<span class="text-outline ml-2 whitespace-nowrap">24ms</span>
+</div>
+<!-- Row 2 -->
+<div class="flex items-center justify-between p-1 rounded hover:bg-surface-variant transition-colors">
+<div class="flex items-center gap-2 truncate">
+<span class="text-tertiary font-bold">302</span>
+<span class="text-outline font-semibold">GET</span>
+<span class="text-on-surface truncate">/login/step-up?challenge_id=...</span>
+</div>
+<span class="text-outline ml-2 whitespace-nowrap">68ms</span>
+</div>
+<!-- Row 3 -->
+<div class="flex items-center justify-between p-1 rounded hover:bg-surface-variant transition-colors">
+<div class="flex items-center gap-2 truncate">
+<span class="text-secondary font-bold">200</span>
+<span class="text-outline font-semibold">GET</span>
+<span class="text-on-surface truncate">/static/js/okta-auth-sdk.min.js</span>
+</div>
+<span class="text-outline ml-2 whitespace-nowrap">12ms</span>
+</div>
+<!-- Row 4 -->
+<div class="flex items-center justify-between p-1 rounded hover:bg-surface-variant transition-colors">
+<div class="flex items-center gap-2 truncate">
+<span class="text-secondary font-bold">101</span>
+<span class="text-primary font-semibold">WSS</span>
+<span class="text-on-surface truncate">/telemetry/agent/stream</span>
+</div>
+<span class="text-secondary ml-2 whitespace-nowrap">active</span>
+</div>
+</div>
+</div>
+<!-- Section 3: Visual Agent Reasoning & Execution Log -->
+<div class="flex flex-col gap-1.5 flex-1 min-h-0">
+<div class="flex items-center justify-between px-1">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">Vision Thought Log</span>
+<span class="font-label-sm text-[11px] text-outline font-mono">Step #7 / 10</span>
+</div>
+<div class="flex-1 bg-surface-container-lowest rounded-lg p-2.5 font-mono text-[11px] text-on-surface-variant flex flex-col gap-1.5 overflow-y-auto leading-relaxed shadow-inner">
+<div class="text-outline">[14:02:11.204] [SCREEN_PARSER] Viewport snapshot received (1280x800).</div>
+<div class="text-outline">[14:02:11.410] [OCR_ENGINE] Detected step-up MFA intent requiring push authorization.</div>
+<div class="text-primary">[14:02:11.890] [PLANNER] Synthesizing mouse click event on primary action target.</div>
+<div class="text-secondary">[14:02:12.012] [MOUSE_CONTROLLER] Moving pointer to normalized x=0.528, y=0.485.</div>
+<div class="text-on-surface flex items-center gap-1.5 pt-1">
+<span class="material-symbols-outlined text-primary text-[14px] animate-spin">progress_activity</span>
+<span>Awaiting push ACK packet from authenticator...</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Drawer Bottom Status Strip -->
+<div class="p-2.5 bg-surface-container border-t border-surface-variant flex items-center justify-between text-outline font-label-sm text-[11px]">
+<span class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>Webdriver CDP Attached</span>
+</span>
+<span class="font-mono">Lat: 4.8ms</span>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Simple reactive telemetry state & cursor micro-interaction
+  (function() {
+    let seconds = 48.2;
+    const timerEl = document.getElementById('sessionTimer');
+    const pauseBtn = document.getElementById('pauseToggleBtn');
+    const cursor = document.getElementById('agentCursor');
+    let isPaused = false;
+
+    // Timer updater
+    setInterval(() => {
+      if (!isPaused && timerEl) {
+        seconds += 0.1;
+        const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const secs = (seconds % 60).toFixed(1).toString().padStart(4, '0');
+        timerEl.textContent = `${mins}:${secs}s`;
+      }
+    }, 100);
+
+    // Pause button toggle
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', () => {
+        isPaused = !isPaused;
+        const icon = pauseBtn.querySelector('.material-symbols-outlined');
+        const text = pauseBtn.querySelector('span:last-child');
+        if (isPaused) {
+          icon.textContent = 'play_arrow';
+          text.textContent = 'Resume';
+          pauseBtn.classList.add('bg-tertiary', 'text-on-tertiary');
+        } else {
+          icon.textContent = 'pause';
+          text.textContent = 'Pause';
+          pauseBtn.classList.remove('bg-tertiary', 'text-on-tertiary');
+        }
+      });
+    }
+
+    // Interactive target button feedback
+    const targetBtn = document.getElementById('targetActionButton');
+    if (targetBtn) {
+      targetBtn.addEventListener('click', () => {
+        targetBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">sync</span><span>Push Sent to Mobile...</span>';
+        setTimeout(() => {
+          targetBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">check_circle</span><span>Authenticated!</span>';
+        }, 1500);
+      });
+    }
+
+    // Refresh rotation animation
+    const reloadBtn = document.getElementById('reloadBtn');
+    if (reloadBtn) {
+      reloadBtn.addEventListener('click', () => {
+        const icon = reloadBtn.querySelector('.material-symbols-outlined');
+        icon.classList.add('animate-spin');
+        setTimeout(() => icon.classList.remove('animate-spin'), 750);
+      });
+    }
+  })();
+</script></main></div></body></html>

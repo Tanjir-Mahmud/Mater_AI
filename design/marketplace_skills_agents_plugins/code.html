@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-bright": "#36393f", "on-tertiary-fixed-variant": "#633f00", "surface-dim": "#111319", "surface-container-lowest": "#0b0e13", "on-primary-fixed": "#170065", "on-tertiary-container": "#3c2500", "primary-fixed": "#e4dfff", "primary-container": "#8e7fff", "secondary": "#66dc9f", "on-tertiary-fixed": "#2a1800", "background": "#111319", "surface-container": "#1d2025", "on-tertiary": "#452b00", "outline": "#928f9f", "on-primary": "#2a039d", "on-background": "#e1e2e9", "on-error": "#690005", "on-secondary-fixed": "#002111", "surface-tint": "#c7bfff", "inverse-on-surface": "#2e3036", "surface-variant": "#32353a", "outline-variant": "#474554", "on-secondary-fixed-variant": "#005232", "tertiary-container": "#c3841e", "secondary-container": "#22a46c", "inverse-surface": "#e1e2e9", "secondary-fixed-dim": "#66dc9f", "surface-container-low": "#191c21", "surface-container-highest": "#32353a", "on-error-container": "#ffdad6", "on-secondary": "#003921", "tertiary-fixed": "#ffddb5", "surface-container-high": "#272a30", "on-surface": "#e1e2e9", "secondary-fixed": "#83f9ba", "on-surface-variant": "#c8c4d6", "surface": "#111319", "tertiary-fixed-dim": "#ffb955", "on-primary-container": "#24008c", "error-container": "#93000a", "tertiary": "#ffb955", "inverse-primary": "#5a49cb", "on-secondary-container": "#00311c", "error": "#ffb4ab", "on-primary-fixed-variant": "#422db2", "primary": "#c7bfff", "primary-fixed-dim": "#c7bfff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-lg": "0.75rem", "margin": "0.75rem", "space-xs": "0.25rem", "gutter": "0.5rem", "space-md": "0.5rem", "space-sm": "0.375rem", "space-xl": "1rem" }, "fontFamily": { "headline-sm": [ "Inter" ], "label-md": [ "JetBrains Mono" ], "code-inline": [ "JetBrains Mono" ], "headline-lg": [ "Inter" ], "body-lg": [ "Inter" ], "body-md": [ "Inter" ], "label-sm": [ "JetBrains Mono" ], "body-sm": [ "Inter" ], "headline-md": [ "Inter" ], "code-block": [ "JetBrains Mono" ] }, "fontSize": { "headline-sm": [ "1rem", { "lineHeight": "1.375rem", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "label-md": [ "0.8125rem", { "lineHeight": "1.125rem", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "code-inline": [ "0.8125rem", { "lineHeight": "1.125rem", "fontWeight": "400" } ], "headline-lg": [ "1.5rem", { "lineHeight": "1.875rem", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "body-lg": [ "0.9375rem", { "lineHeight": "1.375rem", "fontWeight": "400" } ], "body-md": [ "0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" } ], "label-sm": [ "0.75rem", { "lineHeight": "1rem", "letterSpacing": "0em", "fontWeight": "500" } ], "body-sm": [ "0.8125rem", { "lineHeight": "1.125rem", "fontWeight": "400" } ], "headline-md": [ "1.25rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "code-block": [ "0.8125rem", { "lineHeight": "1.25rem", "fontWeight": "400" } ] } } } };</script></head><body class="bg-surface-container-lowest text-on-surface font-body-md text-body-md antialiased select-none"><header class="fixed top-0 left-0 right-0 h-10 bg-surface-container-low z-50 flex items-center justify-between px-space-md border-b border-outline-variant"><div class="flex items-center gap-space-md"><div class="flex items-center gap-1.5 px-space-xs"><div class="w-3 h-3 rounded-full bg-error-container"></div><div class="w-3 h-3 rounded-full bg-tertiary-container"></div><div class="w-3 h-3 rounded-full bg-secondary-container"></div></div><div class="h-4 w-px bg-outline-variant mx-1"></div><div class="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm"><span class="material-symbols-outlined text-[16px] text-primary">terminal</span><span class="font-label-md text-label-md text-on-surface font-semibold">openbot-desktop</span><span class="text-outline">/</span><span>prod-cluster-01</span></div></div><div class="flex items-center gap-space-md"><button class="flex items-center gap-space-sm px-space-md py-space-xs bg-surface-container rounded-lg border border-outline-variant text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all text-label-sm font-label-sm" type="button"><span class="material-symbols-outlined text-[15px]">search</span><span>Search workspaces, agents, tasks...</span><kbd class="px-1 py-0.5 rounded bg-surface-container-highest text-on-surface font-code-inline text-code-inline text-[10px]">⌘K</kbd></button></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-0.5 rounded bg-surface-container border border-outline-variant"><span class="w-2 h-2 rounded-full bg-secondary"></span><span class="font-label-sm text-label-sm text-secondary font-medium">12ms</span><span class="font-label-sm text-label-sm text-outline">local-node</span></div><div class="flex items-center gap-1"><button class="p-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors" title="Split View" type="button"><span class="material-symbols-outlined text-[18px]">vertical_split</span></button><button class="p-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors" title="Toggle Context Inspector" type="button"><span class="material-symbols-outlined text-[18px]">dock_to_left</span></button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><aside class="fixed left-0 top-10 bottom-0 w-12 bg-surface-container-low z-40 flex flex-col items-center py-space-md justify-between border-r border-outline-variant"><div class="flex flex-col items-center gap-space-md w-full"><div class="w-8 h-8 rounded-lg bg-surface-container-high border border-primary/30 flex items-center justify-center text-primary mb-space-xs"><span class="material-symbols-outlined text-[20px]">smart_toy</span></div><div class="w-6 h-px bg-outline-variant"></div><div class="flex flex-col items-center gap-1"><button class="relative w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary-fixed hover:bg-surface-container-high" title="Active Team Server: Orion" type="button"><span class="material-symbols-outlined text-[18px]">dns</span><span class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-secondary ring-2 ring-surface-container-low"></span></button><button class="w-8 h-8 rounded-lg bg-surface-container-lowest flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container" title="Local Server (127.0.0.1:8080)" type="button"><span class="material-symbols-outlined text-[18px]">lan</span></button></div><div class="w-6 h-px bg-outline-variant"></div><nav class="flex flex-col items-center gap-1 w-full px-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-semibold"><a class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="agents-workstation" href="#" title="Agents"><span class="material-symbols-outlined text-[20px]">group</span></a><a class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="orchestration-schedule" href="#" title="Schedule"><span class="material-symbols-outlined text-[20px]">calendar_today</span></a><a class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="task-board" href="#" title="Tasks"><span class="material-symbols-outlined text-[20px]">check_circle</span></a><a class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workflow-canvas" href="#" title="Workflows"><span class="material-symbols-outlined text-[20px]">account_tree</span></a><a class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="telemetry-usage" href="#" title="Usage"><span class="material-symbols-outlined text-[20px]">query_stats</span></a><a class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="model-library" href="#" title="Library"><span class="material-symbols-outlined text-[20px]">auto_stories</span></a><a class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="plugin-marketplace" href="#" title="Marketplace"><span class="material-symbols-outlined text-[20px]">store</span></a></nav></div><div class="flex flex-col items-center gap-1 w-full px-space-xs"><a class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="workstation-settings" href="#" title="Settings"><span class="material-symbols-outlined text-[20px]">settings</span></a><button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="Documentation &amp; Help" type="button"><span class="material-symbols-outlined text-[20px]">help</span></button></div></aside><aside class="fixed left-12 top-10 bottom-0 w-64 bg-surface-container-low z-30 flex flex-col border-r border-outline-variant"><div class="p-space-sm border-b border-outline-variant flex flex-col gap-space-xs"><div class="flex items-center justify-between px-space-xs"><span class="font-headline-sm text-headline-sm text-on-surface">Sessions &amp; Agents</span><button class="p-1 text-on-surface-variant hover:text-primary rounded hover:bg-surface-container" title="Create Agent Session" type="button"><span class="material-symbols-outlined text-[18px]">add_box</span></button></div><div class="flex items-center gap-space-xs bg-surface-container-lowest px-space-sm py-1 rounded border border-outline-variant"><span class="material-symbols-outlined text-[15px] text-outline">filter_list</span><input class="w-full bg-transparent border-0 outline-none text-body-sm font-body-sm text-on-surface placeholder:text-outline" placeholder="Filter agents, tags, channels..." type="text"/></div></div><div class="flex-1 overflow-y-auto p-space-xs flex flex-col gap-space-sm"><div class="flex flex-col gap-0.5"><div class="flex items-center justify-between px-space-sm py-0.5 text-on-surface-variant"><div class="flex items-center gap-1 font-label-sm text-label-sm uppercase tracking-wider text-outline"><span class="material-symbols-outlined text-[14px]">push_pin</span><span>Pinned</span></div><span class="font-label-sm text-label-sm text-outline">2</span></div><div class="flex items-center justify-between px-space-sm py-1.5 rounded hover:bg-surface-container cursor-pointer transition-colors group"><div class="flex items-center gap-space-sm min-w-0"><div class="relative flex-shrink-0 w-5 h-5 rounded bg-surface-container-high flex items-center justify-center"><span class="material-symbols-outlined text-[14px] text-primary">psychology</span><span class="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-secondary"></span></div><span class="font-body-sm text-body-sm text-on-surface truncate">Arch-Architect</span></div><span class="px-1.5 py-0.2 rounded font-label-sm text-label-sm bg-surface-container-high text-on-surface-variant">4.2k/s</span></div><div class="flex items-center justify-between px-space-sm py-1.5 rounded hover:bg-surface-container cursor-pointer transition-colors group"><div class="flex items-center gap-space-sm min-w-0"><div class="relative flex-shrink-0 w-5 h-5 rounded bg-surface-container-high flex items-center justify-center"><span class="material-symbols-outlined text-[14px] text-primary">code</span><span class="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-secondary"></span></div><span class="font-body-sm text-body-sm text-on-surface truncate">Lead-Refactor-Bot</span></div><span class="px-1.5 py-0.2 rounded font-label-sm text-label-sm bg-secondary-container text-on-secondary-container">Active</span></div></div><div class="flex flex-col gap-0.5"><div class="flex items-center justify-between px-space-sm py-0.5 text-on-surface-variant"><div class="flex items-center gap-1 font-label-sm text-label-sm uppercase tracking-wider text-error"><span class="material-symbols-outlined text-[14px]">error_outline</span><span>Needs You</span></div><span class="px-1.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm">3</span></div><div class="flex items-center justify-between px-space-sm py-1.5 rounded hover:bg-surface-container cursor-pointer transition-colors"><div class="flex items-center gap-space-sm min-w-0"><div class="relative flex-shrink-0 w-5 h-5 rounded bg-surface-container-high flex items-center justify-center"><span class="material-symbols-outlined text-[14px] text-error">approval</span></div><span class="font-body-sm text-body-sm text-on-surface truncate">DB-Migration-Gate</span></div><span class="font-label-sm text-label-sm text-error">Auth req</span></div></div><div class="flex flex-col gap-0.5"><div class="flex items-center justify-between px-space-sm py-0.5 text-on-surface-variant"><div class="flex items-center gap-1 font-label-sm text-label-sm uppercase tracking-wider text-outline"><span class="material-symbols-outlined text-[14px]">diversity_3</span><span>People</span></div><span class="font-label-sm text-label-sm text-outline">4</span></div><div class="flex items-center justify-between px-space-sm py-1.5 rounded hover:bg-surface-container cursor-pointer transition-colors"><div class="flex items-center gap-space-sm min-w-0"><div class="w-5 h-5 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-label-sm text-label-sm">ES</div><span class="font-body-sm text-body-sm text-on-surface truncate">Elena S. (Eng Lead)</span></div><span class="w-2 h-2 rounded-full bg-secondary"></span></div></div><div class="flex flex-col gap-0.5"><div class="flex items-center justify-between px-space-sm py-0.5 text-on-surface-variant"><div class="flex items-center gap-1 font-label-sm text-label-sm uppercase tracking-wider text-outline"><span class="material-symbols-outlined text-[14px]">pending_actions</span><span>Unassigned</span></div><span class="font-label-sm text-label-sm text-outline">12</span></div><div class="flex items-center justify-between px-space-sm py-1.5 rounded hover:bg-surface-container cursor-pointer transition-colors"><div class="flex items-center gap-space-sm min-w-0"><div class="w-5 h-5 rounded bg-surface-container-high flex items-center justify-center text-outline"><span class="material-symbols-outlined text-[14px]">inventory_2</span></div><span class="font-body-sm text-body-sm text-on-surface-variant truncate">PR-Audit-Queue</span></div><span class="font-label-sm text-label-sm text-outline">Queued</span></div></div><div class="flex flex-col gap-0.5"><div class="flex items-center justify-between px-space-sm py-0.5 text-on-surface-variant"><div class="flex items-center gap-1 font-label-sm text-label-sm uppercase tracking-wider text-outline"><span class="material-symbols-outlined text-[14px]">visibility_off</span><span>Hidden</span></div><span class="font-label-sm text-label-sm text-outline">18</span></div></div></div><div class="p-space-sm border-t border-outline-variant bg-surface-container-lowest flex items-center justify-between"><div class="flex items-center gap-space-sm"><span class="font-label-sm text-label-sm text-outline">Compute:</span><span class="font-label-sm text-label-sm text-on-surface font-semibold">4 / 8 Nodes</span></div><div class="h-1.5 w-16 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-primary w-1/2"></div></div></div></aside><div class="pl-[19rem]"><main class="w-full pt-10 min-h-screen bg-surface-container-lowest"><div class="flex flex-col w-full">
+<div class="p-space-lg flex flex-col gap-space-lg w-full max-w-[1440px] mx-auto">
+<!-- Top Header Area -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-xs text-primary font-label-sm text-label-sm tracking-widest uppercase">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+<span>OpenBot Registry · v2.4.9 Engine</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Marketplace &amp; Extensions</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">
+          Extend your agent cluster with community &amp; verified MCP tool bridges, pre-configured agent personas, and automation skills.
+        </p>
+</div>
+<!-- Quick Local Telemetry Action -->
+<div class="flex items-center gap-space-sm self-start md:self-auto">
+<div class="px-space-md py-space-xs rounded bg-surface-container flex items-center gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">verified_user</span>
+<span>Sandbox isolation: <strong class="text-on-surface font-code-inline text-code-inline">gVisor runtime</strong></span>
+</div>
+<button class="h-7 px-space-md bg-surface-container text-on-surface font-label-md text-label-md rounded hover:bg-surface-container-high transition-colors flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-primary">upload</span>
+<span>Load .mcpbundle</span>
+</button>
+</div>
+</div>
+<!-- Stats & Counts Badge Bar -->
+<div class="bg-surface-container-low px-space-md py-2 rounded flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex flex-wrap items-center gap-space-md font-label-sm text-label-sm text-on-surface-variant">
+<div class="flex items-center gap-space-xs text-on-surface font-medium">
+<span class="material-symbols-outlined text-[16px] text-primary">inventory_2</span>
+<span>Showing 107 extensions:</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+<span>41 Skills</span>
+</div>
+<span class="text-outline-variant">·</span>
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>27 Agents</span>
+</div>
+<span class="text-outline-variant">·</span>
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<span>39 Plugins</span>
+</div>
+<span class="text-outline-variant">·</span>
+<div class="flex items-center gap-space-xs bg-surface-container px-space-sm py-0.5 rounded text-primary">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+<span>1 Pstack Bundle (52 skills + 2 agents)</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md text-on-surface-variant font-label-sm text-label-sm">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">sync</span>
+          Sync Index: 14s ago
+        </span>
+<span class="text-outline-variant">|</span>
+<span class="font-code-inline text-code-inline text-[11px] text-outline">schema://mcp.v1alpha</span>
+</div>
+</div>
+<!-- Featured Banner (DevOps & SRE Core Bundle) -->
+<div class="relative overflow-hidden rounded bg-surface-container p-space-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-space-lg">
+<div class="absolute -right-12 -top-12 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="absolute right-48 -bottom-16 w-48 h-48 bg-secondary/10 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-start gap-space-md z-10 max-w-3xl">
+<div class="w-12 h-12 rounded bg-surface-container-high flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[28px]">deployed_code_history</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-space-sm">
+<span class="px-space-xs py-0.5 rounded bg-primary-container text-on-primary-container font-label-sm text-label-sm uppercase tracking-wider font-semibold">Featured Core Bundle</span>
+<span class="font-label-sm text-label-sm text-secondary font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">verified</span> Official Stack
+            </span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface">pstack DevOps &amp; SRE Core Bundle</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            52 specialized tools, 2 autonomous agents (K8s SRE &amp; Cloud Architect), full Model Context Protocol (MCP) integrations.
+          </p>
+<div class="flex flex-wrap items-center gap-space-md mt-1 font-label-sm text-label-sm text-outline">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">bolt</span> Immediate orchestration</span>
+<span>·</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">lock_open</span> MIT Licensed</span>
+<span>·</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">download</span> 18.4k installations</span>
+</div>
+</div>
+</div>
+<div class="flex flex-row md:flex-col items-center md:items-end gap-space-sm z-10 w-full md:w-auto justify-between">
+<button class="h-8 px-space-xl bg-primary text-on-primary font-headline-sm text-headline-sm rounded hover:brightness-110 active:scale-95 transition-all flex items-center gap-space-xs shadow-md">
+<span class="material-symbols-outlined text-[18px]">download_for_offline</span>
+<span>Install Bundle</span>
+</button>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Zero-configuration deploy</span>
+</div>
+</div>
+<!-- Search & Category Filter Bar -->
+<div class="flex flex-col gap-space-sm">
+<div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-sm">
+<!-- Search Field -->
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-[18px] text-outline">search</span>
+<input class="w-full h-9 bg-surface-container-low pl-9 pr-space-xl text-body-sm font-body-sm text-on-surface placeholder:text-outline rounded focus:outline-none focus:bg-surface-container transition-all" placeholder='Search skills, agents, or MCP bridges (e.g., "Postgres", "Kubernetes", "Devin")...' type="text"/>
+<kbd class="absolute right-space-md top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-code-inline text-code-inline text-[10px]">ESC to clear</kbd>
+</div>
+<!-- Filter Segmented Tabs & Sort -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<div class="bg-surface-container-low p-0.5 rounded flex items-center font-label-md text-label-md">
+<button class="px-space-md py-1 rounded bg-surface-container text-on-surface font-semibold" data-filter="all">All Items</button>
+<button class="px-space-md py-1 rounded text-on-surface-variant hover:text-on-surface transition-colors" data-filter="skills">Skills (41)</button>
+<button class="px-space-md py-1 rounded text-on-surface-variant hover:text-on-surface transition-colors" data-filter="agents">Agents (27)</button>
+<button class="px-space-md py-1 rounded text-on-surface-variant hover:text-on-surface transition-colors" data-filter="plugins">MCP Plugins (39)</button>
+<button class="px-space-md py-1 rounded text-on-surface-variant hover:text-on-surface transition-colors" data-filter="installed">Installed (12)</button>
+</div>
+<!-- Sort Dropdown -->
+<div class="relative">
+<button class="h-9 px-space-md bg-surface-container-low text-on-surface font-label-md text-label-md rounded flex items-center gap-space-sm hover:bg-surface-container transition-colors">
+<span class="text-outline">Sort:</span>
+<span>Most Popular</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Grid of Extension Cards (3-Column Layout) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md">
+<!-- Card 1: Kubernetes MCP Bridge -->
+<div class="bg-surface-container rounded p-space-md flex flex-col justify-between gap-space-md hover:bg-surface-container-high transition-colors group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-surface-container-lowest flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[24px]">hub</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Kubernetes MCP Bridge</h3>
+</div>
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant truncate">
+<span>OpenBot Team</span>
+<span class="material-symbols-outlined text-[14px] text-secondary">verified</span>
+<span class="text-outline">·</span>
+<span class="text-primary font-medium">Verified</span>
+</div>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-tertiary font-label-sm text-label-sm flex-shrink-0 font-medium">Plugin</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            Inspect pods, stream container logs, exec commands, and dry-run manifests in sandboxed namespaces.
+          </p>
+<div class="flex flex-wrap gap-1 mt-1 font-code-inline text-code-inline text-[11px] text-outline">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">k8s-api</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">exec-tunnel</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">read-write</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xs bg-surface-container-low/50 -mx-space-md -mb-space-md px-space-md py-space-sm rounded-b">
+<div class="flex items-center gap-space-xs font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-tertiary" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-on-surface font-semibold">4.9</span>
+<span class="text-outline font-code-inline text-code-inline">(1.8k)</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="font-label-sm text-label-sm text-secondary font-medium flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+              Installed
+            </span>
+<button class="h-7 px-space-md bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">tune</span>
+<span>Configure</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 2: PostgreSQL Read-Only Inspector -->
+<div class="bg-surface-container rounded p-space-md flex flex-col justify-between gap-space-md hover:bg-surface-container-high transition-colors group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-surface-container-lowest flex items-center justify-center text-secondary flex-shrink-0">
+<span class="material-symbols-outlined text-[24px]">database</span>
+</div>
+<div class="flex flex-col min-w-0">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">PostgreSQL Read-Only Inspector</h3>
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant truncate">
+<span>supabase-labs</span>
+<span class="text-outline">·</span>
+<span class="text-outline">Community Partner</span>
+</div>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-tertiary font-label-sm text-label-sm flex-shrink-0 font-medium">Plugin</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            Execute read-only queries, inspect execution plans with EXPLAIN ANALYZE, and fetch schema DDL.
+          </p>
+<div class="flex flex-wrap gap-1 mt-1 font-code-inline text-code-inline text-[11px] text-outline">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">pg-protocol</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">ssl-enforced</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">explain-graph</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xs bg-surface-container-low/50 -mx-space-md -mb-space-md px-space-md py-space-sm rounded-b">
+<div class="flex items-center gap-space-xs font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-tertiary" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-on-surface font-semibold">4.8</span>
+<span class="text-outline font-code-inline text-code-inline">(940)</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="font-label-sm text-label-sm text-secondary font-medium flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+              Installed
+            </span>
+<button class="h-7 px-space-md bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-md text-label-md rounded transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">tune</span>
+<span>Configure</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 3: GoSec & Trivy Static Security Agent -->
+<div class="bg-surface-container rounded p-space-md flex flex-col justify-between gap-space-md hover:bg-surface-container-high transition-colors group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-surface-container-lowest flex items-center justify-center text-error flex-shrink-0">
+<span class="material-symbols-outlined text-[24px]">shield</span>
+</div>
+<div class="flex flex-col min-w-0">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">GoSec &amp; Trivy Static Security Agent</h3>
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant truncate">
+<span>AquaSec</span>
+<span class="material-symbols-outlined text-[14px] text-secondary">verified</span>
+<span class="text-outline">·</span>
+<span class="text-outline">Official Org</span>
+</div>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-secondary font-label-sm text-label-sm flex-shrink-0 font-medium">Agent</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            Autonomous persona specialized in vulnerability scanning, SBOM verification, and CVE ranking.
+          </p>
+<div class="flex flex-wrap gap-1 mt-1 font-code-inline text-code-inline text-[11px] text-outline">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">cve-indexer</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">autofix-pr</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">sbom-spdx</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xs bg-surface-container-low/50 -mx-space-md -mb-space-md px-space-md py-space-sm rounded-b">
+<div class="flex items-center gap-space-xs font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-tertiary" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-on-surface font-semibold">4.9</span>
+<span class="text-outline font-code-inline text-code-inline">(2.4k)</span>
+</div>
+<button class="h-7 px-space-md bg-primary hover:brightness-110 active:scale-95 text-on-primary font-headline-sm text-label-md rounded transition-all flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">add</span>
+<span>Install (Free)</span>
+</button>
+</div>
+</div>
+<!-- Card 4: Puppeteer & Browser-Use Engine -->
+<div class="bg-surface-container rounded p-space-md flex flex-col justify-between gap-space-md hover:bg-surface-container-high transition-colors group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-surface-container-lowest flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[24px]">language</span>
+</div>
+<div class="flex flex-col min-w-0">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Puppeteer &amp; Browser-Use Engine</h3>
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant truncate">
+<span>browser-use</span>
+<span class="text-outline">·</span>
+<span class="text-outline">Automators</span>
+</div>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-primary font-label-sm text-label-sm flex-shrink-0 font-medium">Skill</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            High-frequency DOM tree extraction, screenshot viewport crops, and synthetic click simulation.
+          </p>
+<div class="flex flex-wrap gap-1 mt-1 font-code-inline text-code-inline text-[11px] text-outline">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">headless-chromium</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">dom-matrix</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">recaptcha-bypass</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xs bg-surface-container-low/50 -mx-space-md -mb-space-md px-space-md py-space-sm rounded-b">
+<div class="flex items-center gap-space-xs font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-tertiary" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-on-surface font-semibold">4.7</span>
+<span class="text-outline font-code-inline text-code-inline">(3.1k)</span>
+</div>
+<button class="h-7 px-space-md bg-primary hover:brightness-110 active:scale-95 text-on-primary font-headline-sm text-label-md rounded transition-all flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">add</span>
+<span>Install (Free)</span>
+</button>
+</div>
+</div>
+<!-- Card 5: ArXiv & Tech Paper Summarizer -->
+<div class="bg-surface-container rounded p-space-md flex flex-col justify-between gap-space-md hover:bg-surface-container-high transition-colors group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-surface-container-lowest flex items-center justify-center text-tertiary flex-shrink-0">
+<span class="material-symbols-outlined text-[24px]">description</span>
+</div>
+<div class="flex flex-col min-w-0">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">ArXiv &amp; Tech Paper Summarizer</h3>
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant truncate">
+<span>community</span>
+<span class="text-outline">·</span>
+<span class="text-outline">Open Research</span>
+</div>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-primary font-label-sm text-label-sm flex-shrink-0 font-medium">Skill</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            Parse LaTeX papers, extract formulas, and generate concise technical architecture executive summaries.
+          </p>
+<div class="flex flex-wrap gap-1 mt-1 font-code-inline text-code-inline text-[11px] text-outline">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">latex-parser</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">arxiv-api</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">equation-eval</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xs bg-surface-container-low/50 -mx-space-md -mb-space-md px-space-md py-space-sm rounded-b">
+<div class="flex items-center gap-space-xs font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-tertiary" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-on-surface font-semibold">4.6</span>
+<span class="text-outline font-code-inline text-code-inline">(620)</span>
+</div>
+<button class="h-7 px-space-md bg-primary hover:brightness-110 active:scale-95 text-on-primary font-headline-sm text-label-md rounded transition-all flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">add</span>
+<span>Install (Free)</span>
+</button>
+</div>
+</div>
+<!-- Card 6: Datadog & OTel Span Telemetry Bridge -->
+<div class="bg-surface-container rounded p-space-md flex flex-col justify-between gap-space-md hover:bg-surface-container-high transition-colors group">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded bg-surface-container-lowest flex items-center justify-center text-secondary flex-shrink-0">
+<span class="material-symbols-outlined text-[24px]">pulse_alert</span>
+</div>
+<div class="flex flex-col min-w-0">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Datadog &amp; OTel Span Telemetry Bridge</h3>
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant truncate">
+<span>datadog-contrib</span>
+<span class="text-outline">·</span>
+<span class="text-outline">Telemetry SIG</span>
+</div>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-tertiary font-label-sm text-label-sm flex-shrink-0 font-medium">Plugin</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            Direct bridge to query APM traces, latency regressions, and metrics anomalies via REST API.
+          </p>
+<div class="flex flex-wrap gap-1 mt-1 font-code-inline text-code-inline text-[11px] text-outline">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">otel-grpc</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">dd-trace</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-lowest">p99-detector</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xs bg-surface-container-low/50 -mx-space-md -mb-space-md px-space-md py-space-sm rounded-b">
+<div class="flex items-center gap-space-xs font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] text-tertiary" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-on-surface font-semibold">4.8</span>
+<span class="text-outline font-code-inline text-code-inline">(810)</span>
+</div>
+<button class="h-7 px-space-md bg-primary hover:brightness-110 active:scale-95 text-on-primary font-headline-sm text-label-md rounded transition-all flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">add</span>
+<span>Install (Free)</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Live Telemetry / Installation Metrics Panel -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-space-md">
+<div class="bg-surface-container-low p-space-md rounded flex items-center gap-space-md">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">MCP Protocol Bridge</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">RFC 2024-11 Sync</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-md rounded flex items-center gap-space-md">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[18px]">security</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Local Sandboxing</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Strict Namespaces</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-md rounded flex items-center gap-space-md">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">CLI Equivalent</span>
+<span class="font-code-inline text-code-inline text-on-surface">openbot ext install &lt;id&gt;</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-md rounded flex items-center gap-space-md">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-outline">
+<span class="material-symbols-outlined text-[18px]">update</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Auto-Updater</span>
+<span class="font-headline-sm text-headline-sm text-secondary">Active on 12 Items</span>
+</div>
+</div>
+</div>
+<!-- Bottom Architectural Info Box -->
+<div class="bg-surface-container p-space-md rounded flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="flex items-start gap-space-sm max-w-4xl">
+<span class="material-symbols-outlined text-[20px] text-primary flex-shrink-0 mt-0.5">info</span>
+<div class="flex flex-col gap-0.5">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Agent Template vs Marketplace Extension</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            Marketplace extensions run verified MCP bridges in local sandboxes. Protocol links supported via <code class="px-1 py-0.5 rounded bg-surface-container-highest text-primary font-code-inline text-code-inline text-[11px]">openbot://</code> or <code class="px-1 py-0.5 rounded bg-surface-container-highest text-primary font-code-inline text-code-inline text-[11px]">?plugin=</code> slug.
+          </p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm flex-shrink-0">
+<a class="font-label-sm text-label-sm text-primary hover:underline flex items-center gap-0.5" href="#">
+<span>Read MCP Security Specs</span>
+<span class="material-symbols-outlined text-[14px]">arrow_outward</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Simple interactive filter tab switching simulation
+  document.querySelectorAll('[data-filter]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('[data-filter]').forEach(t => {
+        t.className = 'px-space-md py-1 rounded text-on-surface-variant hover:text-on-surface transition-colors';
+      });
+      tab.className = 'px-space-md py-1 rounded bg-surface-container text-on-surface font-semibold';
+    });
+  });
+</script></main></div></body></html>

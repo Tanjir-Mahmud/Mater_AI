@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "surface-dim": "#cbdbf5",
+          "on-surface": "#0b1c30",
+          "on-primary-fixed-variant": "#2f2ebe",
+          "surface-tint": "#494bd6",
+          "primary-fixed": "#e1e0ff",
+          "tertiary-fixed": "#6ffbbe",
+          "surface-container-lowest": "#ffffff",
+          "surface-variant": "#d3e4fe",
+          "surface-container-highest": "#d3e4fe",
+          "surface-container-high": "#dce9ff",
+          "secondary-container": "#6f5bf5",
+          "tertiary": "#006c49",
+          "on-secondary": "#ffffff",
+          "primary-fixed-dim": "#c0c1ff",
+          "error": "#ba1a1a",
+          "error-container": "#ffdad6",
+          "on-tertiary-container": "#000703",
+          "outline-variant": "#c7c4d7",
+          "on-error-container": "#93000a",
+          "on-tertiary": "#ffffff",
+          "on-secondary-container": "#fffbff",
+          "on-tertiary-fixed": "#002113",
+          "secondary-fixed-dim": "#c7bfff",
+          "surface-container": "#e5eeff",
+          "inverse-primary": "#c0c1ff",
+          "secondary": "#563fdb",
+          "on-background": "#0b1c30",
+          "secondary-fixed": "#e4dfff",
+          "on-surface-variant": "#464554",
+          "on-secondary-fixed-variant": "#4021c6",
+          "surface-container-low": "#eff4ff",
+          "tertiary-container": "#00885d",
+          "outline": "#767586",
+          "on-primary-container": "#fffbff",
+          "primary-container": "#6063ee",
+          "on-error": "#ffffff",
+          "inverse-surface": "#213145",
+          "background": "#f8f9ff",
+          "surface-bright": "#f8f9ff",
+          "inverse-on-surface": "#eaf1ff",
+          "on-primary-fixed": "#07006c",
+          "on-tertiary-fixed-variant": "#005236",
+          "tertiary-fixed-dim": "#4edea3",
+          "primary": "#4648d4",
+          "surface": "#f8f9ff",
+          "on-primary": "#ffffff",
+          "on-secondary-fixed": "#170065"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "margin": "0.75rem",
+          "gutter-desktop": "1rem",
+          "space-xs": "0.25rem",
+          "space-sm": "0.5rem",
+          "space-lg": "1rem",
+          "space-xl": "1.5rem",
+          "space-md": "0.75rem",
+          "gutter": "0.75rem",
+          "margin-desktop": "1.5rem",
+          "space-xxs": "0.125rem"
+        },
+        "fontFamily": {
+          "headline-sm": ["Inter"],
+          "title-md": ["Inter"],
+          "label-md": ["JetBrains Mono"],
+          "body-md": ["Inter"],
+          "code-sm": ["JetBrains Mono"],
+          "headline-lg": ["Inter"],
+          "body-sm": ["Inter"],
+          "headline-xl-mobile": ["Inter"],
+          "label-sm": ["JetBrains Mono"],
+          "headline-xl": ["Inter"],
+          "code-block": ["JetBrains Mono"],
+          "code-inline": ["JetBrains Mono"]
+        },
+        "fontSize": {
+          "headline-sm": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+          "title-md": ["14px", { "lineHeight": "20px", "letterSpacing": "-0.005em", "fontWeight": "600" }],
+          "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+          "body-md": ["13px", { "lineHeight": "18px", "letterSpacing": "0em", "fontWeight": "400" }],
+          "code-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" }],
+          "code-block": ["11px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" }],
+          "code-inline": ["11px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" }],
+          "headline-lg": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+          "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" }],
+          "headline-xl-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+          "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+          "headline-xl": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+        }
+      }
+    }
+  };
+</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-[#f8fafc] text-on-surface font-body-md text-body-md min-h-screen antialiased flex flex-col"><header class="fixed top-0 w-full z-50 pt-safe bg-white/90 backdrop-blur-xl border-b border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.03)]"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex flex-col justify-center min-w-0 flex-1"><div class="flex items-center gap-space-xs"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span><span class="font-label-sm text-label-sm text-slate-600 font-semibold truncate">prod-cluster-01 · 12ms</span></div><button class="flex items-center gap-space-xs text-left group mt-0.5"><span class="font-headline-sm text-headline-sm text-slate-900 truncate group-hover:text-primary transition-colors">Agents</span><span class="material-symbols-outlined text-slate-400 text-[16px] group-hover:text-slate-700 transition-colors">unfold_more</span></button></div><div class="flex items-center gap-space-xs flex-shrink-0"><button aria-label="Quick Switcher" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><span class="material-symbols-outlined text-[20px]">hub</span></button><button aria-label="Settings" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-900 transition-colors"><span class="material-symbols-outlined text-[20px]">settings</span></button><div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center ml-space-xs shadow-sm"><span class="material-symbols-outlined text-white text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-20 bg-[#f8fafc]"><div class="flex flex-col w-full pb-6">
+<!-- Security Ribbon: E2EE Tailscale Bus -->
+<div class="px-margin pt-space-sm pb-space-sm flex items-center justify-between">
+<div class="inline-flex items-center gap-1.5 px-space-md py-0.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-700">
+<span class="material-symbols-outlined text-[13px] text-emerald-600">verified_user</span>
+<span class="font-label-sm text-label-sm tracking-tight text-emerald-800 font-medium">E2EE Tailscale Bus</span>
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+</div>
+<div class="flex items-center gap-space-xs text-slate-500">
+<span class="font-label-sm text-label-sm text-slate-400 font-mono">v2.18-rc4</span>
+<span class="inline-block w-1 h-1 rounded-full bg-slate-300"></span>
+<span class="font-label-sm text-label-sm text-emerald-600 font-medium">Synced</span>
+</div>
+</div>
+<!-- Agent Summary & Telemetry Header Card -->
+<div class="mx-margin mb-space-md p-space-md rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="relative w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[20px] text-primary">terminal</span>
+<span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white"></span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-1.5">
+<h1 class="font-headline-sm text-headline-sm text-slate-900 truncate">Kestrel (Architect)</h1>
+<span class="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200/60 text-primary font-label-sm text-[10px] uppercase font-semibold tracking-wider">Lead</span>
+</div>
+<p class="font-label-sm text-label-sm text-slate-500 truncate">Session #kb-9402 · auth-canary</p>
+</div>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="inline-flex items-center gap-1 px-space-sm py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+          Step 4/6
+        </span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1 gap-space-sm flex-wrap">
+<div class="flex items-center gap-1.5">
+<span class="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200/80 text-slate-700 font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-amber-600">bolt</span>
+          Claude 3.7 Sonnet
+        </span>
+<span class="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200/80 text-emerald-700 font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-emerald-600">speed</span>
+          12ms
+        </span>
+</div>
+<span class="font-label-sm text-label-sm text-slate-500">Working · Autonomous Loop</span>
+</div>
+</div>
+<!-- Sub-header Banner: Action Required Approval -->
+<div class="mx-margin mb-space-md p-space-md rounded-xl bg-amber-50/90 border border-amber-200 flex flex-col gap-space-sm shadow-sm relative overflow-hidden">
+<div class="flex items-start gap-space-sm">
+<div class="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">gavel</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-label-sm text-label-sm text-amber-800 font-bold tracking-wide uppercase">WAITING FOR APPROVAL</span>
+<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+</div>
+<p class="font-code-block text-code-block text-slate-900 bg-amber-100/60 border border-amber-200/70 px-2 py-1 rounded mt-1.5 font-semibold break-all">
+          kubectl apply canary-ingress.yaml
+        </p>
+<p class="font-body-sm text-body-sm text-amber-900/80 mt-1">
+          Reroutes 5% ingress traffic through auth-cluster patch. Sandbox health verify will run post-apply.
+        </p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-space-sm pt-1">
+<button class="h-9 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-label-md text-label-md flex items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-xs" id="btn-decline">
+<span class="material-symbols-outlined text-[16px] text-red-600">close</span>
+        Decline
+      </button>
+<button class="h-9 rounded-lg bg-primary hover:bg-primary-container text-white font-label-md text-label-md font-semibold flex items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-sm" id="btn-approve">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+        Approve &amp; Run
+      </button>
+</div>
+</div>
+<!-- Live Chat Feed -->
+<div class="px-margin flex flex-col gap-space-lg">
+<!-- Message 1: User Prompt -->
+<div class="flex flex-col items-end gap-1">
+<div class="flex items-center gap-1.5 mr-1">
+<span class="font-label-sm text-label-sm text-slate-400">You · 14:02:18</span>
+<span class="material-symbols-outlined text-primary text-[13px]">done_all</span>
+</div>
+<div class="max-w-[88%] p-space-md rounded-2xl rounded-tr-xs bg-indigo-50/70 border border-indigo-100 text-slate-800 shadow-xs">
+<p class="font-body-md text-body-md leading-relaxed">
+          Investigating p99 latency spike in <span class="font-code-inline text-code-inline px-1.5 py-0.5 rounded bg-indigo-100/80 border border-indigo-200/80 text-primary font-semibold">auth-service</span> container. Need root-cause telemetry and hotfix patch before deploying to cluster canary.
+        </p>
+</div>
+</div>
+<!-- Message 2: Collapsible Agent Execution Steps -->
+<div class="flex flex-col items-start gap-1 w-full">
+<div class="flex items-center gap-1.5 ml-1">
+<span class="material-symbols-outlined text-primary text-[14px]">smart_toy</span>
+<span class="font-label-sm text-label-sm text-primary font-semibold">Kestrel</span>
+<span class="font-label-sm text-label-sm text-slate-400">· 14:02:20</span>
+</div>
+<!-- Execution Trace Container -->
+<div class="w-full rounded-xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+<button class="w-full p-space-md flex items-center justify-between text-left hover:bg-slate-50 transition-colors" id="toggle-trace">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="w-6 h-6 rounded bg-indigo-50 border border-indigo-100 text-primary flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[15px]">reorder</span>
+</span>
+<div class="min-w-0">
+<span class="font-label-md text-label-md text-slate-800 font-semibold block truncate">12 sub-calls in 1.4s</span>
+<span class="font-label-sm text-label-sm text-slate-400">Click to view runtime traces &amp; RPC logs</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-slate-400 text-[18px] transition-transform duration-200" id="chevron-trace">expand_more</span>
+</button>
+<!-- Collapsible Content -->
+<div class="p-space-md pt-0 flex flex-col gap-space-xs" id="trace-content">
+<div class="p-space-sm rounded-lg bg-slate-50 border border-slate-200 font-code-block text-code-block text-slate-700 flex flex-col gap-1">
+<div class="flex items-center justify-between text-slate-400 text-[10px]">
+<span class="font-semibold text-slate-500">CALL #08 · exec_local</span>
+<span class="text-emerald-600 font-semibold">0.08s [200 OK]</span>
+</div>
+<div class="text-slate-900 font-mono text-[11px] font-medium">$ git log -n 2 --oneline auth/conn_pool.go</div>
+<div class="text-slate-500 text-[11px] pl-2">&gt; c981b2a feat(conn): increase default idle timeouts</div>
+<div class="text-slate-500 text-[11px] pl-2">&gt; 41f0a1c refactor(redis): migrate cluster pingers</div>
+</div>
+<div class="p-space-sm rounded-lg bg-slate-50 border border-slate-200 font-code-block text-code-block text-slate-700 flex flex-col gap-1">
+<div class="flex items-center justify-between text-slate-400 text-[10px]">
+<span class="font-semibold text-slate-500">CALL #09 · telemetry_query</span>
+<span class="text-emerald-600 font-semibold">0.14s [200 OK]</span>
+</div>
+<div class="text-slate-900 font-mono text-[11px] font-medium">$ redis-cli -h 10.244.0.18 INFO keyspace</div>
+<div class="text-slate-500 text-[11px] pl-2">&gt; # Keyspace: db0:keys=418291,expires=1209,avg_ttl=84120</div>
+<div class="text-amber-700 font-medium text-[11px] pl-2">&gt; connected_clients: 4891 (soft limit warning)</div>
+</div>
+<div class="flex items-center justify-between px-space-xs pt-1 font-label-sm text-label-sm text-slate-500">
+<span>Payload: 4.8 KB · CPU: 18%</span>
+<span class="text-primary hover:underline font-semibold cursor-pointer">Open raw trace JSON</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Message 3: Agent Code Diff & Recommendations -->
+<div class="flex flex-col items-start gap-1 w-full">
+<div class="w-full p-space-md rounded-2xl rounded-tl-xs bg-white border border-slate-200 text-slate-800 shadow-sm flex flex-col gap-space-sm">
+<p class="font-body-md text-body-md leading-relaxed text-slate-700">
+          Diagnosed cause: Redis socket dialer enters synchronous backlog retry on socket saturation. Here is the hotfix patch reducing dial deadline and enabling speculative non-blocking keepalive.
+        </p>
+<!-- Inline Diff Viewer -->
+<div class="w-full rounded-xl bg-slate-50 border border-slate-200 overflow-hidden">
+<div class="px-space-md py-1.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-slate-500">data_object</span>
+<span class="font-code-block text-[11px] text-slate-800 font-semibold">internal/cache/redis_pool.go</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-500 font-label-sm text-[10px] font-mono">diff -u</span>
+</div>
+<div class="p-space-sm font-code-block text-[11px] leading-relaxed select-text overflow-x-auto bg-[#fafafa]">
+<div class="text-slate-400 font-mono">@@ -44,7 +44,7 @@ func NewRedisPool(cfg *Config) *redis.Pool {</div>
+<div class="text-slate-600 font-mono">        MaxIdle:         50,</div>
+<div class="text-slate-600 font-mono">        MaxActive:       500,</div>
+<div class="text-red-700 bg-red-100/80 border border-red-200/80 px-1 py-0.5 rounded-sm line-through font-mono">
+              -     DialTimeout:     5 * time.Second,
+            </div>
+<div class="text-emerald-800 bg-emerald-100/90 border border-emerald-200/80 px-1 py-0.5 rounded-sm font-mono mt-0.5">
+              +     DialTimeout:     450 * time.Millisecond,
+            </div>
+<div class="text-emerald-800 bg-emerald-100/90 border border-emerald-200/80 px-1 py-0.5 rounded-sm font-mono mt-0.5">
+              +     SpeculativeDial: true,
+            </div>
+<div class="text-slate-600 font-mono">        IdleTimeout:     240 * time.Second,</div>
+</div>
+</div>
+<div class="flex items-center gap-2 pt-1">
+<button class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-label-sm text-label-sm flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+            Copy patch
+          </button>
+<button class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-primary font-label-sm text-label-sm flex items-center gap-1 transition-colors font-semibold">
+<span class="material-symbols-outlined text-[14px]">play_arrow</span>
+            Unit tests (14 passing)
+          </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Agent Activity Indicator Bar -->
+<div class="px-margin my-space-md flex items-center gap-2">
+<div class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-bounce"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style="animation-delay: 150ms;"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style="animation-delay: 300ms;"></span>
+</div>
+<span class="font-label-sm text-label-sm text-slate-500">Kestrel is waiting on ingress approval to commit verification telemetry</span>
+</div>
+<!-- Bottom Workspace Composer -->
+<div class="px-margin pt-space-xs flex flex-col gap-space-xs">
+<!-- Steering Controls Pill Row -->
+<div class="flex items-center justify-between gap-space-xs overflow-x-auto pb-1">
+<div class="flex items-center gap-space-xs flex-shrink-0">
+<!-- Subagent Steering Toggle -->
+<button class="h-7 px-2.5 rounded-full bg-white border border-slate-200 text-slate-700 font-label-sm text-label-sm flex items-center gap-1.5 hover:bg-slate-50 transition-colors shadow-xs" id="toggle-subagents">
+<span class="material-symbols-outlined text-[14px] text-emerald-600">psychology</span>
+<span class="font-medium">Subagents</span>
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500" id="subagent-status"></span>
+</button>
+<!-- Model Chip Switcher -->
+<button class="h-7 px-2.5 rounded-full bg-white border border-slate-200 text-slate-700 font-label-sm text-label-sm flex items-center gap-1 hover:bg-slate-50 transition-colors shadow-xs">
+<span class="material-symbols-outlined text-[14px] text-amber-600">memory</span>
+<span class="font-medium">Claude 3.7</span>
+<span class="material-symbols-outlined text-[14px] text-slate-400">expand_more</span>
+</button>
+</div>
+<!-- Attachment Pill -->
+<button class="h-7 px-2.5 rounded-full bg-white border border-slate-200 text-slate-700 font-label-sm text-label-sm flex items-center gap-1 hover:bg-slate-50 flex-shrink-0 transition-colors shadow-xs">
+<span class="material-symbols-outlined text-[14px] text-slate-500">attachment</span>
+<span class="font-medium">Attach</span>
+</button>
+</div>
+<!-- Main Composer Input Bar -->
+<div class="p-space-xs rounded-2xl bg-white border border-slate-200 flex items-center gap-space-xs shadow-sm">
+<!-- Audio Waveform Dictation Button -->
+<button aria-label="Voice Dictate" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-primary flex items-center justify-center transition-all flex-shrink-0 active:scale-95" id="dictation-btn">
+<span class="material-symbols-outlined text-[20px]" id="mic-icon">mic</span>
+<div class="hidden items-center gap-0.5 h-4" id="mic-wave">
+<span class="w-0.5 h-2 bg-emerald-500 animate-pulse"></span>
+<span class="w-0.5 h-4 bg-emerald-500 animate-pulse" style="animation-delay: 100ms;"></span>
+<span class="w-0.5 h-1.5 bg-emerald-500 animate-pulse" style="animation-delay: 200ms;"></span>
+</div>
+</button>
+<!-- Text Input Area -->
+<div class="flex-1 min-w-0">
+<input class="w-full bg-transparent text-slate-900 placeholder:text-slate-400 font-body-md text-body-md focus:outline-none px-1" id="prompt-input" placeholder="Direct Kestrel or provide cluster overrides..." type="text"/>
+</div>
+<!-- Send Action Button -->
+<button aria-label="Send Directive" class="w-9 h-9 rounded-xl bg-primary hover:bg-primary-container text-white flex items-center justify-center transition-all flex-shrink-0 active:scale-95 shadow-sm" id="send-btn">
+<span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  // Interaction: Collapsible Trace Tree
+  const toggleBtn = document.getElementById('toggle-trace');
+  const traceContent = document.getElementById('trace-content');
+  const chevron = document.getElementById('chevron-trace');
+  
+  if (toggleBtn && traceContent && chevron) {
+    toggleBtn.addEventListener('click', () => {
+      const isHidden = traceContent.classList.toggle('hidden');
+      chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+    });
+  }
+
+  // Interaction: Subagent Steering Toggle
+  const subagentBtn = document.getElementById('toggle-subagents');
+  const subagentDot = document.getElementById('subagent-status');
+  let subagentActive = true;
+  if (subagentBtn && subagentDot) {
+    subagentBtn.addEventListener('click', () => {
+      subagentActive = !subagentActive;
+      subagentDot.className = subagentActive 
+        ? 'w-1.5 h-1.5 rounded-full bg-emerald-500' 
+        : 'w-1.5 h-1.5 rounded-full bg-slate-300';
+    });
+  }
+
+  // Interaction: Mic Dictation Simulation
+  const micBtn = document.getElementById('dictation-btn');
+  const micIcon = document.getElementById('mic-icon');
+  const micWave = document.getElementById('mic-wave');
+  let isRecording = false;
+
+  if (micBtn && micIcon && micWave) {
+    micBtn.addEventListener('click', () => {
+      isRecording = !isRecording;
+      if (isRecording) {
+        micIcon.classList.add('hidden');
+        micWave.classList.remove('hidden');
+        micWave.classList.add('flex');
+        micBtn.classList.add('text-emerald-600');
+      } else {
+        micIcon.classList.remove('hidden');
+        micWave.classList.add('hidden');
+        micWave.classList.remove('flex');
+        micBtn.classList.remove('text-emerald-600');
+      }
+    });
+  }
+
+  // Interaction: Approve Action Feedback
+  const approveBtn = document.getElementById('btn-approve');
+  const declineBtn = document.getElementById('btn-decline');
+
+  if (approveBtn) {
+    approveBtn.addEventListener('click', function() {
+      this.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">sync</span> Running...';
+      this.classList.add('opacity-80', 'pointer-events-none');
+      if (declineBtn) declineBtn.classList.add('opacity-40', 'pointer-events-none');
+    });
+  }
+
+  if (declineBtn) {
+    declineBtn.addEventListener('click', function() {
+      this.innerHTML = '<span class="material-symbols-outlined text-[16px]">block</span> Rejected';
+      this.classList.add('opacity-80', 'pointer-events-none');
+      if (approveBtn) approveBtn.classList.add('opacity-40', 'pointer-events-none');
+    });
+  }
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-white/95 backdrop-blur-xl border-t border-slate-200 shadow-[0_-1px_6px_rgba(0,0,0,0.03)]" data-active-classes="text-primary font-semibold"><div class="h-16 px-space-xs flex items-center justify-around"><a aria-current="page" class="flex flex-col items-center justify-center min-w-[64px] h-12 transition-colors text-primary font-semibold" data-path="agents" href="#"><span class="material-symbols-outlined text-[22px]">smart_toy</span><span class="font-label-sm text-label-sm mt-0.5">Agents</span></a><a class="flex flex-col items-center justify-center min-w-[64px] h-12 text-slate-500 hover:text-slate-800 transition-colors" data-path="tasks-and-activity" href="#"><span class="material-symbols-outlined text-[22px]">terminal</span><span class="font-label-sm text-label-sm mt-0.5">Tasks</span></a><a class="flex flex-col items-center justify-center min-w-[64px] h-12 text-slate-500 hover:text-slate-800 transition-colors" data-path="computer-use-and-takeover" href="#"><span class="material-symbols-outlined text-[22px]">desktop_windows</span><span class="font-label-sm text-label-sm mt-0.5">Takeover</span></a><a class="flex flex-col items-center justify-center min-w-[64px] h-12 text-slate-500 hover:text-slate-800 transition-colors" data-path="settings-and-security" href="#"><span class="material-symbols-outlined text-[22px]">lock</span><span class="font-label-sm text-label-sm mt-0.5">Security</span></a></div></nav></body></html>

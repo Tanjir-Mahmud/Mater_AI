@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_blank" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-bright": "#36393f", "on-tertiary-fixed-variant": "#633f00", "surface-dim": "#111319", "surface-container-lowest": "#0b0e13", "on-primary-fixed": "#170065", "on-tertiary-container": "#3c2500", "primary-fixed": "#e4dfff", "primary-container": "#8e7fff", "secondary": "#66dc9f", "on-tertiary-fixed": "#2a1800", "background": "#111319", "surface-container": "#1d2025", "on-tertiary": "#452b00", "outline": "#928f9f", "on-primary": "#2a039d", "on-background": "#e1e2e9", "on-error": "#690005", "on-secondary-fixed": "#002111", "surface-tint": "#c7bfff", "inverse-on-surface": "#2e3036", "surface-variant": "#32353a", "outline-variant": "#474554", "on-secondary-fixed-variant": "#005232", "tertiary-container": "#c3841e", "secondary-container": "#22a46c", "inverse-surface": "#e1e2e9", "secondary-fixed-dim": "#66dc9f", "surface-container-low": "#191c21", "surface-container-highest": "#32353a", "on-error-container": "#ffdad6", "on-secondary": "#003921", "tertiary-fixed": "#ffddb5", "surface-container-high": "#272a30", "on-surface": "#e1e2e9", "secondary-fixed": "#83f9ba", "on-surface-variant": "#c8c4d6", "surface": "#111319", "tertiary-fixed-dim": "#ffb955", "on-primary-container": "#24008c", "error-container": "#93000a", "tertiary": "#ffb955", "inverse-primary": "#5a49cb", "on-secondary-container": "#00311c", "error": "#ffb4ab", "on-primary-fixed-variant": "#422db2", "primary": "#c7bfff", "primary-fixed-dim": "#c7bfff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-lg": "0.75rem", "margin": "0.75rem", "space-xs": "0.25rem", "gutter": "0.5rem", "space-md": "0.5rem", "space-sm": "0.375rem", "space-xl": "1rem" }, "fontFamily": { "headline-sm": [ "Inter" ], "label-md": [ "JetBrains Mono" ], "code-inline": [ "JetBrains Mono" ], "headline-lg": [ "Inter" ], "body-lg": [ "Inter" ], "body-md": [ "Inter" ], "label-sm": [ "JetBrains Mono" ], "body-sm": [ "Inter" ], "headline-md": [ "Inter" ], "code-block": [ "JetBrains Mono" ] }, "fontSize": { "headline-sm": [ "1rem", { "lineHeight": "1.375rem", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "label-md": [ "0.8125rem", { "lineHeight": "1.125rem", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "code-inline": [ "0.8125rem", { "lineHeight": "1.125rem", "fontWeight": "400" } ], "headline-lg": [ "1.5rem", { "lineHeight": "1.875rem", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "body-lg": [ "0.9375rem", { "lineHeight": "1.375rem", "fontWeight": "400" } ], "body-md": [ "0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" } ], "label-sm": [ "0.75rem", { "lineHeight": "1rem", "letterSpacing": "0em", "fontWeight": "500" } ], "body-sm": [ "0.8125rem", { "lineHeight": "1.125rem", "fontWeight": "400" } ], "headline-md": [ "1.25rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "code-block": [ "0.8125rem", { "lineHeight": "1.25rem", "fontWeight": "400" } ] } } } };</script></head><body class="bg-surface-container-lowest text-on-surface font-body-md text-body-md antialiased select-none"><main class="min-h-screen w-full flex items-center justify-center p-space-lg"><div class="flex flex-col w-full max-w-5xl mx-auto py-space-md">
+<!-- Top Telemetry & Step Tracker -->
+<div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md mb-space-xl px-space-xs">
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center justify-center w-7 h-7 rounded-xl bg-surface-container-high text-primary font-label-md text-label-md">
+<span class="material-symbols-outlined text-base">terminal</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline tracking-wider uppercase">OpenBot Engine v2.4.9</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Agent Runtime Provisioning</span>
+</div>
+</div>
+<!-- Step Indicator Progress Tracker -->
+<div class="flex items-center gap-space-md bg-surface-container-low px-space-md py-space-xs rounded-xl shadow-sm">
+<div class="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
+<span class="text-secondary font-code-inline">01</span> Workspace
+        <span class="text-outline-variant">/</span>
+<span class="text-secondary font-code-inline">02</span> LLM Weights
+        <span class="text-outline-variant">/</span>
+<span class="text-primary font-semibold font-code-inline">03 System Access</span>
+</div>
+<div class="w-24 h-1.5 bg-surface-container-highest rounded-full overflow-hidden flex">
+<div class="h-full bg-primary w-full transition-all duration-500 rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Hero Header Block with Precision Badge -->
+<div class="relative bg-surface-container-low rounded-xl p-space-xl mb-space-lg shadow-sm overflow-hidden">
+<div class="absolute -right-12 -top-12 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg relative z-10">
+<div class="space-y-space-xs max-w-2xl">
+<div class="inline-flex items-center gap-space-xs px-space-sm py-0.5 rounded-lg bg-secondary/10 text-secondary font-label-sm text-label-sm mb-space-xs">
+<span class="inline-block w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span>AIR-GAPPED HARDWARE ENCLAVE VERIFIED</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">
+          Authorize Computer Use &amp; Local Execution
+        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+          OpenBot requires native macOS accessibility hooks to simulate keyboard input, observe window viewports, and spawn developer toolchains inside your local environment without telemetry leakage.
+        </p>
+</div>
+<!-- Quick Metrics Counter Card -->
+<div class="grid grid-cols-2 gap-space-xs bg-surface-container p-space-sm rounded-xl min-w-[240px]">
+<div class="bg-surface-container-high/60 p-space-sm rounded-lg flex flex-col justify-between">
+<span class="font-label-sm text-label-sm text-outline">IPC LATENCY</span>
+<span class="font-label-md text-label-md text-secondary mt-1">0.14 ms</span>
+</div>
+<div class="bg-surface-container-high/60 p-space-sm rounded-lg flex flex-col justify-between">
+<span class="font-label-sm text-label-sm text-outline">RESTRICTION</span>
+<span class="font-label-md text-label-md text-primary mt-1">Sandboxed</span>
+</div>
+<div class="col-span-2 bg-surface-container-high/60 px-space-sm py-space-xs rounded-lg flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Host Process</span>
+<span class="font-code-inline text-code-inline text-on-surface">pid: 77218</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Section: Permissions List & Diagnostics Pane -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md mb-space-lg">
+<!-- Permissions Stack (8 Columns) -->
+<div class="lg:col-span-8 flex flex-col gap-space-xs">
+<!-- Permission 1: Needs Action -->
+<div class="group bg-surface-container hover:bg-surface-container-high transition-colors p-space-md rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
+<div class="flex items-start gap-space-md min-w-0">
+<div class="p-space-xs bg-surface-container-highest rounded-lg text-primary flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-xl">touch_app</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Accessibility &amp; Input Simulation</span>
+<span class="px-1.5 py-0.5 rounded text-[10px] font-label-sm uppercase bg-tertiary-container/30 text-tertiary">Required</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 leading-snug">
+              Allows autonomous agents to dispatch synthetic mouse clicks, keystrokes, and focus controls across IDEs, browsers, and terminal panels.
+            </p>
+<div class="flex items-center gap-space-sm mt-space-xs text-outline font-label-sm text-label-sm">
+<span class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                macOS TCC Privilege: kAXTrustedCheck
+              </span>
+</div>
+</div>
+</div>
+<div class="flex sm:flex-col items-center sm:items-end justify-between gap-space-xs flex-shrink-0">
+<span class="inline-flex items-center gap-1 font-label-sm text-label-sm text-tertiary bg-surface-container-lowest px-2 py-1 rounded">
+<span class="material-symbols-outlined text-sm">pending</span>
+            Needs Permission
+          </span>
+<button class="flex items-center gap-1.5 bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface px-space-md py-1 rounded-lg font-label-md text-label-md shadow-sm transition-all text-xs active:scale-95" id="openSettingsBtn">
+<span>Open Settings</span>
+<span class="material-symbols-outlined text-xs">open_in_new</span>
+</button>
+</div>
+</div>
+<!-- Permission 2: Granted -->
+<div class="bg-surface-container-low p-space-md rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
+<div class="flex items-start gap-space-md min-w-0">
+<div class="p-space-xs bg-surface-container rounded-lg text-secondary flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-xl">screenshot_monitor</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Screen Recording &amp; Window Inspection</span>
+<span class="font-code-inline text-[11px] text-outline">cgwindowlist</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 leading-snug">
+              Enables agents to grab high-frequency viewport crops, inspect accessibility trees, and locate DOM/native target coordinates.
+            </p>
+<div class="flex items-center gap-space-sm mt-space-xs font-label-sm text-label-sm text-outline">
+<span class="text-secondary">Capture Rate: 12 fps max</span>
+<span>•</span>
+<span>Zero cloud transport</span>
+</div>
+</div>
+</div>
+<div class="flex sm:flex-col items-center sm:items-end justify-between flex-shrink-0">
+<span class="inline-flex items-center gap-1.5 font-label-sm text-label-sm text-secondary bg-secondary/10 px-2.5 py-1 rounded-lg">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+            Granted
+          </span>
+<span class="font-code-inline text-[11px] text-outline mt-1 hidden sm:block">tcc.db: active</span>
+</div>
+</div>
+<!-- Permission 3: Granted -->
+<div class="bg-surface-container-low p-space-md rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
+<div class="flex items-start gap-space-md min-w-0">
+<div class="p-space-xs bg-surface-container rounded-lg text-secondary flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-xl">folder_supervised</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Full Disk Access &amp; Terminal Execution</span>
+<span class="font-code-inline text-[11px] text-outline">posix_spawn</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 leading-snug">
+              Allows spawning shell tasks, running zsh/bash scripts, compiling git repositories, and modifying authorized project directories.
+            </p>
+<div class="flex items-center gap-space-sm mt-space-xs font-label-sm text-label-sm text-outline">
+<span class="text-secondary">Root Escalation: Disabled</span>
+<span>•</span>
+<span>Audit Logged</span>
+</div>
+</div>
+</div>
+<div class="flex sm:flex-col items-center sm:items-end justify-between flex-shrink-0">
+<span class="inline-flex items-center gap-1.5 font-label-sm text-label-sm text-secondary bg-secondary/10 px-2.5 py-1 rounded-lg">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+            Granted
+          </span>
+<span class="font-code-inline text-[11px] text-outline mt-1 hidden sm:block">tcc.db: active</span>
+</div>
+</div>
+<!-- Permission 4: Configured -->
+<div class="bg-surface-container-low p-space-md rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
+<div class="flex items-start gap-space-md min-w-0">
+<div class="p-space-xs bg-surface-container rounded-lg text-primary flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-xl">lan</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Local MCP Socket Bridge</span>
+<span class="font-code-inline text-[11px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">127.0.0.1:8244</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 leading-snug">
+              Exposes Model Context Protocol agent-to-agent inter-process bus via loopback Unix domain socket and isolated localhost port.
+            </p>
+<div class="flex items-center gap-space-sm mt-space-xs font-label-sm text-label-sm text-outline">
+<span class="text-primary font-code-inline">unix:///tmp/openbot.sock</span>
+<span>•</span>
+<span>Auth: Bearer Token</span>
+</div>
+</div>
+</div>
+<div class="flex sm:flex-col items-center sm:items-end justify-between flex-shrink-0">
+<span class="inline-flex items-center gap-1.5 font-label-sm text-label-sm text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
+<span class="material-symbols-outlined text-sm">settings_ethernet</span>
+            Configured
+          </span>
+<span class="font-code-inline text-[11px] text-outline mt-1 hidden sm:block">READY</span>
+</div>
+</div>
+</div>
+<!-- Right Rail: Hardware Visualizer & Sandbox Enclave Specs (4 Columns) -->
+<div class="lg:col-span-4 flex flex-col gap-space-md">
+<!-- Visualizer Card -->
+<div class="bg-surface-container rounded-xl p-space-md shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Local Security Posture</span>
+<span class="material-symbols-outlined text-secondary text-lg">shield</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-space-xs">Hardware Sandbox</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed mb-space-md">
+            OpenBot uses macOS App Sandbox profiles with restricted entitlements. Outbound connections are locked strictly to user-whitelisted provider hosts.
+          </p>
+<!-- System Telemetry Minimal Sparkline SVG -->
+<div class="bg-surface-container-lowest p-space-sm rounded-lg mb-space-md">
+<div class="flex items-center justify-between text-[11px] font-label-sm text-outline mb-1.5">
+<span>SANDBOX RESTRICTION QUOTA</span>
+<span class="text-secondary font-code-inline">99.8% RESTRICTED</span>
+</div>
+<svg class="w-full h-10 text-secondary" fill="none" preserveaspectratio="none" viewbox="0 0 200 40">
+<path d="M0 32 L20 30 L40 33 L60 22 L80 25 L100 15 L120 18 L140 10 L160 14 L180 8 L200 12" stroke="currentColor" stroke-linecap="round" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+<path d="M0 32 L20 30 L40 33 L60 22 L80 25 L100 15 L120 18 L140 10 L160 14 L180 8 L200 12 L200 40 L0 40 Z" fill="currentColor" fill-opacity="0.08"></path>
+</svg>
+</div>
+<!-- Mini Diagnostics Grid -->
+<div class="space-y-space-xs font-label-sm text-label-sm">
+<div class="flex justify-between py-1 px-2 rounded bg-surface-container-high/40">
+<span class="text-on-surface-variant">Keychain Access:</span>
+<span class="text-on-surface font-code-inline">Isolated Enclave</span>
+</div>
+<div class="flex justify-between py-1 px-2 rounded bg-surface-container-high/40">
+<span class="text-on-surface-variant">Root Daemon:</span>
+<span class="text-error font-code-inline">Not Required</span>
+</div>
+<div class="flex justify-between py-1 px-2 rounded bg-surface-container-high/40">
+<span class="text-on-surface-variant">Telemetry Relay:</span>
+<span class="text-secondary font-code-inline">Hard Disabled</span>
+</div>
+</div>
+</div>
+<!-- Inline Visual Guide Mockup -->
+<div class="mt-space-md pt-space-sm bg-surface-container-lowest/60 rounded-lg p-space-sm flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-xl">info</span>
+<div class="font-body-sm text-body-sm text-on-surface-variant">
+            To authorize Accessibility manually:
+            <span class="font-code-inline text-on-surface text-[11px] block mt-0.5">Privacy &amp; Security → Accessibility</span>
+</div>
+</div>
+</div>
+<!-- Quick Command Prompt Simulation Box -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl font-code-inline text-code-inline shadow-sm flex flex-col gap-1.5">
+<div class="flex items-center justify-between text-outline text-[11px]">
+<span>DAEMON IPC STACK</span>
+<span class="text-secondary">LISTENING</span>
+</div>
+<p class="text-on-surface-variant leading-snug">
+<span class="text-secondary">$</span> openbot-core status --strict<br/>
+<span class="text-outline">&gt; checking tcc permissions...</span><br/>
+<span class="text-tertiary">&gt; kAXTrustedCheck: false</span><br/>
+<span class="text-secondary">&gt; cgwindowlist: true [OK]</span>
+</p>
+</div>
+</div>
+</div>
+<!-- Security Footnote & Audit Trace Callout -->
+<div class="bg-surface-container-low p-space-md rounded-xl mb-space-xl flex flex-col sm:flex-row sm:items-center justify-between gap-space-md shadow-sm">
+<div class="flex items-center gap-space-md">
+<div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-lg">database</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface font-medium">
+          OpenBot runs 100% locally. Execution logs are stored on this Mac at <code class="font-code-inline text-code-inline text-primary bg-surface-container px-1.5 py-0.5 rounded">~/.openbot/audit.db</code>.
+        </p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+          Every synthetic click, bash execution, and window snapshot is cryptographically hashed for inspection.
+        </p>
+</div>
+</div>
+<button class="text-xs font-label-md text-label-md text-outline hover:text-on-surface flex items-center gap-1 flex-shrink-0 self-start sm:self-center transition-colors">
+<span>Verify Hash</span>
+<span class="material-symbols-outlined text-sm">verified_user</span>
+</button>
+</div>
+<!-- Action Footer Navigation Buttons -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-md pt-space-xs">
+<button class="w-full sm:w-auto px-space-xl py-2 rounded-lg bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all active:scale-95 shadow-sm text-center" id="skipBtn">
+      Skip for Now
+    </button>
+<div class="flex items-center gap-space-md w-full sm:w-auto justify-end">
+<span class="font-label-sm text-label-sm text-outline hidden md:inline">Press ↵ to continue</span>
+<button class="w-full sm:w-auto px-space-xl py-2.5 rounded-lg bg-primary text-on-primary font-headline-sm text-headline-sm shadow-md hover:bg-primary-fixed transition-all flex items-center justify-center gap-space-sm active:scale-95" id="launchBtn">
+<span>Grant Permissions &amp; Launch OpenBot</span>
+<span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  // Interactive micro-behaviors for onboarding UX
+  const openSettingsBtn = document.getElementById('openSettingsBtn');
+  const launchBtn = document.getElementById('launchBtn');
+  const skipBtn = document.getElementById('skipBtn');
+
+  if (openSettingsBtn) {
+    openSettingsBtn.addEventListener('click', () => {
+      openSettingsBtn.innerHTML = `
+        <span class="inline-block w-3 h-3 rounded-full border border-current border-t-transparent animate-spin mr-1"></span>
+        <span>Awaiting TCC...</span>
+      `;
+      // Simulate polling macOS system settings
+      setTimeout(() => {
+        openSettingsBtn.closest('.group').classList.remove('hover:bg-surface-container-high');
+        openSettingsBtn.parentElement.innerHTML = `
+          <span class="inline-flex items-center gap-1.5 font-label-sm text-label-sm text-secondary bg-secondary/10 px-2.5 py-1 rounded-lg">
+            <span class="material-symbols-outlined text-sm">check_circle</span>
+            Granted
+          </span>
+          <span class="font-code-inline text-[11px] text-outline mt-1 hidden sm:block">tcc.db: active</span>
+        `;
+      }, 1400);
+    });
+  }
+
+  if (launchBtn) {
+    launchBtn.addEventListener('click', () => {
+      launchBtn.innerHTML = `
+        <span class="material-symbols-outlined animate-spin text-lg">autorenew</span>
+        <span>Spawning Daemon Engine...</span>
+      `;
+      launchBtn.classList.add('opacity-90', 'pointer-events-none');
+    });
+  }
+
+  if (skipBtn) {
+    skipBtn.addEventListener('click', () => {
+      skipBtn.textContent = 'Skipping to Limited Mode...';
+    });
+  }
+</script></main></body></html>

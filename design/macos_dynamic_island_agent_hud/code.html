@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "secondary-fixed": "#83f9ba", "on-primary-fixed-variant": "#422db2", "surface-container-lowest": "#0b0e13", "on-tertiary-container": "#3c2500", "on-error-container": "#ffdad6", "inverse-surface": "#e1e2e9", "primary-fixed-dim": "#c7bfff", "primary": "#c7bfff", "on-primary-fixed": "#170065", "error": "#ffb4ab", "on-secondary-fixed-variant": "#005232", "on-primary-container": "#24008c", "on-primary": "#2a039d", "primary-fixed": "#e4dfff", "tertiary": "#ffb955", "error-container": "#93000a", "on-error": "#690005", "on-background": "#e1e2e9", "tertiary-fixed": "#ffddb5", "tertiary-fixed-dim": "#ffb955", "secondary": "#66dc9f", "tertiary-container": "#c3841e", "primary-container": "#8e7fff", "background": "#111319", "on-surface": "#e1e2e9", "surface-dim": "#111319", "on-surface-variant": "#c8c4d6", "surface-container-low": "#191c21", "on-secondary-container": "#00311c", "surface-variant": "#32353a", "on-tertiary-fixed": "#2a1800", "on-tertiary-fixed-variant": "#633f00", "surface-tint": "#c7bfff", "surface-bright": "#36393f", "surface-container-highest": "#32353a", "outline-variant": "#474554", "surface-container-high": "#272a30", "on-secondary": "#003921", "outline": "#928f9f", "secondary-container": "#22a46c", "surface-container": "#1d2025", "on-tertiary": "#452b00", "inverse-primary": "#5a49cb", "on-secondary-fixed": "#002111", "inverse-on-surface": "#2e3036", "secondary-fixed-dim": "#66dc9f", "surface": "#111319" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-xs": "0.25rem", "gutter": "0.5rem", "margin": "0.75rem", "space-lg": "0.75rem", "space-sm": "0.375rem", "space-xl": "1rem", "space-md": "0.5rem" }, "fontFamily": { "label-md": ["JetBrains Mono"], "label-sm": ["JetBrains Mono"], "headline-md": ["Inter"], "headline-lg": ["Inter"], "body-md": ["Inter"], "body-lg": ["Inter"], "body-sm": ["Inter"], "code-block": ["JetBrains Mono"], "headline-sm": ["Inter"], "code-inline": ["JetBrains Mono"] }, "fontSize": { "label-md": ["0.8125rem", { "lineHeight": "1.125rem", "letterSpacing": "-0.01em", "fontWeight": "500" }], "label-sm": ["0.75rem", { "lineHeight": "1rem", "letterSpacing": "0em", "fontWeight": "500" }], "headline-md": ["1.25rem", { "lineHeight": "1.625rem", "letterSpacing": "-0.015em", "fontWeight": "600" }], "headline-lg": ["1.5rem", { "lineHeight": "1.875rem", "letterSpacing": "-0.02em", "fontWeight": "600" }], "body-md": ["0.875rem", { "lineHeight": "1.25rem", "fontWeight": "400" }], "body-lg": ["0.9375rem", { "lineHeight": "1.375rem", "fontWeight": "400" }], "body-sm": ["0.8125rem", { "lineHeight": "1.125rem", "fontWeight": "400" }], "code-block": ["0.8125rem", { "lineHeight": "1.25rem", "fontWeight": "400" }], "headline-sm": ["1rem", { "lineHeight": "1.375rem", "letterSpacing": "-0.01em", "fontWeight": "600" }], "code-inline": ["0.8125rem", { "lineHeight": "1.125rem", "fontWeight": "400" }] } } } };</script></head><body class="bg-surface-container-lowest text-on-surface antialiased select-none"><header class="fixed top-0 left-0 right-0 h-10 z-50 bg-surface-container-low border-b border-surface-variant flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-md"><div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]"></div><div class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]"></div><div class="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]"></div></div><div class="h-4 w-[1px] bg-surface-variant ml-space-xs"></div><div class="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant"><span class="text-primary font-semibold">OpenBot</span><span class="text-outline">/</span><span>station-darwin-arm64</span></div></div><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs px-space-md py-0.5 rounded bg-surface-container border border-surface-variant"><span class="material-symbols-outlined text-[14px] text-outline">search</span><span class="font-label-sm text-label-sm text-outline">Quick Actions</span><kbd class="font-label-sm text-label-sm text-outline bg-surface-variant px-1 rounded">⌘K</kbd></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-1 font-label-sm text-label-sm text-secondary"><span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span><span>Engine Ready</span></div><div class="h-4 w-[1px] bg-surface-variant"></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><aside class="fixed left-0 top-10 bottom-0 w-64 bg-surface-container-low border-r border-surface-variant z-40 flex flex-col justify-between p-space-sm"><div class="flex flex-col gap-space-md"><div class="flex items-center justify-between px-space-sm py-space-xs"><span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Workspace</span><span class="material-symbols-outlined text-[16px] text-outline hover:text-on-surface cursor-pointer">tune</span></div><nav class="flex flex-col gap-0.5" data-active-classes="bg-surface-variant text-on-surface font-semibold border-l-2 border-primary"><a aria-current="page" class="flex items-center gap-space-md px-space-sm py-1.5 rounded-lg transition-colors bg-surface-variant text-on-surface font-semibold border-l-2 border-primary" data-path="orchestrator" href="#"><span class="material-symbols-outlined text-[18px]">terminal</span><span>Orchestrator</span></a><a class="flex items-center gap-space-md px-space-sm py-1.5 rounded-lg font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="agent-graph" href="#"><span class="material-symbols-outlined text-[18px]">hub</span><span>Agent Graph</span></a><a class="flex items-center gap-space-md px-space-sm py-1.5 rounded-lg font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="inference-telemetry" href="#"><span class="material-symbols-outlined text-[18px]">monitoring</span><span>Inference & Telemetry</span></a><a class="flex items-center gap-space-md px-space-sm py-1.5 rounded-lg font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="context-memory" href="#"><span class="material-symbols-outlined text-[18px]">database</span><span>Context & Memory</span></a><a class="flex items-center gap-space-md px-space-sm py-1.5 rounded-lg font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="model-runtime" href="#"><span class="material-symbols-outlined text-[18px]">memory</span><span>Model Runtime</span></a></nav></div><div class="border-t border-surface-variant pt-space-sm flex flex-col gap-space-xs"><div class="flex items-center justify-between px-space-sm py-1 rounded bg-surface-container font-label-sm text-label-sm text-outline"><span>LLAMA-3-70B</span><span class="text-secondary font-mono">48.2 tok/s</span></div><div class="flex items-center justify-between px-space-sm text-outline hover:text-on-surface font-body-sm text-body-sm cursor-pointer"><span class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-[16px]">settings</span><span>Preferences</span></span><kbd class="font-label-sm text-label-sm">⌘,</kbd></div></div></aside><div class="pl-64"><main class="relative pt-10 min-h-screen bg-surface-container-lowest w-full px-space-xl py-space-lg"><div class="flex flex-col w-full gap-space-xl">
+<!-- macOS Top Notch / Dynamic Island Interactive Simulation Stage -->
+<section class="relative w-full rounded-xl bg-surface-container-lowest p-space-xl overflow-hidden shadow-xl">
+<!-- MacBook Screen Backdrop with Ambient Glow -->
+<div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[720px] h-48 bg-primary/10 blur-[100px] pointer-events-none"></div>
+<div class="absolute inset-0 bg-gradient-to-b from-surface-container-low/40 via-surface-container-lowest/80 to-surface-container-lowest pointer-events-none"></div>
+<!-- MacBook Top Bezel / Menu Bar Simulation -->
+<div class="relative z-10 w-full flex flex-col items-center">
+<!-- Simulated Menu Bar strip -->
+<div class="w-full flex items-center justify-between px-space-lg py-1 text-on-surface-variant bg-surface-container-high/60 rounded-t-lg backdrop-blur-md">
+<div class="flex items-center gap-space-md">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold tracking-tight"></span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">OpenBot Studio</span>
+<span class="font-label-sm text-label-sm hover:text-on-surface cursor-pointer">Cluster</span>
+<span class="font-label-sm text-label-sm hover:text-on-surface cursor-pointer">Agents</span>
+<span class="font-label-sm text-label-sm hover:text-on-surface cursor-pointer">Traces</span>
+<span class="font-label-sm text-label-sm hover:text-on-surface cursor-pointer">Overlays</span>
+</div>
+<!-- Menu Bar Status Item highlighting the Dynamic Island system -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs px-2 py-0.5 rounded bg-surface-variant/80 text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-sm text-label-sm font-mono text-on-surface">3 agents active</span>
+<span class="text-outline">·</span>
+<span class="font-label-sm text-label-sm text-tertiary font-mono">1 approval queued</span>
+</div>
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[15px]">wifi</span>
+<span class="material-symbols-outlined text-[15px]">battery_charging_full</span>
+<span class="font-mono">Tue 14:42</span>
+</div>
+</div>
+</div>
+<!-- Physical Notch Root & Floating Expanded Dynamic Island Capsule -->
+<div class="relative -mt-1 w-full max-w-4xl flex flex-col items-center">
+<!-- Physical MacBook Camera Notch physical anchoring tab -->
+<div class="w-48 h-3.5 bg-surface-container-lowest rounded-b-xl flex items-center justify-center gap-2 z-30 shadow-md">
+<div class="w-2.5 h-2.5 rounded-full bg-surface-dim flex items-center justify-center">
+<div class="w-1 h-1 rounded-full bg-primary/70"></div>
+</div>
+<div class="w-1.5 h-1.5 rounded-full bg-secondary/80 animate-ping"></div>
+</div>
+<!-- Dynamic Island: Master Expanded Capsule (State: Active Trace Synthesizer) -->
+<div class="w-full bg-surface-container-lowest rounded-full rounded-2xl p-space-md shadow-2xl transition-all duration-300" id="dynamic-island-main">
+<!-- Top Row: Avatar & Status + Main Stream Data + Keyboard Actions -->
+<div class="flex items-center justify-between gap-space-md flex-wrap lg:flex-nowrap">
+<!-- Left Pod: Agent Profile & Step Badge -->
+<div class="flex items-center gap-space-md min-w-0">
+<div class="relative flex-shrink-0">
+<div class="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center p-0.5">
+<div class="w-full h-full rounded-full bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[18px]">neurology</span>
+</div>
+</div>
+<span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-surface-container-lowest flex items-center justify-center">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold tracking-tight">Kestrel</span>
+<span class="px-1.5 py-0.2 bg-primary/10 text-primary font-label-sm text-label-sm rounded">Agent #04</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant font-label-sm text-label-sm">
+<span class="text-secondary font-mono">Working</span>
+<span>(Step 4/6)</span>
+</div>
+</div>
+</div>
+<!-- Middle Pod: Live Telemetry, Jaeger Trace, & Token Sparkline -->
+<div class="flex-1 min-w-[280px] bg-surface-container-low px-space-md py-1.5 rounded-xl flex items-center justify-between gap-space-md">
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[15px]">radar</span>
+<p class="font-body-sm text-body-sm text-on-surface font-medium truncate">
+                    Synthesizing p99 trace spans in Jaeger
+                  </p>
+</div>
+<div class="flex items-center gap-2 font-label-sm text-label-sm text-outline">
+<span class="text-on-surface-variant font-mono">service: payments-v2</span>
+<span>•</span>
+<span>94.8% confidence</span>
+</div>
+</div>
+<!-- Live sparkline and counter -->
+<div class="flex items-center gap-3 flex-shrink-0">
+<!-- Inline SVG Sparkline -->
+<div class="flex flex-col items-end">
+<span class="font-label-sm text-label-sm font-mono text-secondary">58.4 t/s</span>
+<svg class="w-16 h-4 text-primary" fill="none" viewbox="0 0 64 16">
+<path d="M0 12 L10 10 L20 14 L28 4 L38 9 L48 3 L56 7 L64 2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path>
+</svg>
+</div>
+<div class="h-6 w-px bg-surface-variant"></div>
+<div class="flex items-center gap-1 font-mono text-label-md font-label-md text-on-surface bg-surface-container px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-secondary text-[14px]">timer</span>
+<span id="live-timer">02:14</span>
+</div>
+</div>
+</div>
+<!-- Right Pod: Quick Actions with Hotkeys -->
+<div class="flex items-center gap-space-xs flex-shrink-0">
+<!-- Approve Button -->
+<button class="h-7 px-2.5 rounded bg-primary text-on-primary font-headline-sm text-headline-sm flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[15px]">check_circle</span>
+<span class="font-body-sm text-body-sm font-semibold">Approve</span>
+<kbd class="font-label-sm text-label-sm bg-on-primary/20 text-on-primary px-1 rounded font-mono">⌘Y</kbd>
+</button>
+<!-- Decline Button -->
+<button class="h-7 px-2 rounded bg-surface-container-high hover:bg-surface-variant text-on-surface font-body-sm text-body-sm flex items-center gap-1 active:scale-95 transition-all">
+<span>Decline</span>
+<kbd class="font-label-sm text-label-sm text-outline font-mono">⌘N</kbd>
+</button>
+<!-- Takeover Button -->
+<button class="h-7 px-2 rounded bg-surface-container text-outline hover:text-on-surface font-body-sm text-body-sm flex items-center gap-1 hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-[14px]">front_hand</span>
+<span>Take Over</span>
+</button>
+</div>
+</div>
+<!-- Expanded Bottom Tray: Prompt Suggestions & Realtime Inline Reply -->
+<div class="mt-space-sm pt-space-sm flex flex-col gap-space-xs">
+<!-- Chip Suggestions -->
+<div class="flex items-center gap-space-xs overflow-x-auto text-on-surface-variant">
+<span class="font-label-sm text-label-sm text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">bolt</span> Quick:
+              </span>
+<button class="px-2 py-0.5 rounded-full bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm font-mono flex items-center gap-1 transition-colors">
+                Run with --dry-run
+              </button>
+<button class="px-2 py-0.5 rounded-full bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm font-mono flex items-center gap-1 transition-colors">
+                Scale replica to 3
+              </button>
+<button class="px-2 py-0.5 rounded-full bg-surface-container-high hover:bg-surface-variant text-on-surface font-label-sm text-label-sm font-mono flex items-center gap-1 transition-colors">
+                Inspect flamegraph
+              </button>
+<button class="px-2 py-0.5 rounded-full bg-error-container/40 hover:bg-error-container text-error font-label-sm text-label-sm font-mono flex items-center gap-1 transition-colors">
+                Abort execution
+              </button>
+</div>
+<!-- Terminal Inline Input Prompt Field -->
+<div class="flex items-center gap-space-sm bg-surface-container-low px-space-md py-1 rounded-xl">
+<span class="font-code-block text-code-block text-primary">kestrel></span>
+<input class="bg-transparent flex-1 text-on-surface placeholder:text-outline font-code-block text-code-block focus:outline-none" placeholder="Inject contextual instruction or command flag into agent trace..." type="text"/>
+<div class="flex items-center gap-1 text-outline">
+<kbd class="font-label-sm text-label-sm font-mono bg-surface-container-highest px-1 py-0.5 rounded">Return ↵</kbd>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Dynamic Island States Matrix & Gallery -->
+<section class="flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">layers</span>
+<h2 class="font-headline-md text-headline-md text-on-surface font-semibold tracking-tight">Dynamic Island State Architecture</h2>
+</div>
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">MacBook Pro Liquid Retina Notch Overlay States</span>
+</div>
+<!-- 4 Key Display States Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<!-- STATE A: Compact Idle Notch State -->
+<div class="bg-surface-container-low p-space-lg rounded-xl flex flex-col gap-space-md">
+<div class="flex items-center justify-between text-outline">
+<span class="font-label-sm text-label-sm font-mono text-primary font-semibold">STATE A · COMPACT IDLE</span>
+<span class="font-label-sm text-label-sm bg-surface-container px-1.5 py-0.5 rounded">Height: 32px</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Ultra-compact resting posture during regular passive system telemetry. Blends with hardware notch radius.
+        </p>
+<!-- Simulated Floating Pill Preview -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl flex items-center justify-center">
+<div class="w-full max-w-sm h-8 bg-surface-container rounded-full px-space-md flex items-center justify-between shadow-lg">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-sm text-label-sm text-on-surface font-medium">Cluster prod-01 Healthy</span>
+</div>
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-outline font-mono">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+<span>0 active gates</span>
+</div>
+</div>
+</div>
+</div>
+<!-- STATE B: Critical Gate Approval Alert -->
+<div class="bg-surface-container-low p-space-lg rounded-xl flex flex-col gap-space-md">
+<div class="flex items-center justify-between text-outline">
+<span class="font-label-sm text-label-sm font-mono text-tertiary font-semibold">STATE B · GATE APPROVAL ALERT</span>
+<span class="font-label-sm text-label-sm bg-tertiary/10 text-tertiary px-1.5 py-0.5 rounded">Action Required</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Pulsing amber state interrupting destructive infrastructure tasks to request cryptographic human clearance.
+        </p>
+<!-- Simulated Floating Pill Preview -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl flex items-center justify-center">
+<div class="w-full bg-surface-container-high rounded-2xl p-space-md flex flex-col gap-space-xs shadow-lg">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">shield_person</span>
+<span class="font-label-sm text-label-sm font-semibold text-tertiary uppercase">Needs Approval</span>
+</div>
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-outline font-mono">
+<span class="px-1 bg-surface-container rounded">fs.read</span>
+<span class="px-1 bg-surface-container rounded text-error">net.external</span>
+</div>
+</div>
+<div class="font-code-block text-code-block text-on-surface truncate">
+              kubectl apply canary-ingress.yaml -n prod
+            </div>
+<div class="flex items-center justify-end gap-space-xs mt-1">
+<button class="px-2 py-1 rounded bg-surface-container text-on-surface font-label-sm text-label-sm hover:bg-surface-variant">
+                Decline
+              </button>
+<button class="px-2.5 py-1 rounded bg-tertiary text-on-tertiary font-label-sm text-label-sm font-semibold flex items-center gap-1">
+<span>Authorize</span>
+<kbd class="text-[10px] bg-on-tertiary/20 px-1 rounded font-mono">⌘Y</kbd>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- STATE C: Browser Step Human Takeover -->
+<div class="bg-surface-container-low p-space-lg rounded-xl flex flex-col gap-space-md">
+<div class="flex items-center justify-between text-outline">
+<span class="font-label-sm text-label-sm font-mono text-primary font-semibold">STATE C · BROWSER STEP TAKEOVER</span>
+<span class="font-label-sm text-label-sm bg-primary/10 text-primary px-1.5 py-0.5 rounded">Interactive Hook</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Hands control to user when agent encounters MFA challenge, CAPTCHA, or hardware security token prompt.
+        </p>
+<!-- Simulated Floating Pill Preview -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl flex items-center justify-center">
+<div class="w-full bg-surface-container-high rounded-2xl p-space-md flex items-center justify-between gap-space-md shadow-lg">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-primary">
+<span class="material-symbols-outlined text-[18px]">key</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface truncate">Needs You in Browser</span>
+<span class="font-label-sm text-label-sm text-outline truncate font-mono">docs.internal.company.com (Okta 2FA)</span>
+</div>
+</div>
+<button class="px-3 py-1 rounded bg-primary text-on-primary font-label-sm text-label-sm font-semibold flex items-center gap-1 flex-shrink-0">
+<span>Take Over</span>
+<span class="material-symbols-outlined text-[14px]">open_in_new</span>
+</button>
+</div>
+</div>
+</div>
+<!-- STATE D: Task Failure & Crash Dump State -->
+<div class="bg-surface-container-low p-space-lg rounded-xl flex flex-col gap-space-md">
+<div class="flex items-center justify-between text-outline">
+<span class="font-label-sm text-label-sm font-mono text-error font-semibold">STATE D · CRASH & EXCEPTION</span>
+<span class="font-label-sm text-label-sm bg-error/10 text-error px-1.5 py-0.5 rounded">Exit Code 111</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Persistent incident banner highlighting interrupted execution pipe with one-click post-mortem analyzer.
+        </p>
+<!-- Simulated Floating Pill Preview -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl flex items-center justify-center">
+<div class="w-full bg-surface-container-high rounded-2xl p-space-md flex items-center justify-between gap-space-md shadow-lg">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-8 h-8 rounded-full bg-error-container/40 flex items-center justify-center flex-shrink-0 text-error">
+<span class="material-symbols-outlined text-[18px]">error</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-sm text-body-sm font-semibold text-error truncate">Task #1076 Failed</span>
+<span class="font-code-block text-code-block text-outline truncate">Connection refused on port 5432</span>
+</div>
+</div>
+<button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-variant text-on-surface font-label-sm text-label-sm flex items-center gap-1 flex-shrink-0">
+<span class="material-symbols-outlined text-[14px]">bug_report</span>
+<span>Crash Dump</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Background Desktop Activity & Trace Observer Stream -->
+<section class="bg-surface-container-low rounded-xl p-space-lg flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[20px]">monitor_heart</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Underlying Agent Orchestration Mesh</h3>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-outline font-mono">Dynamic Island sync rate: 16ms</span>
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+</div>
+</div>
+<!-- Terminal-grade telemetry table -->
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left font-label-sm text-label-sm">
+<thead>
+<tr class="text-outline uppercase bg-surface-container border-b border-surface-variant">
+<th class="py-2 px-space-md">Agent ID</th>
+<th class="py-2 px-space-md">Process Target</th>
+<th class="py-2 px-space-md">Island Overlay Posture</th>
+<th class="py-2 px-space-md">Latency</th>
+<th class="py-2 px-space-md text-right">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-variant/40 font-mono text-on-surface-variant">
+<tr class="hover:bg-surface-container/60 transition-colors">
+<td class="py-2.5 px-space-md font-semibold text-primary">agt-kestrel-04</td>
+<td class="py-2.5 px-space-md text-on-surface">jaeger-trace-synthesizer</td>
+<td class="py-2.5 px-space-md"><span class="px-1.5 py-0.5 rounded bg-primary/20 text-primary">Expanded Capsule</span></td>
+<td class="py-2.5 px-space-md text-secondary">1.2ms</td>
+<td class="py-2.5 px-space-md text-right text-secondary">STREAMING</td>
+</tr>
+<tr class="hover:bg-surface-container/60 transition-colors">
+<td class="py-2.5 px-space-md font-semibold text-on-surface">agt-merlin-01</td>
+<td class="py-2.5 px-space-md text-on-surface">k8s-canary-controller</td>
+<td class="py-2.5 px-space-md"><span class="px-1.5 py-0.5 rounded bg-tertiary/20 text-tertiary">Queued in Notch Tab</span></td>
+<td class="py-2.5 px-space-md text-outline">4.8ms</td>
+<td class="py-2.5 px-space-md text-right text-tertiary">AWAIT_SIG</td>
+</tr>
+<tr class="hover:bg-surface-container/60 transition-colors">
+<td class="py-2.5 px-space-md font-semibold text-on-surface">agt-peregrine-09</td>
+<td class="py-2.5 px-space-md text-on-surface">clickhouse-index-vacuum</td>
+<td class="py-2.5 px-space-md"><span class="px-1.5 py-0.5 rounded bg-surface-container text-outline">Collapsed to Menu Bar</span></td>
+<td class="py-2.5 px-space-md text-outline">12.1ms</td>
+<td class="py-2.5 px-space-md text-right text-outline">PASSIVE</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Interactive script to cycle live timer -->
+<script>
+    (function () {
+      const timerEl = document.getElementById('live-timer');
+      if (!timerEl) return;
+      let totalSeconds = 134; // 02:14
+      setInterval(() => {
+        totalSeconds++;
+        const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+        const secs = String(totalSeconds % 60).padStart(2, '0');
+        timerEl.textContent = `${mins}:${secs}`;
+      }, 1000);
+    })();
+  </script>
+</div></main></div></body></html>
