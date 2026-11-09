@@ -1,12 +1,66 @@
 import { Component, createSignal, For, Show } from 'solid-js';
-import { state, setState, addToast } from '../../stores/appState';
+import {
+  state,
+  setState,
+  addToast,
+  sendMessageToCurrentAgent,
+  changeAgentModel,
+  handleApproval,
+} from '../../stores/appState';
 import { RightSidePanel } from './RightSidePanel';
 import { i18n } from '../../shared/i18n';
+
+interface ModelOption {
+  id: string;
+  name: string;
+  provider: string;
+  badge: string;
+  isFree?: boolean;
+}
+
+const AVAILABLE_MODELS: { group: string; models: ModelOption[] }[] = [
+  {
+    group: 'OpenCode',
+    models: [
+      { id: 'OpenCode Free', name: 'OpenCode Free', provider: 'opencode', badge: 'No sign-in', isFree: true },
+      { id: 'OpenCode Go', name: 'OpenCode Go', provider: 'opencode', badge: 'Go Key' },
+    ],
+  },
+  {
+    group: 'Anthropic Claude',
+    models: [
+      { id: 'Claude 3.7 Sonnet', name: 'Claude 3.7 Sonnet', provider: 'claude', badge: 'Thinking' },
+      { id: 'Claude 3.5 Sonnet', name: 'Claude 3.5 Sonnet', provider: 'claude', badge: 'Direct Bridge' },
+      { id: 'Claude 3.5 Haiku', name: 'Claude 3.5 Haiku', provider: 'claude', badge: 'Fast' },
+    ],
+  },
+  {
+    group: 'Codex / OpenAI',
+    models: [
+      { id: 'Codex o3-mini', name: 'Codex o3-mini', provider: 'codex', badge: 'High Reasoning' },
+      { id: 'GPT-4o', name: 'GPT-4o (Omni)', provider: 'codex', badge: 'Multimodal' },
+    ],
+  },
+  {
+    group: 'Google Gemini',
+    models: [
+      { id: 'Gemini 2.0 Flash', name: 'Gemini 2.0 Flash', provider: 'gemini', badge: '1M Context' },
+      { id: 'Gemini 1.5 Pro', name: 'Gemini 1.5 Pro', provider: 'gemini', badge: 'Extended' },
+    ],
+  },
+  {
+    group: 'Local Model Servers',
+    models: [
+      { id: 'DeepSeek-R1 (Local)', name: 'DeepSeek-R1', provider: 'opencode', badge: 'Zero Cost', isFree: true },
+      { id: 'Llama 3.3 70B (Ollama)', name: 'Llama 3.3 70B', provider: 'opencode', badge: 'Ollama', isFree: true },
+    ],
+  },
+];
 
 export const MainWorkspace: Component = () => {
   const [inputText, setInputText] = createSignal('');
   const [isThinkingOpen, setIsThinkingOpen] = createSignal(true);
-  const [approvalHandled, setApprovalHandled] = createSignal<string | null>(null);
+  const [isModelPickerOpen, setIsModelPickerOpen] = createSignal(false);
 
   const currentAgent = () =>
     state.agents.find((a) => a.id === state.selectedAgentId) || state.agents[0];
@@ -14,11 +68,17 @@ export const MainWorkspace: Component = () => {
   const currentChannel = () =>
     state.channels.find((c) => c.id === state.selectedChannelId);
 
-  const handleSend = () => {
+  const currentMessages = () => {
+    const a = currentAgent();
+    if (!a) return [];
+    return state.agentMessages[a.id] || [];
+  };
+
+  const handleSend = async () => {
     const text = inputText().trim();
     if (!text) return;
-    addToast('success', 'Message queued for agent');
     setInputText('');
+    await sendMessageToCurrentAgent(text);
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -213,9 +273,14 @@ export const MainWorkspace: Component = () => {
                   <span class="font-headline-sm text-[13px] text-on-surface font-semibold">
                     {currentChannel()?.name || currentAgent()?.name}
                   </span>
-                  <span class="px-2 py-0.5 rounded font-label-sm text-[10px] bg-surface-container-high text-primary-fixed-dim font-medium">
-                    {currentAgent()?.model || 'Claude 3.5 Sonnet'}
-                  </span>
+                  <button
+                    onClick={() => setIsModelPickerOpen(!isModelPickerOpen())}
+                    class="px-2 py-0.5 rounded font-label-sm text-[10px] bg-surface-container-high hover:bg-surface-container-highest text-primary-fixed-dim font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Switch Model (Preserves Chat)"
+                  >
+                    <span>{currentAgent()?.model || 'Claude 3.5 Sonnet'}</span>
+                    <span class="material-symbols-outlined text-[10px]">expand_more</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -244,131 +309,197 @@ export const MainWorkspace: Component = () => {
                 <span class="w-1.5 h-1.5 rounded-full bg-secondary" />
                 <span>
                   Connected to repository branch{' '}
-                  <span class="text-on-surface font-code-inline">main@9c2fa7b</span> via Model
-                  Context Protocol
+                  <span class="text-on-surface font-code-inline">main@9c2fa7b</span> via Model Context Protocol
                 </span>
               </div>
             </div>
 
-            {/* User Message */}
-            <div class="flex flex-col items-end gap-1 max-w-3xl ml-auto">
-              <div class="flex items-center gap-2 text-label-sm text-[11px] text-outline">
-                <span>You</span>
-                <span>12:28 PM</span>
-              </div>
-              <div
-                class="p-3.5 rounded-2xl rounded-tr-sm bg-surface-container-high border border-outline-variant/30 text-on-surface text-sm max-w-2xl leading-relaxed"
-                style={state.settings.chatColor ? { 'background-color': state.settings.chatColor } : {}}
-              >
-                Please verify our AWS production infrastructure state, run the dry-run terraform plan, and prepare the security review summary.
-              </div>
-            </div>
-
-            {/* Agent Response */}
-            <div class="flex flex-col items-start gap-1 max-w-3xl mr-auto">
-              <div class="flex items-center gap-2 text-label-sm text-[11px] text-outline">
-                <span class="font-semibold text-primary">{currentAgent()?.name}</span>
-                <span>12:29 PM</span>
-              </div>
-
-              {/* Agent Thinking Box */}
-              <div class="w-full bg-surface-container/60 border border-outline-variant/30 rounded-xl overflow-hidden text-xs">
-                <button
-                  onClick={() => setIsThinkingOpen(!isThinkingOpen())}
-                  class="w-full px-3 py-2 bg-surface-container flex items-center justify-between text-outline hover:text-on-surface transition-colors"
-                >
-                  <div class="flex items-center gap-2 font-label-sm text-[11px]">
-                    <span class="material-symbols-outlined text-[15px] text-primary">psychology</span>
-                    <span>Reasoning & Context Plan</span>
-                  </div>
-                  <span class="material-symbols-outlined text-[15px]">
-                    {isThinkingOpen() ? 'expand_less' : 'expand_more'}
-                  </span>
-                </button>
-
-                <Show when={isThinkingOpen()}>
-                  <div class="p-3 font-mono text-[11px] text-on-surface-variant bg-surface-container-lowest/60 border-t border-outline-variant/20 space-y-1">
-                    <div>1. Querying AWS credential status from local keychain...</div>
-                    <div class="text-secondary">✓ Profile `prod-us-east` authenticated</div>
-                    <div>2. Reading Terraform configurations in `infra/prod/`</div>
-                    <div class="text-tertiary">3. Generating plan execution graph for cluster...</div>
-                  </div>
-                </Show>
-              </div>
-
-              {/* Agent Tool Step Execution Bubble */}
-              <div class="w-full bg-surface-container border border-outline-variant/30 rounded-xl p-3.5 space-y-2.5 text-sm">
-                <div class="flex items-center justify-between text-xs font-label-sm text-outline border-b border-outline-variant/20 pb-1.5">
-                  <div class="flex items-center gap-1.5 text-primary">
-                    <span class="material-symbols-outlined text-[15px]">terminal</span>
-                    <span class="font-semibold">Tool Execution: CLI Command</span>
-                  </div>
-                  <span class="text-secondary">Completed (1.4s)</span>
+            {/* Empty State when no messages */}
+            <Show when={currentMessages().length === 0}>
+              <div class="flex flex-col items-center justify-center p-8 text-center text-outline gap-2 my-auto">
+                <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center text-primary text-xl font-bold font-mono">
+                  {currentAgent()?.avatar?.length === 1 ? currentAgent()?.avatar : 'smart_toy'}
                 </div>
+                <span class="text-on-surface font-semibold text-sm">{currentAgent()?.name} is ready</span>
+                <span class="text-xs max-w-md">{currentAgent()?.role} • Operating in workspace {currentAgent()?.workspacePath}</span>
+                <span class="text-[11px] text-outline font-mono">Send a prompt below to begin collaborating.</span>
+              </div>
+            </Show>
 
-                <div class="bg-surface-container-lowest p-2.5 rounded font-mono text-[12px] text-on-surface border border-outline-variant/20">
-                  <div class="text-outline">$ terraform plan -detailed-exitcode</div>
-                  <div class="text-secondary mt-1">Plan: 2 to add, 1 to change, 0 to destroy.</div>
-                  <div class="text-outline text-[11px]">Outputs: cluster_endpoint = "k8s-prod.us-east.openbot.run"</div>
-                </div>
+            {/* Dynamic Conversation Messages */}
+            <For each={currentMessages()}>
+              {(msg) => (
+                <Show
+                  when={msg.author === 'user'}
+                  fallback={
+                    /* Agent Response */
+                    <div class="flex flex-col items-start gap-1 max-w-3xl mr-auto">
+                      <div class="flex items-center gap-2 text-label-sm text-[11px] text-outline">
+                        <span class="font-semibold text-primary">{currentAgent()?.name}</span>
+                        <span>{msg.createdAt}</span>
+                      </div>
 
-                <p class="leading-relaxed text-xs">
-                  The infrastructure changes have been validated against our security baseline. The plan modifies our ingress security group to allow TLS 1.3 traffic and spins up 2 supplementary container nodes.
-                </p>
+                      {/* Agent Thinking Box */}
+                      <Show when={msg.reasoning}>
+                        <div class="w-full bg-surface-container/60 border border-outline-variant/30 rounded-xl overflow-hidden text-xs">
+                          <button
+                            onClick={() => setIsThinkingOpen(!isThinkingOpen())}
+                            class="w-full px-3 py-2 bg-surface-container flex items-center justify-between text-outline hover:text-on-surface transition-colors"
+                          >
+                            <div class="flex items-center gap-2 font-label-sm text-[11px]">
+                              <span class="material-symbols-outlined text-[15px] text-primary">psychology</span>
+                              <span>Reasoning & Context Plan</span>
+                            </div>
+                            <span class="material-symbols-outlined text-[15px]">
+                              {isThinkingOpen() ? 'expand_less' : 'expand_more'}
+                            </span>
+                          </button>
 
-                {/* Approval Prompt Card */}
-                <div class="p-3 rounded-lg bg-surface-container-high border border-tertiary/40 flex flex-col gap-2 mt-2">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2 text-tertiary font-label-sm text-xs font-semibold">
-                      <span class="material-symbols-outlined text-[16px]">verified</span>
-                      <span>Action Approval Required</span>
-                    </div>
-                    <span class="text-[10px] font-label-sm text-outline">Expires in 15m</span>
-                  </div>
+                          <Show when={isThinkingOpen()}>
+                            <div class="p-3 font-mono text-[11px] text-on-surface-variant bg-surface-container-lowest/60 border-t border-outline-variant/20 whitespace-pre-wrap space-y-1">
+                              {msg.reasoning}
+                            </div>
+                          </Show>
+                        </div>
+                      </Show>
 
-                  <div class="text-xs text-on-surface font-mono bg-surface-container-lowest p-2 rounded">
-                    terraform apply -auto-approve prod-us-east
-                  </div>
+                      {/* Agent Tool Step Execution Bubble */}
+                      <Show when={msg.toolStep}>
+                        <div class="w-full bg-surface-container border border-outline-variant/30 rounded-xl p-3.5 space-y-2 text-sm">
+                          <div class="flex items-center justify-between text-xs font-label-sm text-outline border-b border-outline-variant/20 pb-1.5">
+                            <div class="flex items-center gap-1.5 text-primary">
+                              <span class="material-symbols-outlined text-[15px]">terminal</span>
+                              <span class="font-semibold">{msg.toolStep!.name}</span>
+                            </div>
+                            <span class="text-secondary">Completed</span>
+                          </div>
 
-                  <div class="flex items-center justify-between text-[11px] text-outline pt-1">
-                    <span>Permissions requested: Network, Write files, Execution</span>
-                    <div class="flex items-center gap-2">
-                      <Show
-                        when={!approvalHandled()}
-                        fallback={
-                          <span class="text-xs font-semibold text-secondary">
-                            {approvalHandled()}
-                          </span>
-                        }
-                      >
-                        <button
-                          onClick={() => {
-                            setApprovalHandled('Declined');
-                            addToast('warning', 'Action declined');
-                          }}
-                          class="px-2.5 py-1 rounded bg-surface-container hover:bg-error/20 hover:text-error text-on-surface text-xs font-medium transition-colors"
-                        >
-                          Decline
-                        </button>
-                        <button
-                          onClick={() => {
-                            setApprovalHandled('Approved & Executed');
-                            addToast('success', 'Action approved and executed');
-                          }}
-                          class="px-3 py-1 rounded bg-primary text-on-primary text-xs font-semibold hover:brightness-110 transition-all"
-                        >
-                          Approve
-                        </button>
+                          <div class="bg-surface-container-lowest p-2.5 rounded font-mono text-[12px] text-on-surface border border-outline-variant/20 whitespace-pre-wrap">
+                            {msg.toolStep!.output}
+                          </div>
+                        </div>
+                      </Show>
+
+                      {/* Message Body */}
+                      <div class="p-3.5 rounded-2xl rounded-tl-sm bg-surface-container border border-outline-variant/30 text-on-surface text-sm leading-relaxed max-w-2xl">
+                        {msg.body}
+                      </div>
+
+                      {/* Approval Prompt Card */}
+                      <Show when={msg.approval}>
+                        <div class="p-3 rounded-lg bg-surface-container-high border border-tertiary/40 flex flex-col gap-2 mt-2 w-full max-w-xl">
+                          <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2 text-tertiary font-label-sm text-xs font-semibold">
+                              <span class="material-symbols-outlined text-[16px]">verified</span>
+                              <span>Action Approval Required</span>
+                            </div>
+                            <span class="text-[10px] font-label-sm text-outline">
+                              {msg.approval!.status === 'pending' ? 'Expires in 15m' : msg.approval!.status.toUpperCase()}
+                            </span>
+                          </div>
+
+                          <div class="text-xs text-on-surface font-mono bg-surface-container-lowest p-2 rounded border border-outline-variant/20">
+                            {msg.approval!.command}
+                          </div>
+
+                          <div class="flex items-center justify-between text-[11px] text-outline pt-1">
+                            <span>Permissions requested: Network, Write files, Execution</span>
+                            <div class="flex items-center gap-2">
+                              <Show
+                                when={msg.approval!.status === 'pending'}
+                                fallback={
+                                  <span class={`text-xs font-semibold ${msg.approval!.status === 'approved' ? 'text-secondary' : 'text-error'}`}>
+                                    {msg.approval!.status === 'approved' ? 'Approved & Executed' : 'Declined'}
+                                  </span>
+                                }
+                              >
+                                <button
+                                  onClick={() => handleApproval(currentAgent()!.id, msg.id, false)}
+                                  class="px-2.5 py-1 rounded bg-surface-container hover:bg-error/20 hover:text-error text-on-surface text-xs font-medium transition-colors"
+                                >
+                                  Decline
+                                </button>
+                                <button
+                                  onClick={() => handleApproval(currentAgent()!.id, msg.id, true)}
+                                  class="px-3 py-1 rounded bg-primary text-on-primary text-xs font-semibold hover:brightness-110 transition-all"
+                                >
+                                  Approve
+                                </button>
+                              </Show>
+                            </div>
+                          </div>
+                        </div>
                       </Show>
                     </div>
+                  }
+                >
+                  {/* User Message */}
+                  <div class="flex flex-col items-end gap-1 max-w-3xl ml-auto">
+                    <div class="flex items-center gap-2 text-label-sm text-[11px] text-outline">
+                      <span>You</span>
+                      <span>{msg.createdAt}</span>
+                    </div>
+                    <div
+                      class="p-3.5 rounded-2xl rounded-tr-sm bg-surface-container-high border border-outline-variant/30 text-on-surface text-sm max-w-2xl leading-relaxed"
+                      style={state.settings.chatColor ? { 'background-color': state.settings.chatColor } : {}}
+                    >
+                      {msg.body}
+                    </div>
                   </div>
-                </div>
-              </div>
-            </div>
+                </Show>
+              )}
+            </For>
           </div>
 
           {/* Composer Box */}
-          <div class="p-3 bg-surface-container-low border-t border-outline-variant/30 flex-shrink-0">
+          <div class="p-3 bg-surface-container-low border-t border-outline-variant/30 flex-shrink-0 relative">
+            {/* Model Picker Popover */}
+            <Show when={isModelPickerOpen()}>
+              <div class="fixed inset-0 z-40" onClick={() => setIsModelPickerOpen(false)} />
+              <div class="absolute left-4 bottom-14 w-80 bg-surface-container border border-outline-variant/40 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-150">
+                <div class="flex items-center justify-between px-2 py-1 border-b border-outline-variant/20">
+                  <span class="font-label-sm text-[11px] font-semibold text-outline uppercase tracking-wider">
+                    Switch Model
+                  </span>
+                  <span class="text-[10px] text-secondary font-mono">Preserves Conversation</span>
+                </div>
+                <div class="max-h-72 overflow-y-auto flex flex-col gap-1 pr-1">
+                  <For each={AVAILABLE_MODELS}>
+                    {(group) => (
+                      <div class="flex flex-col gap-0.5">
+                        <span class="text-[10px] font-bold text-outline uppercase tracking-wider px-2 pt-1">
+                          {group.group}
+                        </span>
+                        <For each={group.models}>
+                          {(m) => (
+                            <button
+                              onClick={() => {
+                                changeAgentModel(currentAgent()!.id, m.provider, m.name);
+                                setIsModelPickerOpen(false);
+                              }}
+                              class={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-all ${
+                                currentAgent()?.model === m.name
+                                  ? 'bg-primary-container text-on-primary-container font-semibold'
+                                  : 'hover:bg-surface-container-high text-on-surface'
+                              }`}
+                            >
+                              <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[14px] text-primary">smart_toy</span>
+                                <span>{m.name}</span>
+                              </div>
+                              <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-container-highest text-outline">
+                                {m.badge}
+                              </span>
+                            </button>
+                          )}
+                        </For>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </div>
+            </Show>
+
             <div class="flex flex-col rounded-xl bg-surface-container border border-outline-variant/30 focus-within:border-primary/60 transition-colors shadow-sm">
               {/* Steer-while-working banner */}
               <div class="px-3 py-1 bg-surface-container-lowest/60 border-b border-outline-variant/20 flex items-center justify-between text-[11px] font-label-sm text-outline">
@@ -394,9 +525,9 @@ export const MainWorkspace: Component = () => {
                 <div class="flex items-center gap-1">
                   {/* Model Chip */}
                   <button
-                    onClick={() => addToast('success', 'Model picker')}
+                    onClick={() => setIsModelPickerOpen(!isModelPickerOpen())}
                     class="flex items-center gap-1 px-2 py-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-outline hover:text-on-surface font-label-sm text-[11px] transition-colors"
-                    title="Change Model"
+                    title="Change Model (Preserves Chat)"
                   >
                     <span class="material-symbols-outlined text-[13px] text-primary">smart_toy</span>
                     <span>{currentAgent()?.model}</span>

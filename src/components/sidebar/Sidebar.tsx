@@ -7,6 +7,10 @@ import {
   selectPerson,
   markAllAsRead,
   addToast,
+  openCreateAgentModal,
+  openEditAgentModal,
+  deleteAgent,
+  exportAgentTemplate,
 } from '../../stores/appState';
 import { Agent, Channel, Person, Folder } from '../../types';
 import { i18n } from '../../shared/i18n';
@@ -71,12 +75,9 @@ export const Sidebar: Component = () => {
     });
   };
 
-  const deleteAgent = (agentId: string) => {
-    const agent = state.agents.find((a) => a.id === agentId);
-    if (!agent) return;
-    setState('agents', (prev) => prev.filter((a) => a.id !== agentId));
-    addToast('warning', `Deleted agent ${agent.name}`, 'Undo available in trash');
+  const handleDeleteAgent = async (agentId: string) => {
     setActiveContextMenu(null);
+    await deleteAgent(agentId);
   };
 
   const duplicateAgent = (agentId: string) => {
@@ -204,7 +205,7 @@ export const Sidebar: Component = () => {
                 <button
                   onClick={() => {
                     setIsNewMenuOpen(false);
-                    addToast('success', 'Create new agent dialog');
+                    openCreateAgentModal();
                   }}
                   class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[12px] font-body-sm text-left"
                 >
@@ -682,13 +683,26 @@ export const Sidebar: Component = () => {
           <Show when={activeContextMenu()!.type === 'agent'}>
             <button
               onClick={() => {
-                addToast('success', 'Edit agent opened');
+                const id = activeContextMenu()!.id;
                 setActiveContextMenu(null);
+                openEditAgentModal(id);
               }}
               class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-left"
             >
               <span class="material-symbols-outlined text-[15px]">edit</span>
               <span>Edit agent</span>
+            </button>
+
+            <button
+              onClick={() => {
+                const id = activeContextMenu()!.id;
+                setActiveContextMenu(null);
+                exportAgentTemplate(id);
+              }}
+              class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-left"
+            >
+              <span class="material-symbols-outlined text-[15px]">bookmark_add</span>
+              <span>Save as Template</span>
             </button>
 
             <button
@@ -710,7 +724,7 @@ export const Sidebar: Component = () => {
             <div class="h-px bg-outline-variant/30 my-0.5" />
 
             <button
-              onClick={() => deleteAgent(activeContextMenu()!.id)}
+              onClick={() => handleDeleteAgent(activeContextMenu()!.id)}
               class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-error-container/20 text-error text-left"
             >
               <span class="material-symbols-outlined text-[15px]">delete</span>

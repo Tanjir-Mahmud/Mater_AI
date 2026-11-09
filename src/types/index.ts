@@ -95,6 +95,30 @@ export type AgentStatus =
   | 'waits_for_limit'
   | 'error';
 
+export interface AgentSections {
+  systemDirective: string;
+  executionBoundaries: string;
+  memoryPolicy: string;
+  fallbackStrategies: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  agentId: string;
+  author: 'user' | 'agent';
+  body: string;
+  createdAt: string;
+  reasoning?: string;
+  toolStep?: {
+    name: string;
+    output: string;
+  };
+  approval?: {
+    command: string;
+    status: 'pending' | 'approved' | 'declined';
+  };
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -117,6 +141,7 @@ export interface Agent {
   notificationLevel: 'all' | 'needs_me' | 'nothing';
   browserProfile: 'shared' | 'only_this_agent';
   workspacePath: string;
+  sections?: AgentSections;
   createdAt: string;
   updatedAt: string;
 }

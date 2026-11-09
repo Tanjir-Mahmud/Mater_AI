@@ -10,6 +10,8 @@ import {
   PageId,
   SidePanelTab,
   OnboardingState,
+  ChatMessage,
+  AgentSections,
 } from '../types';
 import { i18n } from '../shared/i18n';
 
@@ -99,6 +101,12 @@ const initialAgents: Agent[] = [
     notificationLevel: 'all',
     browserProfile: 'shared',
     workspacePath: 'Agents/agent-kestrel',
+    sections: {
+      systemDirective: 'Architect scalable distributed systems and oversee cross-agent technical integrity.',
+      executionBoundaries: 'Confined to agent-kestrel workspace; read-only access to team repositories.',
+      memoryPolicy: 'Persist architectural decisions and API contracts. Review every 20 turns.',
+      fallbackStrategies: 'On network partition, cache messages locally and retry with exponential backoff.',
+    },
     createdAt: '2026-11-01T10:00:00Z',
     updatedAt: '2026-11-09T12:30:00Z',
   },
@@ -118,6 +126,12 @@ const initialAgents: Agent[] = [
     notificationLevel: 'needs_me',
     browserProfile: 'shared',
     workspacePath: 'Agents/agent-cipher',
+    sections: {
+      systemDirective: 'Audit codebase for OWASP vulnerabilities, token leaks, and improper input sanitation.',
+      executionBoundaries: 'Static analysis only; destructive penetration testing requires explicit human authorization.',
+      memoryPolicy: 'Maintain CVE lookup cache; flag recurring anti-patterns.',
+      fallbackStrategies: 'Report unverified findings with severity low; alert on zero-day patterns.',
+    },
     createdAt: '2026-11-02T11:00:00Z',
     updatedAt: '2026-11-09T11:20:00Z',
   },
@@ -137,6 +151,12 @@ const initialAgents: Agent[] = [
     notificationLevel: 'all',
     browserProfile: 'shared',
     workspacePath: 'Agents/agent-vanguard',
+    sections: {
+      systemDirective: 'Manage Kubernetes infrastructure, dry-run Terraform plans, and coordinate production deployments.',
+      executionBoundaries: 'Cannot execute destructive cloud operations without human interactive confirmation.',
+      memoryPolicy: 'Retain infrastructure cluster topology; review memory after 20 turns.',
+      fallbackStrategies: 'Automatic rollback on failed health check probes; notify owner immediately.',
+    },
     createdAt: '2026-11-03T09:00:00Z',
     updatedAt: '2026-11-09T13:00:00Z',
   },
@@ -155,6 +175,12 @@ const initialAgents: Agent[] = [
     notificationLevel: 'needs_me',
     browserProfile: 'only_this_agent',
     workspacePath: 'Agents/agent-pulse',
+    sections: {
+      systemDirective: 'Track p99 API latencies and inspect OTel trace spans for regressions.',
+      executionBoundaries: 'Read-only queries to Jaeger and Prometheus metrics endpoints.',
+      memoryPolicy: 'Store baseline response times per service endpoint.',
+      fallbackStrategies: 'If Prometheus is unreachable, query secondary cluster proxy.',
+    },
     createdAt: '2026-11-04T14:00:00Z',
     updatedAt: '2026-11-09T13:10:00Z',
   },
@@ -172,6 +198,12 @@ const initialAgents: Agent[] = [
     notificationLevel: 'nothing',
     browserProfile: 'shared',
     workspacePath: 'Agents/agent-docubot',
+    sections: {
+      systemDirective: 'Generate API references, changelogs, and maintain markdown documentation.',
+      executionBoundaries: 'Confined to docs/ folder and workspace files.',
+      memoryPolicy: 'Retain style guide rules and terminologies.',
+      fallbackStrategies: 'Flag ambiguous technical definitions for user clarification.',
+    },
     createdAt: '2026-11-05T08:00:00Z',
     updatedAt: '2026-11-08T17:00:00Z',
   },
@@ -192,10 +224,61 @@ const initialAgents: Agent[] = [
     notificationLevel: 'all',
     browserProfile: 'only_this_agent',
     workspacePath: 'Agents/agent-triage',
+    sections: {
+      systemDirective: 'Classify incoming user bug reports and assign appropriate severity tags.',
+      executionBoundaries: 'Issue tracker read and label operations only.',
+      memoryPolicy: 'Cache active bug categories and component owners.',
+      fallbackStrategies: 'On quota limit, wait until reset time before processing queued reports.',
+    },
     createdAt: '2026-11-06T12:00:00Z',
     updatedAt: '2026-11-09T09:00:00Z',
   },
 ];
+
+const initialAgentMessages: Record<string, ChatMessage[]> = {
+  'agent-vanguard': [
+    {
+      id: 'vanguard-1',
+      agentId: 'agent-vanguard',
+      author: 'user',
+      body: 'Please verify our AWS production infrastructure state, run the dry-run terraform plan, and prepare the security review summary.',
+      createdAt: '12:28 PM',
+    },
+    {
+      id: 'vanguard-2',
+      agentId: 'agent-vanguard',
+      author: 'agent',
+      body: 'The infrastructure changes have been validated against our security baseline. The plan modifies our ingress security group to allow TLS 1.3 traffic and spins up 2 supplementary container nodes.',
+      createdAt: '12:29 PM',
+      reasoning: '1. Querying AWS credential status from local keychain...\n Profile `prod-us-east` authenticated\n2. Reading Terraform configurations in `infra/prod/`\n3. Generating plan execution graph for cluster...',
+      toolStep: {
+        name: 'Tool Execution: CLI Command',
+        output: '$ terraform plan -detailed-exitcode\nPlan: 2 to add, 1 to change, 0 to destroy.\nOutputs: cluster_endpoint = "k8s-prod.us-east.openbot.run"',
+      },
+      approval: {
+        command: 'terraform apply -auto-approve prod-us-east',
+        status: 'pending',
+      },
+    },
+  ],
+  'agent-kestrel': [
+    {
+      id: 'kestrel-1',
+      agentId: 'agent-kestrel',
+      author: 'user',
+      body: 'Kestrel, can you review our microservice communication topology?',
+      createdAt: '10:15 AM',
+    },
+    {
+      id: 'kestrel-2',
+      agentId: 'agent-kestrel',
+      author: 'agent',
+      body: 'I reviewed the topology. The gRPC latency is optimal, and all services are correctly discovering via local DNS.',
+      createdAt: '10:16 AM',
+      reasoning: '1. Reading network graph\n2. Verifying latency SLA\n3. Completed analysis.',
+    },
+  ],
+};
 
 const initialChannels: Channel[] = [
   {
@@ -275,6 +358,10 @@ export const [state, setState] = createStore({
   ] as SidePanelTab[],
   isGlobalSearchOpen: false,
   isSettingsOpen: false,
+  isAgentSetupModalOpen: false,
+  agentSetupModalMode: 'create' as 'create' | 'edit',
+  editingAgentId: null as string | null,
+  agentMessages: initialAgentMessages as Record<string, ChatMessage[]>,
   activeSettingsTab: 'general',
   isQuitDialogOpen: false,
   isLoading: true,
@@ -367,4 +454,181 @@ export function closeSidePanelTab(tabId: string) {
   if (state.activeSidePanelTab === tabId && remainingTabs.length > 0) {
     setState('activeSidePanelTab', remainingTabs[0].id);
   }
+}
+
+// Milestone 2 Agent & Provider Actions
+export function openCreateAgentModal() {
+  setState('agentSetupModalMode', 'create');
+  setState('editingAgentId', null);
+  setState('isAgentSetupModalOpen', true);
+}
+
+export function openEditAgentModal(agentId: string) {
+  setState('agentSetupModalMode', 'edit');
+  setState('editingAgentId', agentId);
+  setState('isAgentSetupModalOpen', true);
+}
+
+export function closeAgentSetupModal() {
+  setState('isAgentSetupModalOpen', false);
+}
+
+export async function saveAgentFromSetup(agentData: Partial<Agent>): Promise<Agent> {
+  const isEdit = state.agentSetupModalMode === 'edit' && state.editingAgentId;
+  if (isEdit) {
+    const existing = state.agents.find((a) => a.id === state.editingAgentId);
+    if (!existing) throw new Error('Agent not found');
+    const updated: Agent = {
+      ...existing,
+      ...agentData,
+      updatedAt: new Date().toISOString(),
+    };
+    setState('agents', (a) => a.id === existing.id, updated);
+    addToast('success', `Agent "${updated.name}" updated`);
+    closeAgentSetupModal();
+    return updated;
+  } else {
+    const id = `agent-${Date.now()}`;
+    const newAgent: Agent = {
+      id,
+      name: agentData.name || 'Sentinel',
+      role: agentData.role || 'Autonomous Teammate',
+      avatar: agentData.avatar || 'smart_toy',
+      avatarColor: agentData.avatarColor || 'bg-primary-container text-on-primary-container',
+      status: 'idle',
+      unreadCount: 0,
+      section: 'unassigned',
+      model: agentData.model || 'OpenCode Free',
+      provider: agentData.provider || 'opencode',
+      reasoningLevel: agentData.reasoningLevel || 'high',
+      notificationLevel: agentData.notificationLevel || 'all',
+      browserProfile: agentData.browserProfile || 'shared',
+      workspacePath: `Agents/${id}`,
+      sections: agentData.sections || {
+        systemDirective: 'Operate autonomously as an AI teammate.',
+        executionBoundaries: 'Confined to agent workspace directory.',
+        memoryPolicy: 'Persist essential invariants; review every 20 turns.',
+        fallbackStrategies: 'On failure, report diagnostics and retry.',
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    if ((window as any).openbot?.createAgent) {
+      await (window as any).openbot.createAgent(newAgent);
+    }
+
+    setState('agents', (prev) => [newAgent, ...prev]);
+    setState('selectedAgentId', newAgent.id);
+    addToast('success', `Agent "${newAgent.name}" created`, `Workspace initialized at ${newAgent.workspacePath}`);
+    closeAgentSetupModal();
+    return newAgent;
+  }
+}
+
+export async function deleteAgent(agentId: string) {
+  const agent = state.agents.find((a) => a.id === agentId);
+  if (!agent) return;
+
+  if ((window as any).openbot?.deleteAgent) {
+    await (window as any).openbot.deleteAgent(agentId);
+  }
+
+  const remaining = state.agents.filter((a) => a.id !== agentId);
+  setState('agents', remaining);
+
+  if (state.selectedAgentId === agentId) {
+    if (remaining.length > 0) {
+      setState('selectedAgentId', remaining[0].id);
+    } else {
+      setState('selectedAgentId', '');
+    }
+  }
+
+  addToast('success', `Agent "${agent.name}" deleted`, 'Workspace directory cleaned up');
+}
+
+export async function exportAgentTemplate(agentId: string) {
+  const agent = state.agents.find((a) => a.id === agentId);
+  if (!agent) return;
+
+  if ((window as any).openbot?.exportAgentTemplate) {
+    const res = await (window as any).openbot.exportAgentTemplate(agentId);
+    if (res?.template?.publicUrl) {
+      addToast('success', 'Agent template exported', res.template.publicUrl);
+      return res.template;
+    }
+  }
+  addToast('success', 'Agent template exported', `https://openbot.run/template/${agentId}`);
+}
+
+export function changeAgentModel(agentId: string, provider: string, model: string) {
+  setState('agents', (a) => a.id === agentId, { provider, model, updatedAt: new Date().toISOString() });
+  addToast('success', `Model switched to ${model}`, 'Conversation history preserved across providers');
+}
+
+export async function sendMessageToCurrentAgent(messageText: string) {
+  const agent = state.agents.find((a) => a.id === state.selectedAgentId);
+  if (!agent) return;
+
+  const userMsg: ChatMessage = {
+    id: `msg-${Date.now()}-user`,
+    agentId: agent.id,
+    author: 'user',
+    body: messageText,
+    createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  };
+
+  const prev = state.agentMessages[agent.id] || [];
+  setState('agentMessages', agent.id, [...prev, userMsg]);
+  setState('agents', (a) => a.id === agent.id, 'status', 'thinking');
+
+  try {
+    let reply: any = null;
+    if ((window as any).openbot?.sendMessage) {
+      reply = await (window as any).openbot.sendMessage({
+        agentId: agent.id,
+        providerId: agent.provider,
+        model: agent.model,
+        message: messageText,
+      });
+    }
+
+    const agentMsg: ChatMessage = {
+      id: `msg-${Date.now()}-agent`,
+      agentId: agent.id,
+      author: 'agent',
+      body: reply?.text || `Task completed under ${agent.provider} (${agent.model}). Workspace state updated.`,
+      reasoning: reply?.reasoning,
+      toolStep: reply?.toolStep,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setState('agentMessages', agent.id, (msgs = []) => [...msgs, agentMsg]);
+    setState('agents', (a) => a.id === agent.id, 'status', 'responded');
+  } catch (err: any) {
+    setState('agents', (a) => a.id === agent.id, 'status', 'error');
+    addToast('error', 'Execution error', err.message);
+  }
+}
+
+export function handleApproval(agentId: string, messageId: string, approved: boolean) {
+  const msgs = state.agentMessages[agentId] || [];
+  const updated = msgs.map((m) => {
+    if (m.id === messageId && m.approval) {
+      return {
+        ...m,
+        approval: {
+          ...m.approval,
+          status: approved ? ('approved' as const) : ('declined' as const),
+        },
+      };
+    }
+    return m;
+  });
+  setState('agentMessages', agentId, updated);
+  addToast(
+    approved ? 'success' : 'warning',
+    approved ? 'Action approved and executed' : 'Action declined'
+  );
 }

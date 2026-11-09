@@ -1,5 +1,5 @@
 import { Component, onMount, onCleanup, For, Show } from 'solid-js';
-import { state, setState, toggleTheme } from '../../stores/appState';
+import { state, setState, toggleTheme, openCreateAgentModal } from '../../stores/appState';
 import { PageRail } from '../navigation/PageRail';
 import { ServerRail } from '../navigation/ServerRail';
 import { Sidebar } from '../sidebar/Sidebar';
@@ -9,6 +9,7 @@ import { OnboardingModal } from '../onboarding/OnboardingModal';
 import { SettingsModal } from '../settings/SettingsModal';
 import { GlobalSearchModal } from '../dialogs/GlobalSearchModal';
 import { QuitConfirmDialog } from '../dialogs/QuitConfirmDialog';
+import { AgentSetupModal } from '../modals/AgentSetupModal';
 
 export const Shell: Component = () => {
   const isMac = () => (window as any).openbot?.platform === 'darwin';
@@ -29,7 +30,16 @@ export const Shell: Component = () => {
           setState('isSettingsOpen', true);
         }
       );
-      onCleanup(unsubSettings);
+      const unsubNewAgent = (window as any).openbot.onMenuEvent(
+        'menu:new-agent',
+        () => {
+          openCreateAgentModal();
+        }
+      );
+      onCleanup(() => {
+        unsubSettings();
+        unsubNewAgent();
+      });
     }
   });
 
@@ -156,6 +166,9 @@ export const Shell: Component = () => {
       <SettingsModal />
       <GlobalSearchModal />
       <QuitConfirmDialog />
+      <Show when={state.isAgentSetupModalOpen}>
+        <AgentSetupModal />
+      </Show>
     </div>
   );
 };

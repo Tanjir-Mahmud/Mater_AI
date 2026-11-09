@@ -14,7 +14,7 @@ async function build() {
     bundle: true,
     platform: 'node',
     target: 'node20',
-    external: ['electron', 'better-sqlite3'],
+    external: ['electron', 'sql.js', 'better-sqlite3'],
     format: 'cjs',
     sourcemap: true,
   });

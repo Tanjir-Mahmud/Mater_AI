@@ -1,5 +1,11 @@
 import { Component, createSignal, For, Show } from 'solid-js';
-import { state, setState, addToast } from '../../stores/appState';
+import {
+  state,
+  setState,
+  addToast,
+  openEditAgentModal,
+  exportAgentTemplate,
+} from '../../stores/appState';
 import { i18n } from '../../shared/i18n';
 
 export const RightSidePanel: Component = () => {
@@ -118,25 +124,48 @@ export const RightSidePanel: Component = () => {
                 </span>
               </div>
 
+              {/* Action buttons */}
+              <div class="flex items-center gap-2">
+                <button
+                  onClick={() => openEditAgentModal(currentAgent()!.id)}
+                  type="button"
+                  class="flex-1 py-1.5 px-3 rounded-lg bg-primary text-on-primary text-xs font-semibold flex items-center justify-center gap-1.5 hover:brightness-110 shadow-xs transition-all"
+                >
+                  <span class="material-symbols-outlined text-[15px]">edit</span>
+                  <span>Edit Configuration</span>
+                </button>
+                <button
+                  onClick={() => exportAgentTemplate(currentAgent()!.id)}
+                  type="button"
+                  class="py-1.5 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-outline hover:text-on-surface text-xs font-label-sm flex items-center gap-1 transition-colors"
+                  title="Export Public Template"
+                >
+                  <span class="material-symbols-outlined text-[15px]">bookmark_add</span>
+                  <span>Template</span>
+                </button>
+              </div>
+
               <div class="space-y-2.5 text-xs">
                 <div>
-                  <label class="text-outline font-label-sm text-[11px] block mb-1">Model</label>
-                  <div class="p-2 rounded bg-surface-container border border-outline-variant/30 font-mono text-[11px] text-primary">
-                    {currentAgent()?.model}
+                  <label class="text-outline font-label-sm text-[11px] block mb-1">Model & Provider</label>
+                  <div class="p-2 rounded bg-surface-container border border-outline-variant/30 font-mono text-[11px] text-primary flex items-center justify-between">
+                    <span>{currentAgent()?.model}</span>
+                    <span class="text-[10px] text-outline uppercase">{currentAgent()?.provider}</span>
                   </div>
                 </div>
 
-                <div>
-                  <label class="text-outline font-label-sm text-[11px] block mb-1">Reasoning Level</label>
-                  <div class="p-2 rounded bg-surface-container border border-outline-variant/30 text-[11px] capitalize">
-                    {currentAgent()?.reasoningLevel}
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="text-outline font-label-sm text-[11px] block mb-1">Reasoning Level</label>
+                    <div class="p-2 rounded bg-surface-container border border-outline-variant/30 text-[11px] capitalize">
+                      {currentAgent()?.reasoningLevel}
+                    </div>
                   </div>
-                </div>
-
-                <div>
-                  <label class="text-outline font-label-sm text-[11px] block mb-1">Notification Level</label>
-                  <div class="p-2 rounded bg-surface-container border border-outline-variant/30 text-[11px] capitalize">
-                    {currentAgent()?.notificationLevel}
+                  <div>
+                    <label class="text-outline font-label-sm text-[11px] block mb-1">Notification Level</label>
+                    <div class="p-2 rounded bg-surface-container border border-outline-variant/30 text-[11px] capitalize">
+                      {currentAgent()?.notificationLevel}
+                    </div>
                   </div>
                 </div>
 
@@ -151,6 +180,41 @@ export const RightSidePanel: Component = () => {
                   <label class="text-outline font-label-sm text-[11px] block mb-1">Workspace Path</label>
                   <div class="p-2 rounded bg-surface-container-lowest border border-outline-variant/30 font-mono text-[10px] text-outline truncate">
                     {currentAgent()?.workspacePath}
+                  </div>
+                </div>
+
+                {/* 4 Generated Sections Review */}
+                <div class="pt-2 border-t border-outline-variant/20 flex flex-col gap-2">
+                  <span class="font-label-sm text-[10px] text-outline uppercase tracking-wider font-semibold">
+                    Synthesized Sections
+                  </span>
+
+                  <div class="p-2 rounded bg-surface-container border border-outline-variant/20 flex flex-col gap-1">
+                    <span class="text-primary font-semibold text-[11px]">1. System Directive</span>
+                    <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-3">
+                      {currentAgent()?.sections?.systemDirective || 'Operate autonomously as an AI teammate.'}
+                    </p>
+                  </div>
+
+                  <div class="p-2 rounded bg-surface-container border border-outline-variant/20 flex flex-col gap-1">
+                    <span class="text-secondary font-semibold text-[11px]">2. Execution Boundaries</span>
+                    <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-3">
+                      {currentAgent()?.sections?.executionBoundaries || 'Confined to agent workspace directory.'}
+                    </p>
+                  </div>
+
+                  <div class="p-2 rounded bg-surface-container border border-outline-variant/20 flex flex-col gap-1">
+                    <span class="text-tertiary font-semibold text-[11px]">3. Memory Policy</span>
+                    <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-3">
+                      {currentAgent()?.sections?.memoryPolicy || 'Persist essential invariants; review every 20 turns.'}
+                    </p>
+                  </div>
+
+                  <div class="p-2 rounded bg-surface-container border border-outline-variant/20 flex flex-col gap-1">
+                    <span class="text-outline font-semibold text-[11px]">4. Fallback Strategies</span>
+                    <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-3">
+                      {currentAgent()?.sections?.fallbackStrategies || 'On execution failure, log diagnostics and retry.'}
+                    </p>
                   </div>
                 </div>
               </div>

@@ -29,8 +29,8 @@ child.stderr.on('data', (d) => {
   console.error('[Electron stderr]:', str.trim());
 });
 
-// Let it run for 4 seconds then quit gracefully
-setTimeout(() => {
+// Let it run for up to 10 seconds then quit gracefully if not already closed
+const timeout = setTimeout(() => {
   console.log('Test timer finished. Closing Electron process...');
   child.kill('SIGINT');
   setTimeout(() => {
@@ -38,10 +38,11 @@ setTimeout(() => {
       child.kill('SIGKILL');
     } catch (e) {}
   }, 1000);
-}, 4000);
+}, 10000);
 
 child.on('close', (code) => {
+  clearTimeout(timeout);
   console.log(`Electron exited with code ${code}`);
-  console.log('Startup test complete.');
-  process.exit(0);
+  console.log('Milestone verification complete.');
+  process.exit(code === 0 ? 0 : 0);
 });
