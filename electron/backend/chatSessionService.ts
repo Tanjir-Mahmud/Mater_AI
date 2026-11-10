@@ -323,37 +323,65 @@ export class ChatSessionService {
     const turnsToCompact = turnIds.slice(0, turnIds.length - turnsToPreserve);
     const compactTurnCount = turnsToCompact.length;
 
-    // Collect essential facts/messages from older turns
-    const olderBodies: string[] = [];
+    // Collect essential facts, key points, decisions, and user requests from older turns
+    const olderEntries: string[] = [];
     for (const tId of turnsToCompact) {
       const msgs = turnsMap.get(tId) || [];
       for (const m of msgs) {
         if (m.kind !== 'compaction-summary') {
-          olderBodies.push(`[${m.author}]: ${m.body.substring(0, 140)}`);
+          // Normalize whitespace and truncate each entry to max ~140 chars
+          const cleanBody = m.body.replace(/\s+/g, ' ').trim();
+          const truncated = cleanBody.length > 140 ? `${cleanBody.substring(0, 137)}...` : cleanBody;
+          const roleLabel = m.author === 'user' ? 'User' : 'Agent';
+          olderEntries.push(`• [${roleLabel}]: ${truncated}`);
         }
       }
     }
 
-    const summaryText =
-      `[Compaction Summary · Context Window Compacted]\n` +
-      `Summarized ${compactTurnCount} prior turns to conserve model context. Key architectural directives and session decisions:\n` +
-      `- Preserved ${olderBodies.length} interaction steps.\n` +
-      `- Active workspace state and persistent invariant memories retained.`;
+    // Cap the card at a sensible size (max 20 entries or ~2,000 chars)
+    const MAX_ENTRIES = 20;
+    const MAX_CONTENT_CHARS = 2000;
+    let selectedEntries = olderEntries;
+    let foldedCount = 0;
 
-    // Remove older messages from active view and insert the unified compaction summary
-    for (const tId of turnsToCompact) {
-      db.run(`DELETE FROM messages WHERE thread_id = ? AND turn_id = ?;`, [threadId, tId]);
+    if (selectedEntries.length > MAX_ENTRIES) {
+      foldedCount += selectedEntries.length - MAX_ENTRIES;
+      selectedEntries = selectedEntries.slice(-MAX_ENTRIES);
     }
+
+    let totalLength = selectedEntries.reduce((acc, e) => acc + e.length + 1, 0);
+    while (selectedEntries.length > 1 && totalLength > MAX_CONTENT_CHARS) {
+      selectedEntries.shift();
+      foldedCount++;
+      totalLength = selectedEntries.reduce((acc, e) => acc + e.length + 1, 0);
+    }
+
+    let summaryText =
+      `[Compaction Summary · Context Window Compacted]\n` +
+      `Summarized ${compactTurnCount} prior turn${compactTurnCount > 1 ? 's' : ''} to conserve model context while preserving key facts, user requests, and decisions:\n`;
+
+    if (foldedCount > 0) {
+      summaryText += `(${foldedCount} earlier interaction steps summarized and folded in)\n`;
+    }
+
+    summaryText += selectedEntries.join('\n') +
+      `\n\n- Active workspace state, session invariants, and thread identity retained.`;
 
     const summaryMsgId = `msg-compact-${Date.now()}`;
     const summaryTurnId = `turn-compact-${Date.now()}`;
     const now = new Date().toISOString();
 
+    // 1. Write the summary card FIRST into the database with real content
     db.run(
       `INSERT INTO messages (id, thread_id, turn_id, author, kind, body, created_at)
        VALUES (?, ?, ?, 'agent', 'compaction-summary', ?, ?);`,
       [summaryMsgId, threadId, summaryTurnId, summaryText, now]
     );
+
+    // 2. Only AFTER writing the summary card, remove the compacted messages
+    for (const tId of turnsToCompact) {
+      db.run(`DELETE FROM messages WHERE thread_id = ? AND turn_id = ? AND id != ?;`, [threadId, tId, summaryMsgId]);
+    }
 
     saveDatabase(db);
 

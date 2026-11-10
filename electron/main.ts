@@ -364,30 +364,65 @@ function createWindow() {
         await chatSessionService.resumeQueue(queueAgent);
 
         // 6. Thread Compaction (summarize older turns, never lose thread)
-        console.log('[Test] 6. Testing thread compaction...');
+        console.log('[Test] 6. Testing thread compaction with content verification...');
         const compactAgent = 'agent-test-compact';
         const compactThreadObj = await chatSessionService.createThread(compactAgent, 'Long Thread for Compaction', 'main');
-        for (let i = 1; i <= 5; i++) {
+        
+        // Populate thread with 5 turns, where turn 1 contains a distinctive searchable phrase
+        await chatSessionService.submitTurnMessage({
+          agentId: compactAgent,
+          threadId: compactThreadObj.id,
+          providerId: 'opencode',
+          model: 'OpenCode Free',
+          messageText: 'Compaction Turn #1: System design directive BLUE-FALCON-CHECK-4821 verified and approved.',
+        });
+        await chatSessionService.submitTurnMessage({
+          agentId: compactAgent,
+          threadId: compactThreadObj.id,
+          providerId: 'opencode',
+          model: 'OpenCode Free',
+          messageText: 'Compaction Turn #2: Database schema migration and invariant rules confirmed.',
+        });
+        for (let i = 3; i <= 5; i++) {
           await chatSessionService.submitTurnMessage({
             agentId: compactAgent,
             threadId: compactThreadObj.id,
             providerId: 'opencode',
             model: 'OpenCode Free',
-            messageText: `Compaction Turn #${i}: System design note and invariant decision ${i}`,
+            messageText: `Compaction Turn #${i}: Recent interaction step and telemetry check ${i}`,
           });
         }
         const msgsBeforeCompact = await chatSessionService.getMessages(compactThreadObj.id);
         console.log(`[Test]    - Thread has ${msgsBeforeCompact.length} messages before compaction.`);
-        const compactResult = await chatSessionService.compactThread(compactThreadObj.id, 2);
+        
+        // Compact older turns, keeping the last 3 turns untouched per spec
+        const compactResult = await chatSessionService.compactThread(compactThreadObj.id, 3);
         if (!compactResult.success || compactResult.compactedTurns === 0) {
           throw new Error(`Compaction failed: ${compactResult.summary}`);
         }
         const msgsAfterCompact = await chatSessionService.getMessages(compactThreadObj.id);
-        const hasSummaryMsg = msgsAfterCompact.some((m) => m.kind === 'compaction-summary');
-        if (!hasSummaryMsg) {
+        const summaryMsg = msgsAfterCompact.find((m) => m.kind === 'compaction-summary');
+        if (!summaryMsg) {
           throw new Error('Compacted thread must contain compaction-summary message card');
         }
-        console.log(`[Test]    - Compaction successful: ${compactResult.compactedTurns} turns compacted, summary message card inserted, thread preserved.`);
+
+        // Exact content check: The summary card MUST contain the distinctive phrase from the older turn
+        if (!summaryMsg.body.includes('BLUE-FALCON-CHECK-4821')) {
+          throw new Error(
+            `Compaction Content Check Failed: Summary card must contain distinctive content ("BLUE-FALCON-CHECK-4821") from compacted turns, but got:\n${summaryMsg.body}`
+          );
+        }
+
+        // The card must NOT be just a count/tombstone; it must include real dialogue items
+        if (!summaryMsg.body.includes('[User]:') && !summaryMsg.body.includes('[Agent]:')) {
+          throw new Error(
+            `Compaction Content Check Failed: Summary card must include actual dialogue entries with roles, not just counts. Got:\n${summaryMsg.body}`
+          );
+        }
+
+        console.log(`[Test]    - Compaction successful: ${compactResult.compactedTurns} turns compacted.`);
+        console.log(`[Test]    - Content check verified: summary card contains distinctive phrase "BLUE-FALCON-CHECK-4821" and real dialogue entries:`);
+        console.log(`      ${summaryMsg.body.split('\n').slice(0, 4).join('\n      ')}...`);
 
         // 7. Strict Rule: Zero fake replies
         console.log('[Test] 7. Testing zero fake replies rule...');
