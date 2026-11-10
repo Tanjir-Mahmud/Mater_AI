@@ -5,11 +5,13 @@ import {
   addToast,
   openEditAgentModal,
   exportAgentTemplate,
+  switchAgentThread,
 } from '../../stores/appState';
 import { i18n } from '../../shared/i18n';
 
 export const RightSidePanel: Component = () => {
   const [panelWidth, setPanelWidth] = createSignal(380);
+  const [sideInputText, setSideInputText] = createSignal('');
 
   const currentAgent = () =>
     state.agents.find((a) => a.id === state.selectedAgentId) || state.agents[0];
@@ -17,6 +19,41 @@ export const RightSidePanel: Component = () => {
   const activeTab = () =>
     state.sidePanelTabs.find((t) => t.id === state.activeSidePanelTab) ||
     state.sidePanelTabs[0];
+
+  const currentSideThread = () => {
+    const a = currentAgent();
+    if (!a) return null;
+    if (state.activeSideThread) return state.activeSideThread;
+    const threads = state.threads[a.id] || [];
+    return threads.find((t) => t.kind === 'side' || t.kind === 'branch') || threads[0] || null;
+  };
+
+  const sideThreadMessages = () => {
+    const a = currentAgent();
+    const st = currentSideThread();
+    if (!a || !st) return [];
+    const msgs = state.agentMessages[a.id] || [];
+    const filtered = msgs.filter((m) => m.threadId === st.id);
+    return filtered.length > 0 ? filtered : msgs.slice(-4);
+  };
+
+  const handleSendSideMessage = () => {
+    const text = sideInputText().trim();
+    const st = currentSideThread();
+    const a = currentAgent();
+    if (!text || !st || !a) return;
+    setSideInputText('');
+    const newMsg = {
+      id: `msg-side-${Date.now()}`,
+      agentId: a.id,
+      threadId: st.id,
+      author: 'user' as const,
+      body: text,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setState('agentMessages', a.id, (msgs = []) => [...msgs, newMsg]);
+    addToast('success', 'Side thread updated');
+  };
 
   const handleCloseTab = (tabId: string) => {
     const tabToClose = state.sidePanelTabs.find((t) => t.id === tabId);
@@ -271,19 +308,93 @@ export const RightSidePanel: Component = () => {
             </div>
           </Show>
 
-          {/* PANE 4: SIDE THREAD */}
+          {/* PANE 4: SIDE THREAD & BRANCH */}
           <Show when={activeTab()?.type === 'side_thread'}>
             <div class="flex flex-col h-full gap-2">
-              <div class="flex items-center justify-between pb-1.5 border-b border-outline-variant/20 text-xs">
-                <span class="font-semibold text-on-surface">Side Thread #1</span>
-                <span class="text-[10px] text-outline">Branch of main thread</span>
-              </div>
-              <div class="flex-1 p-3 rounded bg-surface-container-lowest border border-outline-variant/20 text-xs text-outline space-y-2 overflow-y-auto">
-                <div class="p-2 rounded bg-surface-container text-on-surface">
-                  <span class="font-semibold text-primary">User:</span> Verify isolated edge test case.
+              <div class="flex items-center justify-between pb-1.5 border-b border-outline-variant/20 text-xs flex-shrink-0">
+                <div class="flex items-center gap-1.5 truncate">
+                  <span class="material-symbols-outlined text-[15px] text-primary">alt_route</span>
+                  <span class="font-semibold text-on-surface truncate">
+                    {currentSideThread()?.title || 'Side Thread'}
+                  </span>
+                  <span class="text-[9px] px-1 rounded bg-secondary/10 text-secondary font-mono uppercase">
+                    {currentSideThread()?.kind || 'branch'}
+                  </span>
                 </div>
-                <div class="p-2 rounded bg-surface-container-high text-on-surface">
-                  <span class="font-semibold text-secondary">Kestrel:</span> Test completed in isolated work tree without affecting main branch.
+                <button
+                  onClick={() => {
+                    const st = currentSideThread();
+                    const a = currentAgent();
+                    if (st && a) {
+                      switchAgentThread(a.id, st.id);
+                      addToast('success', 'Switched to thread in main workspace');
+                    }
+                  }}
+                  class="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-outline hover:text-on-surface text-[10px] font-label-sm border border-outline-variant/30 flex items-center gap-1 transition-colors flex-shrink-0"
+                  title="Promote to main workspace view"
+                >
+                  <span class="material-symbols-outlined text-[12px]">open_in_new</span>
+                  <span>Open in View</span>
+                </button>
+              </div>
+
+              {/* Origin info banner */}
+              <div class="px-2 py-1 rounded bg-surface-container-lowest border border-outline-variant/20 text-[10px] text-outline flex items-center justify-between">
+                <span>Branch origin: Main conversation turn</span>
+                <span class="font-mono text-primary">isolated session</span>
+              </div>
+
+              {/* Messages feed */}
+              <div class="flex-1 p-2.5 rounded-lg bg-surface-container-lowest border border-outline-variant/20 text-xs space-y-2 overflow-y-auto">
+                <For each={sideThreadMessages()}>
+                  {(msg) => (
+                    <div
+                      class={`p-2 rounded text-xs leading-relaxed ${
+                        msg.author === 'user'
+                          ? 'bg-surface-container-high text-on-surface ml-3 border border-outline-variant/20'
+                          : 'bg-surface-container text-on-surface mr-3 border border-outline-variant/30'
+                      }`}
+                    >
+                      <div class="flex items-center justify-between text-[10px] font-label-sm text-outline mb-1">
+                        <span class={msg.author === 'user' ? 'text-on-surface font-semibold' : 'text-primary font-semibold'}>
+                          {msg.author === 'user' ? 'You' : currentAgent()?.name}
+                        </span>
+                        <span>{msg.createdAt}</span>
+                      </div>
+                      <p class="whitespace-pre-wrap">{msg.body}</p>
+                    </div>
+                  )}
+                </For>
+              </div>
+
+              {/* Mini side thread composer */}
+              <div class="pt-1 flex flex-col gap-1 flex-shrink-0">
+                <div class="flex items-center gap-1 bg-surface-container rounded-lg border border-outline-variant/30 p-1 focus-within:border-primary/60">
+                  <input
+                    type="text"
+                    value={sideInputText()}
+                    onInput={(e) => setSideInputText(e.currentTarget.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSendSideMessage();
+                      }
+                    }}
+                    placeholder="Reply in side thread..."
+                    class="flex-1 bg-transparent border-0 outline-none px-2 py-1 text-xs text-on-surface placeholder:text-outline"
+                  />
+                  <button
+                    onClick={handleSendSideMessage}
+                    disabled={!sideInputText().trim()}
+                    class={`p-1 rounded flex items-center justify-center transition-colors ${
+                      sideInputText().trim()
+                        ? 'bg-primary text-on-primary hover:brightness-110'
+                        : 'text-outline opacity-40 cursor-not-allowed'
+                    }`}
+                    title="Send to side thread"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">send</span>
+                  </button>
                 </div>
               </div>
             </div>

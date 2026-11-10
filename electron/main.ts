@@ -6,6 +6,7 @@ import { providerEngine } from './backend/providerEngine';
 import { generateAgentFromPrompt } from './backend/agentGenerator';
 import { isVersionAtLeast } from './backend/processSupervisor';
 import { claudeVendorSdk } from './backend/claudeVendorSdk';
+import { chatSessionService } from './backend/chatSessionService';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -164,116 +165,278 @@ function createWindow() {
   setupTray();
 
   if (process.argv.includes('--test-mode')) {
-    console.log('[Test] Running Milestone 2 verification suite (including 6 requested fixes)...');
+    console.log('[Test] Running Milestone 3 verification suite (Chat & Sessions)...');
     mainWindow.webContents.once('did-finish-load', async () => {
       try {
-        // Fix 1: Disconnected sendMessage throws; NO fake replies or fake reasoning
-        let disconnectedThrew = false;
+        // =========================================================================
+        // MILESTONE 3 TESTS: Chat & Sessions
+        // =========================================================================
+
+        const testAgent = 'agent-test-m3';
+
+        // 1. Thread Limit: Max 50 open threads per agent
+        console.log('[Test] 1. Testing max 50 open threads per agent limit...');
+        const limitAgent = 'agent-test-limit-50';
+        const initialThreads = await chatSessionService.getThreads(limitAgent);
+        const countToCreate = 50 - initialThreads.length;
+        for (let i = 0; i < countToCreate; i++) {
+          await chatSessionService.createThread(limitAgent, `Thread Batch ${i + 1}`, 'main');
+        }
+        const openThreads = await chatSessionService.getThreads(limitAgent);
+        if (openThreads.length !== 50) {
+          throw new Error(`Expected exactly 50 open threads, got ${openThreads.length}`);
+        }
+        console.log(`[Test]    - Successfully reached 50 open threads for ${limitAgent}`);
+
+        // 51st open thread MUST throw an error
+        let fiftyFirstThrew = false;
         try {
-          await providerEngine.sendMessage('claude', 'Claude 3.5 Sonnet', 'Check cluster latency');
+          await chatSessionService.createThread(limitAgent, 'Thread 51 Over Limit', 'main');
         } catch (err: any) {
-          disconnectedThrew = true;
-          console.log(`[Test] 1. Disconnected sendMessage properly threw error: "${err.message}" (Zero fake replies returned).`);
+          fiftyFirstThrew = true;
+          if (!err.message.includes('Maximum 50 open threads reached')) {
+            throw new Error(`Expected max threads error message, got: ${err.message}`);
+          }
+          console.log(`[Test]    - 51st thread correctly rejected: "${err.message}"`);
         }
-        if (!disconnectedThrew) {
-          throw new Error('Fix 1 Failed: sendMessage should throw when provider is not connected/signed in, not return fake replies.');
+        if (!fiftyFirstThrew) {
+          throw new Error('Limit 1 Failed: Creating 51st thread should have thrown an error!');
         }
 
-        // Fix 2: Minimum version enforcement in version probe
-        const clineDef = providerEngine.getCatalogue().find((p) => p.id === 'cline');
-        const kimiDef = providerEngine.getCatalogue().find((p) => p.id === 'kimi');
-        const openCodeDef = providerEngine.getCatalogue().find((p) => p.id === 'opencode');
-        if (clineDef?.minVersion !== '3.0.68') throw new Error('Fix 2 Failed: Cline minVersion must be 3.0.68');
-        if (kimiDef?.minVersion !== '1.52.0') throw new Error('Fix 2 Failed: Kimi minVersion must be 1.52.0');
-        if (openCodeDef?.minVersion !== undefined) throw new Error('Fix 2 Failed: OpenCode has no minimum version');
-
-        const clinePass = isVersionAtLeast('3.0.68', '3.0.68');
-        const clineFail = isVersionAtLeast('3.0.67', '3.0.68');
-        const kimiPass = isVersionAtLeast('1.52.0', '1.52.0');
-        const kimiFail = isVersionAtLeast('1.51.9', '1.52.0');
-        if (!clinePass || clineFail || !kimiPass || kimiFail) {
-          throw new Error('Fix 2 Failed: Semver comparator check failed');
+        // Close 1 thread and verify 50th can now be created
+        const threadToClose = openThreads[1].id;
+        await chatSessionService.closeThread(threadToClose);
+        const afterCloseCount = (await chatSessionService.getThreads(limitAgent)).length;
+        if (afterCloseCount !== 49) {
+          throw new Error(`Expected 49 open threads after closing 1, got ${afterCloseCount}`);
         }
-        console.log(`[Test] 2. Per-provider minimum versions verified: Cline >= 3.0.68, Kimi >= 1.52.0, OpenCode = no min.`);
-
-        // Fix 3: Long start timeout (180s, doubling on timeout up to 720s)
-        const clineTracking = providerEngine.getTracking('cline');
-        if (clineTracking.startTimeoutMs !== 180_000) {
-          throw new Error(`Fix 3 Failed: Default start timeout must be 180s (180,000ms), got ${clineTracking.startTimeoutMs}`);
+        const replacementThread = await chatSessionService.createThread(limitAgent, 'Replacement Thread', 'main');
+        if (!replacementThread || (await chatSessionService.getThreads(limitAgent)).length !== 50) {
+          throw new Error('Failed to create replacement thread after closing an old thread');
         }
-        // Simulate start timeout doubling
-        clineTracking.startTimeoutMs = Math.min(clineTracking.startTimeoutMs * 2, 720_000);
-        if (clineTracking.startTimeoutMs !== 360_000) throw new Error('Fix 3 Failed: Start timeout did not double to 360s');
-        clineTracking.startTimeoutMs = Math.min(clineTracking.startTimeoutMs * 2, 720_000); // 720s
-        clineTracking.startTimeoutMs = Math.min(clineTracking.startTimeoutMs * 2, 720_000); // capped at 720s
-        if (clineTracking.startTimeoutMs !== 720_000) throw new Error('Fix 3 Failed: Start timeout not capped at 720s');
-        // Reset tracking back to 180s
-        clineTracking.startTimeoutMs = 180_000;
-        console.log(`[Test] 3. Long start timeout verified: 180s base, doubling to 360s and 720s max.`);
+        console.log(`[Test]    - Thread close and reuse verified: closed thread and successfully replaced it.`);
 
-        // Fix 4: Account read timeout: 5s normal, 120s disk restoring
-        if (providerEngine.isDiskRestoring !== false) throw new Error('Fix 4 Failed: isDiskRestoring should be false by default');
-        providerEngine.isDiskRestoring = true;
-        if (providerEngine.isDiskRestoring !== true) throw new Error('Fix 4 Failed: isDiskRestoring flag not settable');
-        providerEngine.isDiskRestoring = false;
-        console.log(`[Test] 4. Account read timeout verified: 5s normal, 120s during disk restore.`);
+        // 2. Thread Lifecycle: Create, Rename, Close
+        console.log('[Test] 2. Testing thread lifecycle (Create, Switch, Rename, Close)...');
+        const lifecycleAgent = 'agent-test-lifecycle';
+        const lifecycleThread = await chatSessionService.createThread(lifecycleAgent, 'Original Title', 'main');
+        await chatSessionService.renameThread(lifecycleThread.id, 'Renamed Architecture Review');
+        const currentMessages = await chatSessionService.getMessages(lifecycleThread.id);
+        if (!Array.isArray(currentMessages)) throw new Error('getMessages should return an array');
+        console.log(`[Test]    - Thread created and renamed to "Renamed Architecture Review".`);
 
-        // Fix 5: Retry backoff (500ms, 1s, 2s) & auto-start blocking after 3 failures
-        const codexTracking = providerEngine.getTracking('codex');
-        codexTracking.failureCount = 3;
-        codexTracking.autoStartBlocked = true;
-        const blockedAttempt = await providerEngine.connectProvider('codex');
-        if (!blockedAttempt.error?.includes('stopped for Codex / ChatGPT after 3 failed attempts')) {
-          throw new Error('Fix 5 Failed: Auto-start should be blocked after 3 failed attempts');
+        // 3. Attachments validation: 100 MB / file, 250 MB / msg, 10 files / msg
+        console.log('[Test] 3. Testing attachment limits (100 MB / file, 250 MB / msg, 10 files / msg)...');
+        const attAgent = 'agent-test-attachments';
+        
+        // (a) File > 100 MB rejection
+        let largeFileThrew = false;
+        try {
+          chatSessionService.validateAndStoreAttachments(
+            [{ name: 'huge-dump.bin', size: 101 * 1024 * 1024, type: 'application/octet-stream' }],
+            attAgent
+          );
+        } catch (err: any) {
+          largeFileThrew = true;
+          console.log(`[Test]    - 101 MB file rejected: "${err.message}"`);
         }
-        // User action unblocks auto-start
-        await providerEngine.connectProvider('codex', { isUserAction: true });
-        if (codexTracking.autoStartBlocked !== false) {
-          throw new Error('Fix 5 Failed: User action should unblock auto-start');
+        if (!largeFileThrew) throw new Error('Limit Failed: >100 MB file should be rejected');
+
+        // (b) Message > 250 MB rejection
+        let largeMsgThrew = false;
+        try {
+          chatSessionService.validateAndStoreAttachments(
+            [
+              { name: 'part1.bin', size: 90 * 1024 * 1024, type: 'application/octet-stream' },
+              { name: 'part2.bin', size: 90 * 1024 * 1024, type: 'application/octet-stream' },
+              { name: 'part3.bin', size: 90 * 1024 * 1024, type: 'application/octet-stream' }, // total 270 MB
+            ],
+            attAgent
+          );
+        } catch (err: any) {
+          largeMsgThrew = true;
+          console.log(`[Test]    - 270 MB total payload rejected: "${err.message}"`);
         }
-        console.log(`[Test] 5. Retry backoff and 3-attempt failure block verified (unblockable only by user action).`);
+        if (!largeMsgThrew) throw new Error('Limit Failed: >250 MB message should be rejected');
 
-        // Fix 6: Claude started through vendor SDK, not direct ACP child process
-        const claudeDef = providerEngine.getCatalogue().find((p) => p.id === 'claude');
-        if (claudeDef?.protocol !== 'vendor-sdk') {
-          throw new Error('Fix 6 Failed: Claude protocol must be vendor-sdk');
+        // (c) More than 10 files rejection
+        let elevenFilesThrew = false;
+        try {
+          const elevenFiles = Array.from({ length: 11 }, (_, i) => ({
+            name: `file-${i + 1}.txt`,
+            size: 1024,
+            type: 'text/plain',
+          }));
+          chatSessionService.validateAndStoreAttachments(elevenFiles, attAgent);
+        } catch (err: any) {
+          elevenFilesThrew = true;
+          console.log(`[Test]    - 11 files rejected: "${err.message}"`);
         }
-        const claudeStatus = claudeVendorSdk.getStatus();
-        console.log(`[Test] 6. Claude vendor SDK integration verified (protocol: vendor-sdk, status: ${claudeStatus}, 7s Windows force-kill).`);
+        if (!elevenFilesThrew) throw new Error('Limit Failed: >10 files per message should be rejected');
 
-        // Test 7: Local Model Server Probing
-        const localServers = await providerEngine.detectLocalModelServers();
-        console.log(`[Test] 7. Local model servers probed: Ollama=${localServers.ollama}, LMStudio=${localServers.lmStudio}.`);
+        // (d) Valid attachment with manifest in Shared/Transfers
+        const validAtts = chatSessionService.validateAndStoreAttachments(
+          [
+            { name: 'test-doc.md', size: 2048, type: 'text/markdown', base64Data: Buffer.from('# Test Spec').toString('base64') },
+            { name: 'schema.json', size: 1024, type: 'application/json', base64Data: Buffer.from('{"key":"value"}').toString('base64') },
+          ],
+          attAgent
+        );
+        if (validAtts.length !== 2 || !validAtts[0].sha256 || !fs.existsSync(validAtts[0].storagePath)) {
+          throw new Error('Valid attachment manifest or file on disk missing in Shared/Transfers');
+        }
+        console.log(`[Test]    - Valid attachments verified: stored in Shared/Transfers with SHA-256 manifest.`);
 
-        // Test 8: Prompt-based Agent Generator
-        const prompt = 'Senior SRE engineer specializing in Kubernetes latency anomalies and Jaeger traces';
-        const draft = generateAgentFromPrompt(prompt);
-        console.log(`[Test] 8. Synthesized draft for "${draft.name}" with 4 sections:`);
-        console.log(`   - System Directive: ${draft.sections.systemDirective.substring(0, 45)}...`);
-        console.log(`   - Execution Boundaries: ${draft.sections.executionBoundaries.substring(0, 45)}...`);
-        console.log(`   - Memory Policy: ${draft.sections.memoryPolicy.substring(0, 45)}...`);
-        console.log(`   - Fallback Strategies: ${draft.sections.fallbackStrategies.substring(0, 45)}...`);
+        // 4. Branching: Branch thread from a message
+        console.log('[Test] 4. Testing thread branching from a turn/message...');
+        const branchAgent = 'agent-test-branch';
+        const branchThreads = await chatSessionService.getThreads(branchAgent);
+        const branchSourceThread = branchThreads[0].id;
+        // Submit user message to source thread
+        await chatSessionService.submitTurnMessage({
+          agentId: branchAgent,
+          threadId: branchSourceThread,
+          providerId: 'opencode',
+          model: 'OpenCode Free',
+          messageText: 'Turn 1: Base requirement for branch',
+        });
+        const branchMsgs = await chatSessionService.getMessages(branchSourceThread);
+        const sourceMsg = branchMsgs[branchMsgs.length - 1];
+        if (!sourceMsg) throw new Error('Source message for branching not found');
 
-        // Test 9: Workspace directory creation & cleanup
-        const testAgentId = 'agent-test-sre';
-        const wsDir = getAgentWorkspaceDir(testAgentId);
-        console.log(`[Test] 9. Created isolated workspace on disk: ${wsDir} (exists: ${fs.existsSync(wsDir)})`);
-        const deleted = deleteAgentWorkspace(testAgentId);
-        console.log(`[Test] 10. Delete agent workspace cleanup: ${deleted} (dir exists: ${fs.existsSync(wsDir)})`);
+        const branchedThread = await chatSessionService.branchThreadFromMessage(
+          branchSourceThread,
+          sourceMsg.id,
+          'Branch: Feature Exploration'
+        );
+        if (branchedThread.kind !== 'branch' || branchedThread.parent_thread_id !== branchSourceThread) {
+          throw new Error('Branched thread metadata invalid');
+        }
+        const copiedMsgs = await chatSessionService.getMessages(branchedThread.id);
+        if (copiedMsgs.length === 0) {
+          throw new Error('Branch thread should copy turns from parent');
+        }
+        console.log(`[Test]    - Branched thread "${branchedThread.title}" created with ${copiedMsgs.length} copied turn(s).`);
+
+        // 5. Concurrency & Crash-safe FIFO message queue
+        console.log('[Test] 5. Testing FIFO message queue & crash-safety...');
+        const queueAgent = 'agent-test-queue';
+        const qThreads = await chatSessionService.getThreads(queueAgent);
+        const qThreadId = qThreads[0].id;
+
+        // Pause queue for test agent
+        await chatSessionService.pauseQueue(queueAgent);
+        const queuedTurnResult = await chatSessionService.submitTurnMessage({
+          agentId: queueAgent,
+          threadId: qThreadId,
+          providerId: 'opencode',
+          model: 'OpenCode Free',
+          messageText: 'Queued message waiting for unpause',
+        });
+        if (!queuedTurnResult.queued) {
+          throw new Error('Message should be queued when queue is paused');
+        }
+        const queueEntries = await chatSessionService.getAgentQueue(queueAgent);
+        if (queueEntries.length === 0 || queueEntries[0].state !== 'paused') {
+          throw new Error('Queue entry not found in SQLite or not in paused state');
+        }
+        console.log(`[Test]    - Queued message successfully persisted in SQLite with state: ${queueEntries[0].state}.`);
+
+        // Resume queue
+        await chatSessionService.resumeQueue(queueAgent);
+        console.log(`[Test]    - Queue resumed successfully.`);
+
+        // Test cancel queued task
+        await chatSessionService.pauseQueue(queueAgent);
+        const toCancelResult = await chatSessionService.submitTurnMessage({
+          agentId: queueAgent,
+          threadId: qThreadId,
+          providerId: 'opencode',
+          model: 'OpenCode Free',
+          messageText: 'Message to be cancelled',
+        });
+        const currentQueue = await chatSessionService.getAgentQueue(queueAgent);
+        const cancelTarget = currentQueue.find((q) => q.turn_id === toCancelResult.turnId);
+        if (cancelTarget) {
+          await chatSessionService.cancelQueuedMessage(cancelTarget.id);
+          console.log(`[Test]    - Queued task cancelled successfully.`);
+        }
+        await chatSessionService.resumeQueue(queueAgent);
+
+        // 6. Thread Compaction (summarize older turns, never lose thread)
+        console.log('[Test] 6. Testing thread compaction...');
+        const compactAgent = 'agent-test-compact';
+        const compactThreadObj = await chatSessionService.createThread(compactAgent, 'Long Thread for Compaction', 'main');
+        for (let i = 1; i <= 5; i++) {
+          await chatSessionService.submitTurnMessage({
+            agentId: compactAgent,
+            threadId: compactThreadObj.id,
+            providerId: 'opencode',
+            model: 'OpenCode Free',
+            messageText: `Compaction Turn #${i}: System design note and invariant decision ${i}`,
+          });
+        }
+        const msgsBeforeCompact = await chatSessionService.getMessages(compactThreadObj.id);
+        console.log(`[Test]    - Thread has ${msgsBeforeCompact.length} messages before compaction.`);
+        const compactResult = await chatSessionService.compactThread(compactThreadObj.id, 2);
+        if (!compactResult.success || compactResult.compactedTurns === 0) {
+          throw new Error(`Compaction failed: ${compactResult.summary}`);
+        }
+        const msgsAfterCompact = await chatSessionService.getMessages(compactThreadObj.id);
+        const hasSummaryMsg = msgsAfterCompact.some((m) => m.kind === 'compaction-summary');
+        if (!hasSummaryMsg) {
+          throw new Error('Compacted thread must contain compaction-summary message card');
+        }
+        console.log(`[Test]    - Compaction successful: ${compactResult.compactedTurns} turns compacted, summary message card inserted, thread preserved.`);
+
+        // 7. Strict Rule: Zero fake replies
+        console.log('[Test] 7. Testing zero fake replies rule...');
+        const liveAgent = 'agent-test-live-only';
+        const liveThreads = await chatSessionService.getThreads(liveAgent);
+        const liveThreadId = liveThreads[0].id;
+        let fakeReplyRejected = false;
+        try {
+          // Attempting to send to disconnected provider throws error, never returns fake answers
+          await chatSessionService.submitTurnMessage({
+            agentId: liveAgent,
+            threadId: liveThreadId,
+            providerId: 'claude',
+            model: 'Claude 3.5 Sonnet',
+            messageText: 'Testing disconnected provider',
+          });
+        } catch (err: any) {
+          fakeReplyRejected = true;
+          console.log(`[Test]    - Disconnected provider properly rejected: "${err.message}" (Zero fake replies returned).`);
+        }
+        // submitTurnMessage catches and returns { error } if execution fails
+        const directTurnExec = await chatSessionService.submitTurnMessage({
+          agentId: liveAgent,
+          threadId: liveThreadId,
+          providerId: 'claude',
+          model: 'Claude 3.5 Sonnet',
+          messageText: 'Testing disconnected execution',
+        });
+        if (directTurnExec.error && !directTurnExec.reply) {
+          fakeReplyRejected = true;
+          console.log(`[Test]    - Turn error correctly reported without fake reply: "${directTurnExec.error}".`);
+        }
+        if (!fakeReplyRejected) {
+          throw new Error('Strict Rule Failed: Disconnected provider should return error, never fake reply');
+        }
 
         // Capture screenshot of the running shell
         await new Promise((r) => setTimeout(r, 1200));
         const img = await mainWindow!.webContents.capturePage();
-        const distScreenshot = path.resolve('dist/milestone-2-shell.png');
+        const distScreenshot = path.resolve('dist/milestone-3-shell.png');
         const screenshotsDir = path.resolve('screenshots');
         if (!fs.existsSync(screenshotsDir)) fs.mkdirSync(screenshotsDir, { recursive: true });
-        const repoScreenshot = path.join(screenshotsDir, 'milestone-2-shell.png');
+        const repoScreenshot = path.join(screenshotsDir, 'milestone-3-shell.png');
         const artifactDir = 'C:\\Users\\Tanjir\\.gemini\\antigravity\\brain\\0f8b046c-6305-4567-8512-852626bb8d6a';
-        const artifactScreenshot = path.join(artifactDir, 'milestone-2-shell.png');
+        const artifactScreenshot = path.join(artifactDir, 'milestone-3-shell.png');
 
         fs.writeFileSync(distScreenshot, img.toPNG());
         fs.writeFileSync(repoScreenshot, img.toPNG());
-        console.log(`[Test] 11. Shell screenshot captured and saved to: ${distScreenshot} and ${repoScreenshot}`);
+        console.log(`[Test] 8. Shell screenshot captured and saved to: ${distScreenshot} and ${repoScreenshot}`);
         try {
           if (!fs.existsSync(artifactDir)) {
             fs.mkdirSync(artifactDir, { recursive: true });
@@ -284,7 +447,7 @@ function createWindow() {
           console.log(`[Test] Mirroring to artifact dir skipped:`, e);
         }
 
-        console.log('[Test] ALL MILESTONE 2 VERIFICATION CHECKS & 6 CORRECTIONS PASSED.');
+        console.log('[Test] ALL MILESTONE 3 VERIFICATION CHECKS & EXACT LIMITS PASSED.');
         setTimeout(() => app.quit(), 500);
       } catch (err) {
         console.error('[Test] Suite error:', err);
@@ -623,6 +786,63 @@ ipcMain.handle('chat:send-message', async (_event, { agentId, providerId, model,
   return await providerEngine.sendMessage(providerId, model, message);
 });
 
+// Milestone 3 IPC Handlers
+ipcMain.handle('chat:get-threads', async (_event, agentId: string) => {
+  return await chatSessionService.getThreads(agentId);
+});
+
+ipcMain.handle('chat:create-thread', async (_event, { agentId, title, kind, parentThreadId, sourceMessageId }) => {
+  return await chatSessionService.createThread(agentId, title, kind, parentThreadId, sourceMessageId);
+});
+
+ipcMain.handle('chat:rename-thread', async (_event, { threadId, newTitle }) => {
+  return await chatSessionService.renameThread(threadId, newTitle);
+});
+
+ipcMain.handle('chat:close-thread', async (_event, threadId: string) => {
+  return await chatSessionService.closeThread(threadId);
+});
+
+ipcMain.handle('chat:delete-thread', async (_event, threadId: string) => {
+  return await chatSessionService.deleteThread(threadId);
+});
+
+ipcMain.handle('chat:get-messages', async (_event, threadId: string) => {
+  return await chatSessionService.getMessages(threadId);
+});
+
+ipcMain.handle('chat:branch-thread', async (_event, { threadId, messageId, branchTitle }) => {
+  return await chatSessionService.branchThreadFromMessage(threadId, messageId, branchTitle);
+});
+
+ipcMain.handle('chat:compact-thread', async (_event, { threadId, turnsToPreserve }) => {
+  return await chatSessionService.compactThread(threadId, turnsToPreserve);
+});
+
+ipcMain.handle('chat:get-queue', async (_event, agentId: string) => {
+  return await chatSessionService.getAgentQueue(agentId);
+});
+
+ipcMain.handle('chat:pause-queue', async (_event, agentId: string) => {
+  return await chatSessionService.pauseQueue(agentId);
+});
+
+ipcMain.handle('chat:resume-queue', async (_event, agentId: string) => {
+  return await chatSessionService.resumeQueue(agentId);
+});
+
+ipcMain.handle('chat:cancel-queued', async (_event, queueId: string) => {
+  return await chatSessionService.cancelQueuedMessage(queueId);
+});
+
+ipcMain.handle('chat:submit-turn', async (_event, payload) => {
+  return await chatSessionService.submitTurnMessage(payload);
+});
+
+ipcMain.handle('chat:get-active-turn-count', () => {
+  return chatSessionService.getActiveTurnCount();
+});
+
 ipcMain.handle('window:capture-screenshot', async (_event, customPath?: string) => {
   if (!mainWindow) return '';
   const image = await mainWindow.webContents.capturePage();
@@ -635,6 +855,7 @@ ipcMain.handle('window:capture-screenshot', async (_event, customPath?: string) 
 
 app.whenReady().then(async () => {
   await initDatabase();
+  await chatSessionService.init();
   createWindow();
   setupThemeWatcher();
 

@@ -27,6 +27,29 @@ export interface OpenBotBridge {
 
   sendMessage: (payload: { agentId: string; providerId: string; model: string; message: string }) => Promise<any>;
   captureScreenshot: (savePath?: string) => Promise<string>;
+
+  // Milestone 3 IPC
+  getThreads: (agentId: string) => Promise<any[]>;
+  createThread: (agentId: string, title?: string, kind?: string, parentThreadId?: string, sourceMessageId?: string) => Promise<any>;
+  renameThread: (threadId: string, newTitle: string) => Promise<boolean>;
+  closeThread: (threadId: string) => Promise<boolean>;
+  deleteThread: (threadId: string) => Promise<boolean>;
+  getMessages: (threadId: string) => Promise<any[]>;
+  branchThreadFromMessage: (threadId: string, messageId: string, branchTitle?: string) => Promise<any>;
+  compactThread: (threadId: string, turnsToPreserve?: number) => Promise<{ success: boolean; summary: string; compactedTurns: number }>;
+  getQueue: (agentId: string) => Promise<any[]>;
+  pauseQueue: (agentId: string) => Promise<boolean>;
+  resumeQueue: (agentId: string) => Promise<boolean>;
+  cancelQueuedMessage: (queueId: string) => Promise<boolean>;
+  submitTurnMessage: (payload: {
+    agentId: string;
+    threadId: string;
+    providerId: string;
+    model: string;
+    messageText: string;
+    attachments?: any[];
+  }) => Promise<{ queued: boolean; turnId?: string; reply?: any; error?: string }>;
+  getActiveTurnCount: () => Promise<number>;
 }
 
 const bridge: OpenBotBridge = {
@@ -68,6 +91,25 @@ const bridge: OpenBotBridge = {
 
   sendMessage: (payload) => ipcRenderer.invoke('chat:send-message', payload),
   captureScreenshot: (savePath) => ipcRenderer.invoke('window:capture-screenshot', savePath),
+
+  // Milestone 3 IPC
+  getThreads: (agentId) => ipcRenderer.invoke('chat:get-threads', agentId),
+  createThread: (agentId, title, kind, parentThreadId, sourceMessageId) =>
+    ipcRenderer.invoke('chat:create-thread', { agentId, title, kind, parentThreadId, sourceMessageId }),
+  renameThread: (threadId, newTitle) => ipcRenderer.invoke('chat:rename-thread', { threadId, newTitle }),
+  closeThread: (threadId) => ipcRenderer.invoke('chat:close-thread', threadId),
+  deleteThread: (threadId) => ipcRenderer.invoke('chat:delete-thread', threadId),
+  getMessages: (threadId) => ipcRenderer.invoke('chat:get-messages', threadId),
+  branchThreadFromMessage: (threadId, messageId, branchTitle) =>
+    ipcRenderer.invoke('chat:branch-thread', { threadId, messageId, branchTitle }),
+  compactThread: (threadId, turnsToPreserve) =>
+    ipcRenderer.invoke('chat:compact-thread', { threadId, turnsToPreserve }),
+  getQueue: (agentId) => ipcRenderer.invoke('chat:get-queue', agentId),
+  pauseQueue: (agentId) => ipcRenderer.invoke('chat:pause-queue', agentId),
+  resumeQueue: (agentId) => ipcRenderer.invoke('chat:resume-queue', agentId),
+  cancelQueuedMessage: (queueId) => ipcRenderer.invoke('chat:cancel-queued', queueId),
+  submitTurnMessage: (payload) => ipcRenderer.invoke('chat:submit-turn', payload),
+  getActiveTurnCount: () => ipcRenderer.invoke('chat:get-active-turn-count'),
 };
 
 contextBridge.exposeInMainWorld('openbot', bridge);

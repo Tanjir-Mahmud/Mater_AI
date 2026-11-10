@@ -11,6 +11,11 @@ import {
   openEditAgentModal,
   deleteAgent,
   exportAgentTemplate,
+  createThreadForAgent,
+  switchAgentThread,
+  renameAgentThread,
+  closeAgentThread,
+  toggleThreadListExpanded,
 } from '../../stores/appState';
 import { Agent, Channel, Person, Folder } from '../../types';
 import { i18n } from '../../shared/i18n';
@@ -289,15 +294,16 @@ export const Sidebar: Component = () => {
                 {(agent) => {
                   const isSelected = () => state.selectedAgentId === agent.id;
                   return (
-                    <div
-                      onClick={() => selectAgent(agent.id)}
-                      onContextMenu={(e) => handleAgentContextMenu(e, agent.id)}
-                      class={`flex items-center justify-between px-2 py-1.5 rounded cursor-pointer transition-colors relative group ${
-                        isSelected()
-                          ? 'bg-surface-container text-on-surface shadow-xs'
-                          : 'hover:bg-surface-container/60 text-on-surface-variant hover:text-on-surface'
-                      }`}
-                    >
+                    <div class="flex flex-col">
+                      <div
+                        onClick={() => selectAgent(agent.id)}
+                        onContextMenu={(e) => handleAgentContextMenu(e, agent.id)}
+                        class={`flex items-center justify-between px-2 py-1.5 rounded cursor-pointer transition-colors relative group ${
+                          isSelected()
+                            ? 'bg-surface-container text-on-surface shadow-xs'
+                            : 'hover:bg-surface-container/60 text-on-surface-variant hover:text-on-surface'
+                        }`}
+                      >
                       <Show when={isSelected()}>
                         <div class="absolute left-0 top-1 bottom-1 w-0.5 bg-primary rounded-full" />
                       </Show>
@@ -349,8 +355,97 @@ export const Sidebar: Component = () => {
                             {agent.unreadCount}
                           </span>
                         </Show>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleThreadListExpanded(agent.id);
+                          }}
+                          class="p-0.5 text-outline hover:text-on-surface rounded"
+                          title="Toggle thread list"
+                        >
+                          <span class="material-symbols-outlined text-[13px]">
+                            {state.isThreadListExpanded[agent.id] !== false ? 'expand_less' : 'expand_more'}
+                          </span>
+                        </button>
                       </div>
                     </div>
+
+                    {/* Agent Open Threads List (Max 50) */}
+                    <Show when={state.isThreadListExpanded[agent.id] !== false && (state.threads[agent.id]?.length || 0) > 0}>
+                      <div class="ml-5 pl-2.5 border-l border-outline-variant/30 flex flex-col gap-0.5 my-1">
+                        <div class="flex items-center justify-between pr-2 py-0.5 text-[10px] font-label-sm text-outline">
+                          <span>THREADS ({(state.threads[agent.id] || []).length}/50)</span>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await createThreadForAgent(agent.id);
+                            }}
+                            class="hover:text-primary transition-colors flex items-center gap-0.5"
+                            title="New Thread (Max 50)"
+                          >
+                            <span class="material-symbols-outlined text-[12px]">add</span>
+                            <span>New</span>
+                          </button>
+                        </div>
+                        <For each={state.threads[agent.id] || []}>
+                          {(thread) => {
+                            const isThreadActive = () => state.activeThreadId[agent.id] === thread.id;
+                            return (
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  selectAgent(agent.id);
+                                  switchAgentThread(agent.id, thread.id);
+                                }}
+                                class={`flex items-center justify-between px-2 py-1 rounded text-xs cursor-pointer group transition-colors ${
+                                  isThreadActive()
+                                    ? 'bg-primary/10 text-primary font-semibold'
+                                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+                                }`}
+                              >
+                                <div class="flex items-center gap-1.5 min-w-0">
+                                  <span class="material-symbols-outlined text-[13px] text-outline group-hover:text-primary">
+                                    {thread.kind === 'branch'
+                                      ? 'alt_route'
+                                      : thread.kind === 'side'
+                                      ? 'side_navigation'
+                                      : 'chat_bubble_outline'}
+                                  </span>
+                                  <span class="truncate text-[11px]">{thread.title}</span>
+                                </div>
+                                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const newT = prompt('Rename thread:', thread.title);
+                                      if (newT && newT.trim()) {
+                                        renameAgentThread(agent.id, thread.id, newT.trim());
+                                      }
+                                    }}
+                                    class="p-0.5 hover:text-primary"
+                                    title="Rename"
+                                  >
+                                    <span class="material-symbols-outlined text-[11px]">edit</span>
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      closeAgentThread(agent.id, thread.id);
+                                    }}
+                                    class="p-0.5 hover:text-error"
+                                    title="Close thread"
+                                  >
+                                    <span class="material-symbols-outlined text-[11px]">close</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }}
+                        </For>
+                      </div>
+                    </Show>
+                  </div>
                   );
                 }}
               </For>
@@ -475,35 +570,115 @@ export const Sidebar: Component = () => {
                 {(agent) => {
                   const isSelected = () => state.selectedAgentId === agent.id;
                   return (
-                    <div
-                      onClick={() => selectAgent(agent.id)}
-                      onContextMenu={(e) => handleAgentContextMenu(e, agent.id)}
-                      class={`flex items-center justify-between px-2 py-1 rounded cursor-pointer text-body-sm transition-colors ${
-                        isSelected()
-                          ? 'bg-surface-container text-on-surface'
-                          : 'hover:bg-surface-container text-on-surface-variant hover:text-on-surface'
-                      }`}
-                    >
-                      <div class="flex items-center gap-2 min-w-0">
-                        <span class="material-symbols-outlined text-[15px] text-outline">
-                          {agent.avatar}
-                        </span>
-                        <span class="truncate text-[12px]">{agent.name}</span>
+                    <div class="flex flex-col">
+                      <div
+                        onClick={() => selectAgent(agent.id)}
+                        onContextMenu={(e) => handleAgentContextMenu(e, agent.id)}
+                        class={`flex items-center justify-between px-2 py-1 rounded cursor-pointer text-body-sm transition-colors ${
+                          isSelected()
+                            ? 'bg-surface-container text-on-surface font-semibold'
+                            : 'hover:bg-surface-container text-on-surface-variant hover:text-on-surface'
+                        }`}
+                      >
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="material-symbols-outlined text-[15px] text-outline">
+                            {agent.avatar}
+                          </span>
+                          <span class="truncate text-[12px]">{agent.name}</span>
+                        </div>
+
+                        <div class="flex items-center gap-1">
+                          <Show when={agent.hasLimitChip}>
+                            <span
+                              class="px-1 rounded font-label-sm text-[9px] bg-error-container/40 text-error font-semibold"
+                              title={`Limit reached. Resets at ${agent.limitResetTime}`}
+                            >
+                              LIMIT
+                            </span>
+                          </Show>
+                          <span class="font-label-sm text-[10px] text-outline">
+                            {agent.statusMessage || agent.status}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleThreadListExpanded(agent.id);
+                            }}
+                            class="p-0.5 text-outline hover:text-on-surface rounded"
+                            title="Toggle thread list"
+                          >
+                            <span class="material-symbols-outlined text-[13px]">
+                              {state.isThreadListExpanded[agent.id] !== false ? 'expand_less' : 'expand_more'}
+                            </span>
+                          </button>
+                        </div>
                       </div>
 
-                      <div class="flex items-center gap-1">
-                        <Show when={agent.hasLimitChip}>
-                          <span
-                            class="px-1 rounded font-label-sm text-[9px] bg-error-container/40 text-error font-semibold"
-                            title={`Limit reached. Resets at ${agent.limitResetTime}`}
-                          >
-                            LIMIT
-                          </span>
-                        </Show>
-                        <span class="font-label-sm text-[10px] text-outline">
-                          {agent.statusMessage || agent.status}
-                        </span>
-                      </div>
+                      {/* Unassigned Agent Threads */}
+                      <Show when={state.isThreadListExpanded[agent.id] !== false && (state.threads[agent.id]?.length || 0) > 0}>
+                        <div class="ml-5 pl-2.5 border-l border-outline-variant/30 flex flex-col gap-0.5 my-1">
+                          <div class="flex items-center justify-between pr-2 py-0.5 text-[10px] font-label-sm text-outline">
+                            <span>THREADS ({(state.threads[agent.id] || []).length}/50)</span>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await createThreadForAgent(agent.id);
+                              }}
+                              class="hover:text-primary transition-colors flex items-center gap-0.5"
+                            >
+                              <span class="material-symbols-outlined text-[12px]">add</span>
+                              <span>New</span>
+                            </button>
+                          </div>
+                          <For each={state.threads[agent.id] || []}>
+                            {(thread) => {
+                              const isThreadActive = () => state.activeThreadId[agent.id] === thread.id;
+                              return (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    selectAgent(agent.id);
+                                    switchAgentThread(agent.id, thread.id);
+                                  }}
+                                  class={`flex items-center justify-between px-2 py-0.5 rounded text-xs cursor-pointer group transition-colors ${
+                                    isThreadActive()
+                                      ? 'bg-primary/10 text-primary font-semibold'
+                                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+                                  }`}
+                                >
+                                  <div class="flex items-center gap-1.5 min-w-0">
+                                    <span class="material-symbols-outlined text-[13px] text-outline group-hover:text-primary">
+                                      {thread.kind === 'branch' ? 'alt_route' : 'chat_bubble_outline'}
+                                    </span>
+                                    <span class="truncate text-[11px]">{thread.title}</span>
+                                  </div>
+                                  <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const newT = prompt('Rename thread:', thread.title);
+                                        if (newT && newT.trim()) renameAgentThread(agent.id, thread.id, newT.trim());
+                                      }}
+                                      class="p-0.5 hover:text-primary"
+                                    >
+                                      <span class="material-symbols-outlined text-[11px]">edit</span>
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        closeAgentThread(agent.id, thread.id);
+                                      }}
+                                      class="p-0.5 hover:text-error"
+                                    >
+                                      <span class="material-symbols-outlined text-[11px]">close</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            }}
+                          </For>
+                        </div>
+                      </Show>
                     </div>
                   );
                 }}

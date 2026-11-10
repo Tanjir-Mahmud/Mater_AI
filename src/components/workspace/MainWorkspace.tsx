@@ -6,6 +6,18 @@ import {
   sendMessageToCurrentAgent,
   changeAgentModel,
   handleApproval,
+  createThreadForAgent,
+  switchAgentThread,
+  renameAgentThread,
+  closeAgentThread,
+  branchFromMessage,
+  compactActiveThread,
+  addComposerAttachment,
+  removeComposerAttachment,
+  clearComposerAttachments,
+  pauseAgentQueue,
+  resumeAgentQueue,
+  cancelQueueItem,
 } from '../../stores/appState';
 import { RightSidePanel } from './RightSidePanel';
 import { i18n } from '../../shared/i18n';
@@ -61,12 +73,41 @@ export const MainWorkspace: Component = () => {
   const [inputText, setInputText] = createSignal('');
   const [isThinkingOpen, setIsThinkingOpen] = createSignal(true);
   const [isModelPickerOpen, setIsModelPickerOpen] = createSignal(false);
+  const [isThreadDropdownOpen, setIsThreadDropdownOpen] = createSignal(false);
+  let fileInputRef: HTMLInputElement | undefined;
+
+  const formatBytes = (bytes: number): string => {
+    if (!bytes || bytes === 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   const currentAgent = () =>
     state.agents.find((a) => a.id === state.selectedAgentId) || state.agents[0];
 
   const currentChannel = () =>
     state.channels.find((c) => c.id === state.selectedChannelId);
+
+  const currentThread = () => {
+    const a = currentAgent();
+    if (!a) return null;
+    const threads = state.threads[a.id] || [];
+    const activeId = state.activeThreadId[a.id];
+    return threads.find((t) => t.id === activeId) || threads[0] || null;
+  };
+
+  const currentQueue = () => {
+    const a = currentAgent();
+    if (!a) return [];
+    return state.agentQueues[a.id] || [];
+  };
+
+  const isQueuePaused = () => {
+    const a = currentAgent();
+    if (!a) return false;
+    return state.queuePaused[a.id] === true;
+  };
 
   const currentMessages = () => {
     const a = currentAgent();
@@ -76,7 +117,7 @@ export const MainWorkspace: Component = () => {
 
   const handleSend = async () => {
     const text = inputText().trim();
-    if (!text) return;
+    if (!text && state.composerAttachments.length === 0) return;
     setInputText('');
     await sendMessageToCurrentAgent(text);
   };
@@ -93,6 +134,28 @@ export const MainWorkspace: Component = () => {
         handleSend();
       }
     }
+  };
+
+  const handleFileInputChange = async (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    for (let i = 0; i < input.files.length; i++) {
+      const file = input.files[i];
+      // Read data as base64
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64Data = (reader.result as string)?.split(',')[1];
+        addComposerAttachment({
+          name: file.name,
+          size: file.size,
+          type: file.type || 'application/octet-stream',
+          base64Data,
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+    input.value = '';
   };
 
   return (
@@ -283,10 +346,91 @@ export const MainWorkspace: Component = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Thread Selector Chip with Dropdown */}
+              <div class="relative ml-2">
+                <button
+                  onClick={() => setIsThreadDropdownOpen(!isThreadDropdownOpen())}
+                  class="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-label-sm text-[11px] transition-colors cursor-pointer shadow-2xs"
+                  title="Switch or manage threads (max 50)"
+                >
+                  <span class="material-symbols-outlined text-[13px] text-primary">
+                    {currentThread()?.kind === 'branch' ? 'alt_route' : 'chat_bubble_outline'}
+                  </span>
+                  <span class="max-w-[140px] truncate">{currentThread()?.title || 'Main Thread'}</span>
+                  <span class="material-symbols-outlined text-[11px] text-outline">expand_more</span>
+                </button>
+
+                <Show when={isThreadDropdownOpen()}>
+                  <div class="fixed inset-0 z-40" onClick={() => setIsThreadDropdownOpen(false)} />
+                  <div class="absolute left-0 top-full mt-1 w-64 bg-surface-container border border-outline-variant/40 rounded-xl shadow-xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in duration-150">
+                    <div class="flex items-center justify-between px-2 py-1 text-[10px] font-label-sm text-outline border-b border-outline-variant/20">
+                      <span>THREADS ({(state.threads[currentAgent()?.id]?.length || 0)}/50)</span>
+                      <button
+                        onClick={async () => {
+                          setIsThreadDropdownOpen(false);
+                          if (currentAgent()) await createThreadForAgent(currentAgent()!.id);
+                        }}
+                        class="text-primary hover:underline flex items-center gap-0.5"
+                      >
+                        <span class="material-symbols-outlined text-[12px]">add</span>
+                        <span>New</span>
+                      </button>
+                    </div>
+                    <div class="max-h-48 overflow-y-auto flex flex-col gap-0.5">
+                      <For each={state.threads[currentAgent()?.id] || []}>
+                        {(thread) => (
+                          <div
+                            onClick={() => {
+                              switchAgentThread(currentAgent()!.id, thread.id);
+                              setIsThreadDropdownOpen(false);
+                            }}
+                            class={`flex items-center justify-between px-2 py-1 rounded text-xs cursor-pointer transition-colors ${
+                              thread.id === currentThread()?.id
+                                ? 'bg-primary/20 text-primary font-semibold'
+                                : 'hover:bg-surface-container-high text-on-surface'
+                            }`}
+                          >
+                            <div class="flex items-center gap-1.5 truncate">
+                              <span class="material-symbols-outlined text-[13px] text-outline">
+                                {thread.kind === 'branch' ? 'alt_route' : 'chat_bubble_outline'}
+                              </span>
+                              <span class="truncate">{thread.title}</span>
+                            </div>
+                            <Show when={thread.kind === 'branch'}>
+                              <span class="text-[9px] px-1 rounded bg-secondary/10 text-secondary">branch</span>
+                            </Show>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                </Show>
+              </div>
             </div>
 
             {/* Action buttons */}
             <div class="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={async () => {
+                  if (currentAgent()) await createThreadForAgent(currentAgent()!.id);
+                }}
+                class="flex items-center gap-1 px-2 py-1 rounded hover:bg-surface-container text-outline hover:text-on-surface text-xs font-label-sm transition-colors border border-transparent hover:border-outline-variant/30"
+                title="Create New Thread (Max 50)"
+              >
+                <span class="material-symbols-outlined text-[15px]">add_comment</span>
+                <span class="hidden sm:inline">New Thread</span>
+              </button>
+
+              <button
+                onClick={() => compactActiveThread()}
+                class="flex items-center gap-1 px-2 py-1 rounded hover:bg-surface-container text-outline hover:text-on-surface text-xs font-label-sm transition-colors border border-transparent hover:border-outline-variant/30"
+                title="Compact context (summarizes older turns)"
+              >
+                <span class="material-symbols-outlined text-[15px] text-secondary">compress</span>
+                <span class="hidden sm:inline">Compact</span>
+              </button>
+
               <button
                 onClick={() => setState('sidePanelOpen', !state.sidePanelOpen)}
                 class={`p-1.5 rounded transition-colors ${
@@ -300,6 +444,51 @@ export const MainWorkspace: Component = () => {
               </button>
             </div>
           </div>
+
+          {/* Queue Banner */}
+          <Show when={currentQueue().length > 0 || isQueuePaused()}>
+            <div class="px-4 py-1.5 bg-surface-container border-b border-outline-variant/20 flex items-center justify-between text-xs font-label-sm flex-shrink-0 animate-in fade-in duration-150">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px] text-tertiary">
+                  {isQueuePaused() ? 'pause_circle' : 'playlist_play'}
+                </span>
+                <span class="text-on-surface">
+                  <strong>{currentQueue().length}</strong> message(s) queued (FIFO)
+                </span>
+                <span class={`px-1.5 py-0.2 rounded font-mono text-[9px] font-bold ${
+                  isQueuePaused() ? 'bg-tertiary/20 text-tertiary' : 'bg-primary/20 text-primary'
+                }`}>
+                  {isQueuePaused() ? 'PAUSED' : 'ACTIVE'}
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <Show when={!isQueuePaused()}>
+                  <button
+                    onClick={() => pauseAgentQueue(currentAgent()!.id)}
+                    class="px-2 py-0.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-[11px] transition-colors"
+                  >
+                    Pause Queue
+                  </button>
+                </Show>
+                <Show when={isQueuePaused()}>
+                  <button
+                    onClick={() => resumeAgentQueue(currentAgent()!.id)}
+                    class="px-2 py-0.5 rounded bg-secondary/20 hover:bg-secondary/30 text-secondary font-semibold text-[11px] transition-colors"
+                  >
+                    Resume Queue
+                  </button>
+                </Show>
+                <Show when={currentQueue().length > 0}>
+                  <button
+                    onClick={() => cancelQueueItem(currentAgent()!.id, currentQueue()[0].id)}
+                    class="px-2 py-0.5 rounded hover:bg-error/20 text-error text-[11px] transition-colors"
+                  >
+                    Cancel Next
+                  </button>
+                </Show>
+              </div>
+            </div>
+          </Show>
 
           {/* Conversation Feed */}
           <div class="flex-1 overflow-y-auto p-4 space-y-4 font-body-md text-body-md text-on-surface">
@@ -330,121 +519,214 @@ export const MainWorkspace: Component = () => {
             <For each={currentMessages()}>
               {(msg) => (
                 <Show
-                  when={msg.author === 'user'}
+                  when={msg.kind === 'compaction-summary' || msg.body.startsWith('[Compaction Summary')}
                   fallback={
-                    /* Agent Response */
-                    <div class="flex flex-col items-start gap-1 max-w-3xl mr-auto">
-                      <div class="flex items-center gap-2 text-label-sm text-[11px] text-outline">
-                        <span class="font-semibold text-primary">{currentAgent()?.name}</span>
-                        <span>{msg.createdAt}</span>
-                      </div>
+                    <Show
+                      when={msg.author === 'user'}
+                      fallback={
+                        /* Agent Response */
+                        <div class="group relative flex flex-col items-start gap-1 max-w-3xl mr-auto">
+                          <div class="flex items-center gap-2 text-label-sm text-[11px] text-outline">
+                            <span class="font-semibold text-primary">{currentAgent()?.name}</span>
+                            <span>{msg.createdAt}</span>
+                          </div>
 
-                      {/* Agent Thinking Box */}
-                      <Show when={msg.reasoning}>
-                        <div class="w-full bg-surface-container/60 border border-outline-variant/30 rounded-xl overflow-hidden text-xs">
-                          <button
-                            onClick={() => setIsThinkingOpen(!isThinkingOpen())}
-                            class="w-full px-3 py-2 bg-surface-container flex items-center justify-between text-outline hover:text-on-surface transition-colors"
-                          >
-                            <div class="flex items-center gap-2 font-label-sm text-[11px]">
-                              <span class="material-symbols-outlined text-[15px] text-primary">psychology</span>
-                              <span>Reasoning & Context Plan</span>
+                          {/* Agent Thinking Box */}
+                          <Show when={msg.reasoning}>
+                            <div class="w-full bg-surface-container/60 border border-outline-variant/30 rounded-xl overflow-hidden text-xs">
+                              <button
+                                onClick={() => setIsThinkingOpen(!isThinkingOpen())}
+                                class="w-full px-3 py-2 bg-surface-container flex items-center justify-between text-outline hover:text-on-surface transition-colors"
+                              >
+                                <div class="flex items-center gap-2 font-label-sm text-[11px]">
+                                  <span class="material-symbols-outlined text-[15px] text-primary">psychology</span>
+                                  <span>Reasoning & Context Plan</span>
+                                </div>
+                                <span class="material-symbols-outlined text-[15px]">
+                                  {isThinkingOpen() ? 'expand_less' : 'expand_more'}
+                                </span>
+                              </button>
+
+                              <Show when={isThinkingOpen()}>
+                                <div class="p-3 font-mono text-[11px] text-on-surface-variant bg-surface-container-lowest/60 border-t border-outline-variant/20 whitespace-pre-wrap space-y-1">
+                                  {msg.reasoning}
+                                </div>
+                              </Show>
                             </div>
-                            <span class="material-symbols-outlined text-[15px]">
-                              {isThinkingOpen() ? 'expand_less' : 'expand_more'}
-                            </span>
-                          </button>
+                          </Show>
 
-                          <Show when={isThinkingOpen()}>
-                            <div class="p-3 font-mono text-[11px] text-on-surface-variant bg-surface-container-lowest/60 border-t border-outline-variant/20 whitespace-pre-wrap space-y-1">
-                              {msg.reasoning}
+                          {/* Agent Tool Step Execution Bubble */}
+                          <Show when={msg.toolStep}>
+                            <div class="w-full bg-surface-container border border-outline-variant/30 rounded-xl p-3.5 space-y-2 text-sm">
+                              <div class="flex items-center justify-between text-xs font-label-sm text-outline border-b border-outline-variant/20 pb-1.5">
+                                <div class="flex items-center gap-1.5 text-primary">
+                                  <span class="material-symbols-outlined text-[15px]">terminal</span>
+                                  <span class="font-semibold">{msg.toolStep!.name}</span>
+                                </div>
+                                <span class="text-secondary">Completed</span>
+                              </div>
+
+                              <div class="bg-surface-container-lowest p-2.5 rounded font-mono text-[12px] text-on-surface border border-outline-variant/20 whitespace-pre-wrap">
+                                {msg.toolStep!.output}
+                              </div>
+                            </div>
+                          </Show>
+
+                          {/* Message Body */}
+                          <div class="p-3.5 rounded-2xl rounded-tl-sm bg-surface-container border border-outline-variant/30 text-on-surface text-sm leading-relaxed max-w-2xl">
+                            {msg.body}
+
+                            {/* Attachments inside Agent message */}
+                            <Show when={msg.attachments && msg.attachments.length > 0}>
+                              <div class="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-outline-variant/20">
+                                <For each={msg.attachments}>
+                                  {(att) => (
+                                    <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface-container-lowest border border-outline-variant/30 text-[11px] font-mono text-on-surface">
+                                      <span class="material-symbols-outlined text-[13px] text-primary">attach_file</span>
+                                      <span class="max-w-[120px] truncate">{att.name}</span>
+                                      <span class="text-[10px] text-outline">({formatBytes(att.size)})</span>
+                                    </div>
+                                  )}
+                                </For>
+                              </div>
+                            </Show>
+                          </div>
+
+                          {/* Message Hover Actions */}
+                          <div class="opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-surface-container-high border border-outline-variant/30 rounded-lg px-1 py-0.5 shadow-sm transition-opacity text-[10px] text-outline">
+                            <button
+                              onClick={() => {
+                                if (currentAgent() && currentThread()) {
+                                  branchFromMessage(currentAgent()!.id, currentThread()!.id, msg.id);
+                                }
+                              }}
+                              class="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-surface-container-highest hover:text-primary transition-colors"
+                              title="Branch a new thread from this turn"
+                            >
+                              <span class="material-symbols-outlined text-[13px]">alt_route</span>
+                              <span>Branch thread</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setState('activeSideThread', currentThread());
+                                setState('sidePanelOpen', true);
+                                setState('activeSidePanelTab', 'tab-side-thread');
+                              }}
+                              class="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-surface-container-highest hover:text-secondary transition-colors"
+                              title="Open in side thread inspector"
+                            >
+                              <span class="material-symbols-outlined text-[13px]">vertical_split</span>
+                              <span>Side thread</span>
+                            </button>
+                          </div>
+
+                          {/* Approval Prompt Card */}
+                          <Show when={msg.approval}>
+                            <div class="p-3 rounded-lg bg-surface-container-high border border-tertiary/40 flex flex-col gap-2 mt-2 w-full max-w-xl">
+                              <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 text-tertiary font-label-sm text-xs font-semibold">
+                                  <span class="material-symbols-outlined text-[16px]">verified</span>
+                                  <span>Action Approval Required</span>
+                                </div>
+                                <span class="text-[10px] font-label-sm text-outline">
+                                  {msg.approval!.status === 'pending' ? 'Expires in 15m' : msg.approval!.status.toUpperCase()}
+                                </span>
+                              </div>
+
+                              <div class="text-xs text-on-surface font-mono bg-surface-container-lowest p-2 rounded border border-outline-variant/20">
+                                {msg.approval!.command}
+                              </div>
+
+                              <div class="flex items-center justify-between text-[11px] text-outline pt-1">
+                                <span>Permissions requested: Network, Write files, Execution</span>
+                                <div class="flex items-center gap-2">
+                                  <Show
+                                    when={msg.approval!.status === 'pending'}
+                                    fallback={
+                                      <span class={`text-xs font-semibold ${msg.approval!.status === 'approved' ? 'text-secondary' : 'text-error'}`}>
+                                        {msg.approval!.status === 'approved' ? 'Approved & Executed' : 'Declined'}
+                                      </span>
+                                    }
+                                  >
+                                    <button
+                                      onClick={() => handleApproval(currentAgent()!.id, msg.id, false)}
+                                      class="px-2.5 py-1 rounded bg-surface-container hover:bg-error/20 hover:text-error text-on-surface text-xs font-medium transition-colors"
+                                    >
+                                      Decline
+                                    </button>
+                                    <button
+                                      onClick={() => handleApproval(currentAgent()!.id, msg.id, true)}
+                                      class="px-3 py-1 rounded bg-primary text-on-primary text-xs font-semibold hover:brightness-110 transition-all"
+                                    >
+                                      Approve
+                                    </button>
+                                  </Show>
+                                </div>
+                              </div>
                             </div>
                           </Show>
                         </div>
-                      </Show>
-
-                      {/* Agent Tool Step Execution Bubble */}
-                      <Show when={msg.toolStep}>
-                        <div class="w-full bg-surface-container border border-outline-variant/30 rounded-xl p-3.5 space-y-2 text-sm">
-                          <div class="flex items-center justify-between text-xs font-label-sm text-outline border-b border-outline-variant/20 pb-1.5">
-                            <div class="flex items-center gap-1.5 text-primary">
-                              <span class="material-symbols-outlined text-[15px]">terminal</span>
-                              <span class="font-semibold">{msg.toolStep!.name}</span>
-                            </div>
-                            <span class="text-secondary">Completed</span>
-                          </div>
-
-                          <div class="bg-surface-container-lowest p-2.5 rounded font-mono text-[12px] text-on-surface border border-outline-variant/20 whitespace-pre-wrap">
-                            {msg.toolStep!.output}
-                          </div>
+                      }
+                    >
+                      {/* User Message */}
+                      <div class="group relative flex flex-col items-end gap-1 max-w-3xl ml-auto">
+                        <div class="flex items-center gap-2 text-label-sm text-[11px] text-outline">
+                          <span>You</span>
+                          <span>{msg.createdAt}</span>
                         </div>
-                      </Show>
+                        <div
+                          class="p-3.5 rounded-2xl rounded-tr-sm bg-surface-container-high border border-outline-variant/30 text-on-surface text-sm max-w-2xl leading-relaxed"
+                          style={state.settings.chatColor ? { 'background-color': state.settings.chatColor } : {}}
+                        >
+                          {msg.body}
 
-                      {/* Message Body */}
-                      <div class="p-3.5 rounded-2xl rounded-tl-sm bg-surface-container border border-outline-variant/30 text-on-surface text-sm leading-relaxed max-w-2xl">
-                        {msg.body}
+                          {/* Attachments inside User message */}
+                          <Show when={msg.attachments && msg.attachments.length > 0}>
+                            <div class="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-outline-variant/20">
+                              <For each={msg.attachments}>
+                                {(att) => (
+                                  <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface-container-lowest border border-outline-variant/30 text-[11px] font-mono text-on-surface">
+                                    <span class="material-symbols-outlined text-[13px] text-primary">attach_file</span>
+                                    <span class="max-w-[120px] truncate">{att.name}</span>
+                                    <span class="text-[10px] text-outline">({formatBytes(att.size)})</span>
+                                  </div>
+                                )}
+                              </For>
+                            </div>
+                          </Show>
+                        </div>
+
+                        {/* Message Hover Actions */}
+                        <div class="opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-surface-container-high border border-outline-variant/30 rounded-lg px-1 py-0.5 shadow-sm transition-opacity text-[10px] text-outline">
+                          <button
+                            onClick={() => {
+                              if (currentAgent() && currentThread()) {
+                                branchFromMessage(currentAgent()!.id, currentThread()!.id, msg.id);
+                              }
+                            }}
+                            class="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-surface-container-highest hover:text-primary transition-colors"
+                            title="Branch a new thread from this message"
+                          >
+                            <span class="material-symbols-outlined text-[13px]">alt_route</span>
+                            <span>Branch</span>
+                          </button>
+                        </div>
                       </div>
-
-                      {/* Approval Prompt Card */}
-                      <Show when={msg.approval}>
-                        <div class="p-3 rounded-lg bg-surface-container-high border border-tertiary/40 flex flex-col gap-2 mt-2 w-full max-w-xl">
-                          <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2 text-tertiary font-label-sm text-xs font-semibold">
-                              <span class="material-symbols-outlined text-[16px]">verified</span>
-                              <span>Action Approval Required</span>
-                            </div>
-                            <span class="text-[10px] font-label-sm text-outline">
-                              {msg.approval!.status === 'pending' ? 'Expires in 15m' : msg.approval!.status.toUpperCase()}
-                            </span>
-                          </div>
-
-                          <div class="text-xs text-on-surface font-mono bg-surface-container-lowest p-2 rounded border border-outline-variant/20">
-                            {msg.approval!.command}
-                          </div>
-
-                          <div class="flex items-center justify-between text-[11px] text-outline pt-1">
-                            <span>Permissions requested: Network, Write files, Execution</span>
-                            <div class="flex items-center gap-2">
-                              <Show
-                                when={msg.approval!.status === 'pending'}
-                                fallback={
-                                  <span class={`text-xs font-semibold ${msg.approval!.status === 'approved' ? 'text-secondary' : 'text-error'}`}>
-                                    {msg.approval!.status === 'approved' ? 'Approved & Executed' : 'Declined'}
-                                  </span>
-                                }
-                              >
-                                <button
-                                  onClick={() => handleApproval(currentAgent()!.id, msg.id, false)}
-                                  class="px-2.5 py-1 rounded bg-surface-container hover:bg-error/20 hover:text-error text-on-surface text-xs font-medium transition-colors"
-                                >
-                                  Decline
-                                </button>
-                                <button
-                                  onClick={() => handleApproval(currentAgent()!.id, msg.id, true)}
-                                  class="px-3 py-1 rounded bg-primary text-on-primary text-xs font-semibold hover:brightness-110 transition-all"
-                                >
-                                  Approve
-                                </button>
-                              </Show>
-                            </div>
-                          </div>
-                        </div>
-                      </Show>
-                    </div>
+                    </Show>
                   }
                 >
-                  {/* User Message */}
-                  <div class="flex flex-col items-end gap-1 max-w-3xl ml-auto">
-                    <div class="flex items-center gap-2 text-label-sm text-[11px] text-outline">
-                      <span>You</span>
-                      <span>{msg.createdAt}</span>
+                  {/* Compaction Summary Card */}
+                  <div class="my-2 p-3.5 rounded-xl bg-surface-container/70 border border-secondary/40 text-xs text-on-surface max-w-2xl mx-auto flex flex-col gap-1.5 shadow-xs">
+                    <div class="flex items-center justify-between text-secondary font-label-sm text-[11px] font-semibold border-b border-outline-variant/20 pb-1">
+                      <div class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[15px]">compress</span>
+                        <span>Thread Context Compacted</span>
+                      </div>
+                      <span class="text-[10px] text-outline font-mono">Retained Invariant Memory</span>
                     </div>
-                    <div
-                      class="p-3.5 rounded-2xl rounded-tr-sm bg-surface-container-high border border-outline-variant/30 text-on-surface text-sm max-w-2xl leading-relaxed"
-                      style={state.settings.chatColor ? { 'background-color': state.settings.chatColor } : {}}
-                    >
+                    <p class="whitespace-pre-wrap leading-relaxed text-on-surface-variant font-mono text-[11px]">
                       {msg.body}
-                    </div>
+                    </p>
                   </div>
                 </Show>
               )}
@@ -501,6 +783,15 @@ export const MainWorkspace: Component = () => {
             </Show>
 
             <div class="flex flex-col rounded-xl bg-surface-container border border-outline-variant/30 focus-within:border-primary/60 transition-colors shadow-sm">
+              {/* Hidden file input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                multiple
+                onChange={handleFileInputChange}
+                class="hidden"
+              />
+
               {/* Steer-while-working banner */}
               <div class="px-3 py-1 bg-surface-container-lowest/60 border-b border-outline-variant/20 flex items-center justify-between text-[11px] font-label-sm text-outline">
                 <div class="flex items-center gap-1.5">
@@ -509,6 +800,34 @@ export const MainWorkspace: Component = () => {
                 </div>
                 <span>Send with {state.settings.sendShortcut === 'enter' ? 'Enter' : '⌘Enter'}</span>
               </div>
+
+              {/* Attachment Preview Strip */}
+              <Show when={state.composerAttachments.length > 0}>
+                <div class="px-3 pt-2 pb-1 border-b border-outline-variant/20 flex flex-wrap items-center gap-1.5 bg-surface-container-lowest/40">
+                  <div class="text-[10px] font-label-sm text-outline mr-1 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px] text-primary">attach_file</span>
+                    <span>
+                      {state.composerAttachments.length}/10 files · {formatBytes(state.composerAttachments.reduce((acc, f) => acc + f.size, 0))} / 250 MB
+                    </span>
+                  </div>
+                  <For each={state.composerAttachments}>
+                    {(att) => (
+                      <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface-container-high border border-outline-variant/30 text-[11px] font-mono text-on-surface">
+                        <span class="material-symbols-outlined text-[13px] text-primary">draft</span>
+                        <span class="max-w-[120px] truncate">{att.name}</span>
+                        <span class="text-[10px] text-outline">({formatBytes(att.size)})</span>
+                        <button
+                          onClick={() => removeComposerAttachment(att.id)}
+                          class="w-3.5 h-3.5 rounded hover:bg-surface-container-highest flex items-center justify-center text-outline hover:text-error transition-colors"
+                          title="Remove file"
+                        >
+                          <span class="material-symbols-outlined text-[11px]">close</span>
+                        </button>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </Show>
 
               {/* Textarea */}
               <textarea
@@ -536,9 +855,9 @@ export const MainWorkspace: Component = () => {
 
                   {/* Attachment button */}
                   <button
-                    onClick={() => addToast('success', 'Attach file (100MB max per file)')}
+                    onClick={() => fileInputRef?.click()}
                     class="p-1.5 rounded hover:bg-surface-container-high text-outline hover:text-on-surface transition-colors"
-                    title="Attach file (MP3, MOV, MP4, ZIP, SVG, code)"
+                    title="Attach file (100MB max per file, 250MB total, max 10 files)"
                   >
                     <span class="material-symbols-outlined text-[16px]">attach_file</span>
                   </button>
@@ -559,9 +878,9 @@ export const MainWorkspace: Component = () => {
                   </span>
                   <button
                     onClick={handleSend}
-                    disabled={!inputText().trim()}
+                    disabled={!inputText().trim() && state.composerAttachments.length === 0}
                     class={`px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold text-xs transition-all ${
-                      inputText().trim()
+                      inputText().trim() || state.composerAttachments.length > 0
                         ? 'bg-primary text-on-primary hover:brightness-110 press-scale'
                         : 'bg-surface-container-high text-outline opacity-50 cursor-not-allowed'
                     }`}

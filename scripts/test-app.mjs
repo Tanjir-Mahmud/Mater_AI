@@ -29,7 +29,7 @@ child.stderr.on('data', (d) => {
   console.error('[Electron stderr]:', str.trim());
 });
 
-// Let it run for up to 10 seconds then quit gracefully if not already closed
+// Let it run for up to 25 seconds then quit gracefully if not already closed
 const timeout = setTimeout(() => {
   console.log('Test timer finished. Closing Electron process...');
   child.kill('SIGINT');
@@ -38,7 +38,7 @@ const timeout = setTimeout(() => {
       child.kill('SIGKILL');
     } catch (e) {}
   }, 1000);
-}, 10000);
+}, 25000);
 
 child.on('close', (code) => {
   clearTimeout(timeout);

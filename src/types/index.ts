@@ -102,11 +102,73 @@ export interface AgentSections {
   fallbackStrategies: string;
 }
 
+export interface MessageAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  storagePath?: string;
+  sha256?: string;
+  base64Data?: string;
+}
+
+export interface Thread {
+  id: string;
+  agentId: string;
+  title: string;
+  kind: 'main' | 'side' | 'branch';
+  parentThreadId?: string;
+  sourceMessageId?: string;
+  state: 'active' | 'closed';
+  createdAt: string;
+  lastActivity: string;
+}
+
+export type TurnStatus =
+  | 'queued'
+  | 'running'
+  | 'waiting-input'
+  | 'waiting-approval'
+  | 'waiting-browser'
+  | 'done'
+  | 'failed'
+  | 'cancelled';
+
+export interface Turn {
+  id: string;
+  threadId: string;
+  agentId: string;
+  sequence: number;
+  status: TurnStatus;
+  startedAt: string;
+  finishedAt?: string;
+  error?: string;
+}
+
+export interface QueueEntry {
+  id: string;
+  agentId: string;
+  threadId: string;
+  turnId?: string;
+  messageText: string;
+  attachments?: MessageAttachment[];
+  position: number;
+  state: 'queued' | 'paused' | 'running' | 'cancelled';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ChatMessage {
   id: string;
   agentId: string;
-  author: 'user' | 'agent';
+  threadId?: string;
+  turnId?: string;
+  author: 'user' | 'agent' | 'channel_member';
+  kind?: 'text' | 'question' | 'approval' | 'tool-step' | 'memory-change' | 'file' | 'compaction-summary';
   body: string;
+  attachments?: MessageAttachment[];
+  reactions?: string[];
+  replyToId?: string;
   createdAt: string;
   reasoning?: string;
   toolStep?: {

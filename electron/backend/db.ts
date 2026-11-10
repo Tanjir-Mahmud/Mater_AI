@@ -28,11 +28,46 @@ export interface DBAgent {
 export interface DBThread {
   id: string;
   agent_id: string;
+  title: string;
   kind: 'main' | 'side' | 'branch';
   parent_thread_id?: string;
   created_at: string;
   last_activity: string;
-  state: string;
+  state: 'active' | 'closed';
+}
+
+export interface DBTurn {
+  id: string;
+  thread_id: string;
+  agent_id: string;
+  sequence: number;
+  status: 'queued' | 'running' | 'waiting-input' | 'waiting-approval' | 'waiting-browser' | 'done' | 'failed' | 'cancelled';
+  started_at: string;
+  finished_at?: string;
+  error?: string;
+}
+
+export interface DBMessageQueueEntry {
+  id: string;
+  agent_id: string;
+  thread_id: string;
+  turn_id?: string;
+  message_payload: string; // JSON { text, attachments }
+  position: number;
+  state: 'queued' | 'paused' | 'running' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBAttachment {
+  id: string;
+  message_id: string;
+  file_name: string;
+  size: number;
+  type: string;
+  storage_path: string;
+  sha256: string;
+  created_at: string;
 }
 
 export interface DBMessage {
@@ -40,7 +75,7 @@ export interface DBMessage {
   thread_id: string;
   turn_id: string;
   author: 'user' | 'agent' | 'channel_member';
-  kind: 'text' | 'question' | 'approval' | 'tool-step' | 'memory-change' | 'file';
+  kind: 'text' | 'question' | 'approval' | 'tool-step' | 'memory-change' | 'file' | 'compaction-summary';
   body: string;
   attachments?: string;
   reactions?: string;
@@ -61,6 +96,24 @@ export function getAppBaseDir(): string {
 export function getAgentWorkspaceDir(agentId: string): string {
   const base = getAppBaseDir();
   const dir = path.join(base, 'Agents', agentId);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+export function getSharedTransfersDir(): string {
+  const base = getAppBaseDir();
+  const dir = path.join(base, 'Shared', 'Transfers');
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+export function getDownloadsDir(): string {
+  const base = getAppBaseDir();
+  const dir = path.join(base, 'Downloads');
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -150,12 +203,49 @@ export async function initDatabase(): Promise<Database> {
     CREATE TABLE IF NOT EXISTS threads (
       id TEXT PRIMARY KEY,
       agent_id TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT 'Main Thread',
       kind TEXT NOT NULL DEFAULT 'main',
       parent_thread_id TEXT,
       created_at TEXT NOT NULL,
       last_activity TEXT NOT NULL,
       state TEXT NOT NULL DEFAULT 'active',
       FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS turns (
+      id TEXT PRIMARY KEY,
+      thread_id TEXT NOT NULL,
+      agent_id TEXT NOT NULL,
+      sequence INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'queued',
+      started_at TEXT NOT NULL,
+      finished_at TEXT,
+      error TEXT,
+      FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS message_queue (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL,
+      thread_id TEXT NOT NULL,
+      turn_id TEXT,
+      message_payload TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      state TEXT NOT NULL DEFAULT 'queued',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS attachments (
+      id TEXT PRIMARY KEY,
+      message_id TEXT NOT NULL,
+      file_name TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      storage_path TEXT NOT NULL,
+      sha256 TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS messages (
@@ -193,6 +283,12 @@ export async function initDatabase(): Promise<Database> {
       created_at TEXT NOT NULL
     );
   `);
+
+  try {
+    db.run(`ALTER TABLE threads ADD COLUMN title TEXT NOT NULL DEFAULT 'Main Thread';`);
+  } catch {
+    // Column already exists
+  }
 
   saveDatabase(db);
   dbInstance = db;

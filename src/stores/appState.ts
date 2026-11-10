@@ -12,6 +12,10 @@ import {
   OnboardingState,
   ChatMessage,
   AgentSections,
+  Thread,
+  Turn,
+  QueueEntry,
+  MessageAttachment,
 } from '../types';
 import { i18n } from '../shared/i18n';
 
@@ -323,6 +327,58 @@ const initialFolders: Folder[] = [
   },
 ];
 
+const initialThreads: Record<string, Thread[]> = {
+  'agent-kestrel': [
+    {
+      id: 'thread-kestrel-main',
+      agentId: 'agent-kestrel',
+      title: 'Latency Spikes Investigation',
+      kind: 'main',
+      state: 'active',
+      createdAt: '2026-11-09T10:00:00Z',
+      lastActivity: '2026-11-09T14:02:22Z',
+    },
+    {
+      id: 'thread-kestrel-canary',
+      agentId: 'agent-kestrel',
+      title: 'Branch: Canary Rollout Patch',
+      kind: 'branch',
+      parentThreadId: 'thread-kestrel-main',
+      state: 'active',
+      createdAt: '2026-11-09T14:15:00Z',
+      lastActivity: '2026-11-09T14:20:00Z',
+    },
+  ],
+  'agent-cipher': [
+    {
+      id: 'thread-cipher-main',
+      agentId: 'agent-cipher',
+      title: 'Security CVE Audit',
+      kind: 'main',
+      state: 'active',
+      createdAt: '2026-11-09T11:00:00Z',
+      lastActivity: '2026-11-09T11:20:00Z',
+    },
+  ],
+  'agent-vanguard': [
+    {
+      id: 'thread-vanguard-main',
+      agentId: 'agent-vanguard',
+      title: 'Terraform Dry-Run & Plan',
+      kind: 'main',
+      state: 'active',
+      createdAt: '2026-11-09T12:00:00Z',
+      lastActivity: '2026-11-09T12:29:00Z',
+    },
+  ],
+};
+
+const initialActiveThreadId: Record<string, string> = {
+  'agent-kestrel': 'thread-kestrel-main',
+  'agent-cipher': 'thread-cipher-main',
+  'agent-vanguard': 'thread-vanguard-main',
+};
+
 export const [state, setState] = createStore({
   settings: defaultSettings,
   activePage: 'agents' as PageId,
@@ -336,6 +392,13 @@ export const [state, setState] = createStore({
   channels: initialChannels,
   people: initialPeople,
   folders: initialFolders,
+  threads: initialThreads as Record<string, Thread[]>,
+  activeThreadId: initialActiveThreadId as Record<string, string>,
+  activeSideThread: null as Thread | null,
+  agentQueues: {} as Record<string, QueueEntry[]>,
+  queuePaused: {} as Record<string, boolean>,
+  composerAttachments: [] as MessageAttachment[],
+  isThreadListExpanded: { 'agent-kestrel': true, 'agent-cipher': true, 'agent-vanguard': true } as Record<string, boolean>,
   sidebarView: 'agents' as 'agents' | 'routines',
   sidebarWidth: 260,
   sidebarSearchQuery: '',
@@ -567,44 +630,304 @@ export function changeAgentModel(agentId: string, provider: string, model: strin
   addToast('success', `Model switched to ${model}`, 'Conversation history preserved across providers');
 }
 
+// Milestone 3: Chat, Threads, Queue & Attachments Actions
+export async function createThreadForAgent(agentId: string, title?: string): Promise<Thread | null> {
+  const currentThreads = state.threads[agentId] || [];
+  if (currentThreads.length >= 50) {
+    addToast('error', 'Thread limit reached', 'Maximum 50 open threads allowed per agent. Please close an existing thread.');
+    return null;
+  }
+
+  const threadTitle = title || `Thread ${currentThreads.length + 1}`;
+  let newThread: Thread;
+
+  if ((window as any).openbot?.createThread) {
+    try {
+      newThread = await (window as any).openbot.createThread(agentId, threadTitle, 'main');
+    } catch (err: any) {
+      addToast('error', 'Failed to create thread', err.message);
+      return null;
+    }
+  } else {
+    newThread = {
+      id: `thread-${Date.now()}`,
+      agentId,
+      title: threadTitle,
+      kind: 'main',
+      state: 'active',
+      createdAt: new Date().toISOString(),
+      lastActivity: new Date().toISOString(),
+    };
+  }
+
+  setState('threads', agentId, (prev = []) => [newThread, ...prev]);
+  setState('activeThreadId', agentId, newThread.id);
+  addToast('success', 'New thread created', `Switched to "${newThread.title}"`);
+  return newThread;
+}
+
+export async function switchAgentThread(agentId: string, threadId: string) {
+  setState('activeThreadId', agentId, threadId);
+  if ((window as any).openbot?.getMessages) {
+    try {
+      const msgs = await (window as any).openbot.getMessages(threadId);
+      if (msgs && msgs.length > 0) {
+        setState('agentMessages', agentId, msgs);
+      }
+    } catch (err) {
+      console.error('Error fetching thread messages:', err);
+    }
+  }
+}
+
+export async function renameAgentThread(agentId: string, threadId: string, newTitle: string) {
+  if (!newTitle.trim()) return;
+  if ((window as any).openbot?.renameThread) {
+    await (window as any).openbot.renameThread(threadId, newTitle.trim());
+  }
+  setState('threads', agentId, (threads = []) =>
+    threads.map((t) => (t.id === threadId ? { ...t, title: newTitle.trim() } : t))
+  );
+  addToast('success', 'Thread renamed', `Thread updated to "${newTitle.trim()}"`);
+}
+
+export async function closeAgentThread(agentId: string, threadId: string) {
+  if ((window as any).openbot?.closeThread) {
+    await (window as any).openbot.closeThread(threadId);
+  }
+  const remaining = (state.threads[agentId] || []).filter((t) => t.id !== threadId);
+  setState('threads', agentId, remaining);
+
+  if (state.activeThreadId[agentId] === threadId) {
+    if (remaining.length > 0) {
+      setState('activeThreadId', agentId, remaining[0].id);
+    } else {
+      await createThreadForAgent(agentId, 'Main Conversation');
+    }
+  }
+  addToast('success', 'Thread closed');
+}
+
+export async function branchFromMessage(agentId: string, threadId: string, messageId: string) {
+  const currentThreads = state.threads[agentId] || [];
+  if (currentThreads.length >= 50) {
+    addToast('error', 'Thread limit reached', 'Maximum 50 open threads reached. Please close a thread to branch.');
+    return;
+  }
+
+  let branchThread: Thread;
+  if ((window as any).openbot?.branchThreadFromMessage) {
+    try {
+      branchThread = await (window as any).openbot.branchThreadFromMessage(
+        threadId,
+        messageId,
+        `Branch: Exploration`
+      );
+    } catch (err: any) {
+      addToast('error', 'Branching error', err.message);
+      return;
+    }
+  } else {
+    branchThread = {
+      id: `branch-${Date.now()}`,
+      agentId,
+      title: `Branch: Exploration`,
+      kind: 'branch',
+      parentThreadId: threadId,
+      sourceMessageId: messageId,
+      state: 'active',
+      createdAt: new Date().toISOString(),
+      lastActivity: new Date().toISOString(),
+    };
+  }
+
+  setState('threads', agentId, (prev = []) => [branchThread, ...prev]);
+  setState('activeSideThread', branchThread);
+  setState('activeSidePanelTab', 'tab-side-thread');
+  setState('sidePanelOpen', true);
+  addToast('success', 'Branch thread created', `Exploration branched into side panel`);
+}
+
+export async function compactActiveThread() {
+  const agentId = state.selectedAgentId;
+  const threadId = state.activeThreadId[agentId];
+  if (!threadId) return;
+
+  if ((window as any).openbot?.compactThread) {
+    try {
+      const res = await (window as any).openbot.compactThread(threadId, 2);
+      if (res?.success) {
+        addToast('success', 'Thread compacted', `Context window condensed (${res.compactedTurns} turns summarized)`);
+        await switchAgentThread(agentId, threadId);
+      } else {
+        addToast('warning', 'Compaction not required', res.summary || 'Thread context already optimal');
+      }
+    } catch (err: any) {
+      addToast('error', 'Compaction failed', err.message);
+    }
+  } else {
+    addToast('success', 'Thread compacted', 'Context condensed to conserve model window');
+  }
+}
+
+export function toggleThreadListExpanded(agentId: string) {
+  const current = state.isThreadListExpanded[agentId] !== false;
+  setState('isThreadListExpanded', agentId, !current);
+}
+
+// Attachment management enforcing exact spec limits:
+// 100 MB per file, 250 MB per message, 10 files per message
+export const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+export const MAX_TOTAL_SIZE = 250 * 1024 * 1024; // 250 MB
+export const MAX_FILES_COUNT = 10;
+
+export function addComposerAttachment(file: {
+  name: string;
+  size: number;
+  type: string;
+  base64Data?: string;
+}): boolean {
+  if (state.composerAttachments.length >= MAX_FILES_COUNT) {
+    addToast('error', 'Attachment limit exceeded', `Cannot attach more than ${MAX_FILES_COUNT} files to a single message.`);
+    return false;
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    const mb = (file.size / (1024 * 1024)).toFixed(1);
+    addToast('error', 'File too large', `File "${file.name}" (${mb} MB) exceeds the 100 MB per-file limit.`);
+    return false;
+  }
+
+  const currentTotal = state.composerAttachments.reduce((acc, f) => acc + f.size, 0);
+  if (currentTotal + file.size > MAX_TOTAL_SIZE) {
+    const totalMb = ((currentTotal + file.size) / (1024 * 1024)).toFixed(1);
+    addToast('error', 'Total payload exceeded', `Total attachments (${totalMb} MB) exceed the 250 MB per-message limit.`);
+    return false;
+  }
+
+  const attachment: MessageAttachment = {
+    id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    base64Data: file.base64Data,
+  };
+
+  setState('composerAttachments', (prev) => [...prev, attachment]);
+  return true;
+}
+
+export function removeComposerAttachment(id: string) {
+  setState('composerAttachments', (prev) => prev.filter((a) => a.id !== id));
+}
+
+export function clearComposerAttachments() {
+  setState('composerAttachments', []);
+}
+
+export async function pauseAgentQueue(agentId: string) {
+  if ((window as any).openbot?.pauseQueue) {
+    await (window as any).openbot.pauseQueue(agentId);
+  }
+  setState('queuePaused', agentId, true);
+  addToast('warning', 'Message queue paused', 'Subsequent messages will wait in queue');
+}
+
+export async function resumeAgentQueue(agentId: string) {
+  if ((window as any).openbot?.resumeQueue) {
+    await (window as any).openbot.resumeQueue(agentId);
+  }
+  setState('queuePaused', agentId, false);
+  addToast('success', 'Message queue resumed', 'Processing pending turns FIFO');
+}
+
+export async function cancelQueueItem(agentId: string, queueId: string) {
+  if ((window as any).openbot?.cancelQueuedMessage) {
+    await (window as any).openbot.cancelQueuedMessage(queueId);
+  }
+  setState('agentQueues', agentId, (q = []) => q.filter((item) => item.id !== queueId));
+  addToast('success', 'Queued task cancelled');
+}
+
 export async function sendMessageToCurrentAgent(messageText: string) {
   const agent = state.agents.find((a) => a.id === state.selectedAgentId);
   if (!agent) return;
 
+  const text = messageText.trim();
+  const attachments = [...state.composerAttachments];
+
+  if (!text && attachments.length === 0) return;
+
+  const currentThreadId = state.activeThreadId[agent.id] || `thread-${agent.id}-main`;
+
   const userMsg: ChatMessage = {
     id: `msg-${Date.now()}-user`,
     agentId: agent.id,
+    threadId: currentThreadId,
     author: 'user',
-    body: messageText,
+    body: text || `[Attached ${attachments.length} file(s)]`,
+    attachments,
     createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   };
 
   const prev = state.agentMessages[agent.id] || [];
   setState('agentMessages', agent.id, [...prev, userMsg]);
   setState('agents', (a) => a.id === agent.id, 'status', 'thinking');
+  clearComposerAttachments();
 
   try {
-    let reply: any = null;
-    if ((window as any).openbot?.sendMessage) {
-      reply = await (window as any).openbot.sendMessage({
+    let result: any = null;
+    if ((window as any).openbot?.submitTurnMessage) {
+      result = await (window as any).openbot.submitTurnMessage({
+        agentId: agent.id,
+        threadId: currentThreadId,
+        providerId: agent.provider,
+        model: agent.model,
+        messageText: text,
+        attachments,
+      });
+    } else if ((window as any).openbot?.sendMessage) {
+      const reply = await (window as any).openbot.sendMessage({
         agentId: agent.id,
         providerId: agent.provider,
         model: agent.model,
-        message: messageText,
+        message: text,
       });
+      result = { queued: false, reply };
     }
 
-    if (!reply || !reply.text) {
+    if (result?.queued) {
+      setState('agents', (a) => a.id === agent.id, 'status', 'idle');
+      const queueItem: QueueEntry = {
+        id: `q-${Date.now()}`,
+        agentId: agent.id,
+        threadId: currentThreadId,
+        turnId: result.turnId,
+        messageText: text,
+        attachments,
+        position: (state.agentQueues[agent.id]?.length || 0) + 1,
+        state: 'queued',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setState('agentQueues', agent.id, (q = []) => [...q, queueItem]);
+      addToast('warning', 'Task queued (FIFO)', `Turn queued: concurrency limit (4) reached or queue paused.`);
+      return;
+    }
+
+    if (!result?.reply || !result.reply.text) {
       throw new Error(`Provider "${agent.provider}" is not connected or requires sign-in. No response generated.`);
     }
 
     const agentMsg: ChatMessage = {
       id: `msg-${Date.now()}-agent`,
       agentId: agent.id,
+      threadId: currentThreadId,
+      turnId: result.turnId,
       author: 'agent',
-      body: reply.text,
-      reasoning: reply.reasoning,
-      toolStep: reply.toolStep,
+      body: result.reply.text,
+      reasoning: result.reply.reasoning,
+      toolStep: result.reply.toolStep,
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
