@@ -25,6 +25,13 @@ import {
   BackupModel,
   MemoryUsage,
   MetaMemory,
+  ServerMember,
+  MemberAgentAccess,
+  SharedTable,
+  AuditLogEntry,
+  RemoteDesktopSession,
+  ServerRole,
+  AgentAccessLevel,
 } from '../types';
 import { i18n } from '../shared/i18n';
 
@@ -564,6 +571,35 @@ export const [state, setState] = createStore({
   },
   isPiPActive: false,
   recentlyDeletedWorkflow: null as Workflow | null,
+
+  // Milestone 5: Teams and Collaboration states
+  serverMembers: [
+    { id: 'mem-alex', serverId: 'server-local', name: 'Alex Rivera', email: 'alex@synthetify.io', serverRole: 'owner', status: 'online', createdAt: '2026-11-09T08:00:00Z' },
+    { id: 'mem-sophia', serverId: 'server-local', name: 'Sophia Chen', email: 'sophia@synthetify.io', serverRole: 'admin', status: 'online', createdAt: '2026-11-09T08:15:00Z' },
+    { id: 'mem-marcus', serverId: 'server-local', name: 'Marcus Brody', email: 'marcus@synthetify.io', serverRole: 'member', status: 'offline', createdAt: '2026-11-09T08:30:00Z' },
+  ] as ServerMember[],
+  memberAgentAccess: {} as Record<string, MemberAgentAccess[]>,
+  sharedTables: [
+    {
+      id: 'table-metrics',
+      name: 'cluster_metrics',
+      creatorAgentId: 'agent-kestrel',
+      columns: ['node_id', 'cpu', 'memory', 'disk'],
+      rows: [
+        { node_id: 'i-0a1b2c3d', cpu: 34, memory: 68, disk: 82 },
+        { node_id: 'i-0e4f5a6b', cpu: 91, memory: 74, disk: 96 },
+      ],
+      createdAt: '2026-11-09T10:00:00Z',
+      updatedAt: '2026-11-09T12:00:00Z',
+    },
+  ] as SharedTable[],
+  auditLogs: [
+    { id: 'audit-1', serverId: 'server-local', action: 'server_initialized', actor: 'alex@synthetify.io', details: 'Local team server initialized with WebRTC protocol v9.', timestamp: '2026-11-09T08:00:00Z' },
+    { id: 'audit-2', serverId: 'server-local', action: 'member_joined', actor: 'sophia@synthetify.io', details: 'Sophia Chen assigned role Admin.', timestamp: '2026-11-09T08:15:00Z' },
+    { id: 'audit-3', serverId: 'server-local', action: 'key_rotation', actor: 'owner', details: 'Dual-signed handover token validated.', timestamp: '2026-11-09T08:30:00Z' },
+  ] as AuditLogEntry[],
+  activeRemoteDesktopSession: null as RemoteDesktopSession | null,
+  isRemoteDesktopActive: false,
 });
 
 export function selectPage(page: PageId) {
@@ -1423,4 +1459,272 @@ export async function toggleComputerUseAction(enabled: boolean) {
     addToast('error', 'Computer Use error', err?.message);
   }
 }
+
+// =========================================================================
+// Milestone 5: Teams and Collaboration Actions
+// =========================================================================
+
+export async function loadTeamServers() {
+  try {
+    if ((window as any).openbot?.getTeamServers) {
+      const servers = await (window as any).openbot.getTeamServers();
+      if (servers && servers.length) {
+        setState('servers', servers.map((s: any) => ({
+          ...s,
+          isLocal: s.is_local === 1,
+          publishState: s.publish_state,
+          storage: {
+            totalBytes: 512 * 1024 * 1024 * 1024,
+            usedBytes: 420 * 1024 * 1024 * 1024,
+            freeBytes: 92 * 1024 * 1024 * 1024,
+            percentUsed: 82,
+          },
+        })));
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load team servers:', err);
+  }
+}
+
+export async function createTeamServerAction(server: { name: string; logo?: string; plan?: string; is_local?: boolean; timezone?: string }) {
+  try {
+    if ((window as any).openbot?.createTeamServer) {
+      const created = await (window as any).openbot.createTeamServer(server);
+      const serverInfo: ServerInfo = {
+        id: created.id,
+        name: created.name,
+        logo: created.logo,
+        isLocal: created.is_local === 1,
+        publishState: created.publish_state,
+        status: 'online',
+        storage: { totalBytes: 100 * 1024 * 1024 * 1024, usedBytes: 10 * 1024 * 1024 * 1024, freeBytes: 90 * 1024 * 1024 * 1024, percentUsed: 10 },
+        timezone: created.timezone || 'UTC+0',
+      };
+      setState('servers', (prev) => [...prev, serverInfo]);
+      addToast('success', `Team server "${created.name}" created`, `Protocol v9 active with 3 data channels`);
+      return created;
+    }
+  } catch (err: any) {
+    addToast('error', 'Failed to create server', err?.message);
+  }
+}
+
+export async function joinTeamServerAction(token: string, userEmail: string) {
+  try {
+    if ((window as any).openbot?.joinTeamServer) {
+      const res = await (window as any).openbot.joinTeamServer(token, userEmail);
+      if (res.success && res.member) {
+        setState('serverMembers', (prev) => [...prev, res.member]);
+        addToast('success', 'Joined team server', `Signed in as ${userEmail}. Email invitation verified.`);
+      } else {
+        addToast('error', 'Join failed', res.error || 'Invalid or expired invitation token');
+      }
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Join server error', err?.message);
+  }
+}
+
+export async function setPublishStateAction(serverId: string, publishState: 'reachable' | 'not-reachable') {
+  try {
+    if ((window as any).openbot?.setPublishState) {
+      await (window as any).openbot.setPublishState(serverId, publishState);
+      setState('servers', (s) => s.id === serverId, 'publishState', publishState);
+      addToast(
+        'success',
+        publishState === 'reachable' ? 'Server published online' : 'Server unpublished',
+        publishState === 'reachable'
+          ? 'Reachable online: Only invited people can sign in.'
+          : 'Not reachable online: Existing members and invitations remain.'
+      );
+    }
+  } catch (err: any) {
+    addToast('error', 'Publish state update error', err?.message);
+  }
+}
+
+export async function rotateServerKeyAction(serverId: string) {
+  try {
+    if ((window as any).openbot?.rotateServerKey) {
+      const res = await (window as any).openbot.rotateServerKey(serverId);
+      if (res.success) {
+        addToast('success', 'Server key rotated', 'Dual-signed handover token generated. Paired computers, phones, and webhook routes remain connected.');
+      }
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Key rotation failed', err?.message);
+  }
+}
+
+export async function restartServerAction(serverId: string) {
+  try {
+    if ((window as any).openbot?.restartServer) {
+      const res = await (window as any).openbot.restartServer(serverId);
+      addToast('warning', 'Server restarting', 'Takes about 1 minute. Running turns stopped; members temporarily disconnected; files and chats preserved.');
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Restart failed', err?.message);
+  }
+}
+
+export async function loadServerMembers(serverId: string) {
+  try {
+    if ((window as any).openbot?.getServerMembers) {
+      const members = await (window as any).openbot.getServerMembers(serverId);
+      if (members && members.length) {
+        setState('serverMembers', members);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load members:', err);
+  }
+}
+
+export async function inviteServerMemberAction(serverId: string, email: string, name: string, role: ServerRole = 'member') {
+  try {
+    if ((window as any).openbot?.inviteServerMember) {
+      const created = await (window as any).openbot.inviteServerMember(serverId, email, name, role);
+      setState('serverMembers', (prev) => [...prev, created]);
+      addToast('success', `Invited ${name}`, `Invitation sent to ${email} (Role: ${role})`);
+      return created;
+    }
+  } catch (err: any) {
+    addToast('error', 'Invitation failed', err?.message);
+  }
+}
+
+export async function removeServerMemberAction(serverId: string, memberId: string) {
+  try {
+    if ((window as any).openbot?.removeServerMember) {
+      await (window as any).openbot.removeServerMember(serverId, memberId);
+      setState('serverMembers', (prev) => prev.filter((m) => m.id !== memberId));
+      addToast('warning', 'Member removed', 'Access to server and shared conversations revoked.');
+    }
+  } catch (err: any) {
+    addToast('error', 'Failed to remove member', err?.message);
+  }
+}
+
+export async function loadSharedTables() {
+  try {
+    if ((window as any).openbot?.getSharedTables) {
+      const tables = await (window as any).openbot.getSharedTables();
+      if (tables && tables.length) {
+        setState('sharedTables', tables.map((t: any) => ({
+          ...t,
+          columns: JSON.parse(t.columns_json || '[]'),
+          rows: JSON.parse(t.rows_json || '[]'),
+        })));
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load shared tables:', err);
+  }
+}
+
+export async function createSharedTableAction(name: string, creatorAgentId: string, columns: string[]) {
+  try {
+    if ((window as any).openbot?.createSharedTable) {
+      const created = await (window as any).openbot.createSharedTable(name, creatorAgentId, columns);
+      setState('sharedTables', (prev) => [...prev, {
+        id: created.id,
+        name: created.name,
+        creatorAgentId: created.creator_agent_id,
+        columns,
+        rows: [],
+        createdAt: created.created_at,
+        updatedAt: created.updated_at,
+      }]);
+      addToast('success', `Shared table "${name}" created`, `Owned by ${creatorAgentId}. Every other agent can read/write rows.`);
+      return created;
+    }
+  } catch (err: any) {
+    addToast('error', 'Failed to create shared table', err?.message);
+  }
+}
+
+export async function alterSharedTableAction(name: string, requestingAgentId: string, columns: string[]) {
+  try {
+    if ((window as any).openbot?.alterSharedTable) {
+      await (window as any).openbot.alterSharedTable(name, requestingAgentId, columns);
+      setState('sharedTables', (t) => t.name === name, 'columns', columns);
+      addToast('success', `Shared table "${name}" updated`, 'Columns modified by creator');
+    }
+  } catch (err: any) {
+    addToast('error', 'Permission denied', err?.message);
+  }
+}
+
+export async function dropSharedTableAction(name: string, requestingAgentId: string, isUser: boolean = false) {
+  try {
+    if ((window as any).openbot?.dropSharedTable) {
+      await (window as any).openbot.dropSharedTable(name, requestingAgentId, isUser);
+      setState('sharedTables', (prev) => prev.filter((t) => t.name !== name));
+      addToast('warning', `Shared table "${name}" dropped`, isUser ? 'Deleted by user' : 'Dropped by creator agent');
+    }
+  } catch (err: any) {
+    addToast('error', 'Permission denied', err?.message);
+  }
+}
+
+export async function loadAuditLogs(serverId: string) {
+  try {
+    if ((window as any).openbot?.getAuditLogs) {
+      const logs = await (window as any).openbot.getAuditLogs(serverId);
+      if (logs && logs.length) {
+        setState('auditLogs', logs);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load audit logs:', err);
+  }
+}
+
+export async function createRemoteDesktopTestAction(serverId: string, targetName: string) {
+  try {
+    if ((window as any).openbot?.createRemoteDesktopTest) {
+      const session = await (window as any).openbot.createRemoteDesktopTest(serverId, targetName);
+      setState('activeRemoteDesktopSession', session);
+      setState('isRemoteDesktopActive', true);
+      addToast('success', 'Remote Desktop Test Panel', `Code: ${session.fourDigitCode}. Panel expires in 2 minutes.`);
+      return session;
+    }
+  } catch (err: any) {
+    addToast('error', 'Remote desktop error', err?.message);
+  }
+}
+
+export async function verifyRemoteDesktopTestAction(sessionId: string, code: string) {
+  try {
+    if ((window as any).openbot?.verifyRemoteDesktopTest) {
+      const res = await (window as any).openbot.verifyRemoteDesktopTest(sessionId, code);
+      if (res.success) {
+        addToast('success', 'Remote Desktop Connected', 'Verified with 4-digit code. Sunshine/Moonlight stream active.');
+      } else {
+        addToast('error', 'Verification failed', res.error);
+      }
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Remote desktop verification error', err?.message);
+  }
+}
+
+export async function stopAllRemoteControlAction() {
+  try {
+    if ((window as any).openbot?.stopAllRemoteControl) {
+      await (window as any).openbot.stopAllRemoteControl();
+      setState('isRemoteDesktopActive', false);
+      setState('activeRemoteDesktopSession', null);
+      addToast('warning', 'Remote control stopped', 'All active remote desktop sessions terminated.');
+    }
+  } catch (err: any) {
+    console.error('Failed to stop remote control:', err);
+  }
+}
+
 

@@ -363,3 +363,61 @@ export interface MetaMemory {
   created_at: string;
 }
 
+// Milestone 5: Teams and Collaboration Types
+export type ServerRole = 'owner' | 'admin' | 'member';
+export type AgentAccessLevel = 'none' | 'view' | 'chat' | 'manage';
+
+export interface ServerMember {
+  id: string;
+  serverId: string;
+  name: string;
+  email: string;
+  serverRole: ServerRole;
+  status: 'online' | 'offline' | 'invited';
+  createdAt: string;
+}
+
+export interface MemberAgentAccess {
+  memberId: string;
+  agentId: string;
+  accessLevel: AgentAccessLevel;
+}
+
+export interface ChannelAssignment {
+  id: string;
+  channelId: string;
+  agentId: string;
+  status: 'active' | 'completed' | 'cancelled';
+  assignedAt: string;
+}
+
+export interface SharedTable {
+  id: string;
+  name: string;
+  creatorAgentId: string;
+  columns: string[];
+  rows: any[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  serverId: string;
+  action: string;
+  actor: string;
+  details: string;
+  timestamp: string;
+}
+
+export interface RemoteDesktopSession {
+  sessionId: string;
+  serverId: string;
+  targetName: string;
+  fourDigitCode: string;
+  status: 'active' | 'expired' | 'connected';
+  expiresAt: string;
+  expiresInSeconds: number;
+}
+
+

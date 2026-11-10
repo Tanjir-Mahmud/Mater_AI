@@ -165,6 +165,79 @@ export interface DBBackupModel {
   priority: number; // 1 to 8 (max 8)
 }
 
+export interface DBTeamServer {
+  id: string;
+  name: string;
+  logo?: string;
+  is_local: number;
+  publish_state: 'reachable' | 'not-reachable';
+  status: string;
+  plan?: string;
+  timezone: string;
+  key_rotated_at?: string;
+  last_active_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBServerMember {
+  id: string;
+  server_id: string;
+  name: string;
+  email: string;
+  server_role: 'owner' | 'admin' | 'member';
+  status: 'online' | 'offline' | 'invited';
+  created_at: string;
+}
+
+export interface DBMemberAgentAccess {
+  member_id: string;
+  agent_id: string;
+  access_level: 'none' | 'view' | 'chat' | 'manage';
+}
+
+export interface DBChannel {
+  id: string;
+  server_id: string;
+  name: string;
+  lead_agent_id?: string;
+  member_agent_ids: string; // JSON array
+  task_owner_id?: string;
+  status: 'active' | 'deleted' | 'archived';
+  active_assignments_count: number;
+  deleted_at?: string;
+  created_at: string;
+}
+
+export interface DBSharedTable {
+  id: string;
+  name: string;
+  creator_agent_id: string;
+  columns_json: string;
+  rows_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBAuditLog {
+  id: string;
+  server_id: string;
+  action: string;
+  actor: string;
+  details: string;
+  timestamp: string;
+}
+
+export interface DBRemoteDesktopSession {
+  id: string;
+  server_id: string;
+  target_name: string;
+  four_digit_code: string;
+  status: 'active' | 'expired' | 'connected';
+  expires_at: string;
+  created_at: string;
+}
+
 let SQL: SqlJsStatic | null = null;
 let dbInstance: Database | null = null;
 
@@ -179,6 +252,15 @@ export function getAppBaseDir(): string {
 export function getAgentWorkspaceDir(agentId: string): string {
   const base = getAppBaseDir();
   const dir = path.join(base, 'Agents', agentId);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+export function getSharedDir(): string {
+  const base = getAppBaseDir();
+  const dir = path.join(base, 'Shared');
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -463,6 +545,93 @@ export async function initDatabase(): Promise<Database> {
       priority INTEGER NOT NULL,
       PRIMARY KEY (agent_id, priority),
       FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS team_servers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      logo TEXT,
+      is_local INTEGER NOT NULL DEFAULT 1,
+      publish_state TEXT NOT NULL DEFAULT 'not-reachable',
+      status TEXT NOT NULL DEFAULT 'online',
+      plan TEXT DEFAULT 'Starter',
+      timezone TEXT NOT NULL DEFAULT 'Automatic',
+      key_rotated_at TEXT,
+      last_active_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS server_members (
+      id TEXT PRIMARY KEY,
+      server_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      server_role TEXT NOT NULL DEFAULT 'member',
+      status TEXT NOT NULL DEFAULT 'online',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (server_id) REFERENCES team_servers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS member_agent_access (
+      member_id TEXT NOT NULL,
+      agent_id TEXT NOT NULL,
+      access_level TEXT NOT NULL DEFAULT 'chat',
+      PRIMARY KEY (member_id, agent_id),
+      FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+      FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS channels (
+      id TEXT PRIMARY KEY,
+      server_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      lead_agent_id TEXT,
+      member_agent_ids TEXT NOT NULL DEFAULT '[]',
+      task_owner_id TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      active_assignments_count INTEGER NOT NULL DEFAULT 0,
+      deleted_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (server_id) REFERENCES team_servers(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS channel_assignments (
+      id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL,
+      agent_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      assigned_at TEXT NOT NULL,
+      FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS shared_tables (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      creator_agent_id TEXT NOT NULL,
+      columns_json TEXT NOT NULL,
+      rows_json TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      server_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      actor TEXT NOT NULL,
+      details TEXT NOT NULL,
+      timestamp TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS remote_desktop_sessions (
+      id TEXT PRIMARY KEY,
+      server_id TEXT NOT NULL,
+      target_name TEXT NOT NULL,
+      four_digit_code TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
   `);
 

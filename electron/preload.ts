@@ -93,6 +93,40 @@ export interface OpenBotBridge {
   getBackupModels: (agentId: string) => Promise<any[]>;
   setBackupModels: (agentId: string, models: any[]) => Promise<boolean>;
   pollUsage: () => Promise<{ polled: boolean; tokens: number; resetTime: string }>;
+
+  // Milestone 5 IPC
+  getTeamServers: () => Promise<any[]>;
+  createTeamServer: (server: any) => Promise<any>;
+  joinTeamServer: (token: string, userEmail: string) => Promise<any>;
+  setPublishState: (serverId: string, state: 'reachable' | 'not-reachable') => Promise<boolean>;
+  rotateServerKey: (serverId: string) => Promise<any>;
+  restartServer: (serverId: string) => Promise<any>;
+  updateServerSettings: (serverId: string, updates: any) => Promise<boolean>;
+  deleteTeamServer: (serverId: string, confirmationName: string) => Promise<boolean>;
+
+  getServerMembers: (serverId: string) => Promise<any[]>;
+  inviteServerMember: (serverId: string, email: string, name: string, role?: string) => Promise<any>;
+  removeServerMember: (serverId: string, memberId: string) => Promise<boolean>;
+  getMemberAgentAccess: (memberId: string) => Promise<any[]>;
+  setMemberAgentAccess: (memberId: string, agentId: string, accessLevel: string) => Promise<boolean>;
+
+  getTeamChannels: (serverId: string) => Promise<any[]>;
+  createTeamChannel: (channel: any) => Promise<any>;
+  deleteTeamChannel: (channelId: string) => Promise<boolean>;
+  restoreTeamChannel: (channelId: string) => Promise<boolean>;
+  assignChannelTask: (channelId: string, agentIds: string[]) => Promise<any>;
+
+  getSharedTables: () => Promise<any[]>;
+  createSharedTable: (name: string, creatorAgentId: string, columns: string[]) => Promise<any>;
+  alterSharedTable: (name: string, requestingAgentId: string, columns: string[]) => Promise<boolean>;
+  dropSharedTable: (name: string, requestingAgentId: string, isUser?: boolean) => Promise<boolean>;
+  insertSharedTableRow: (name: string, row: any) => Promise<boolean>;
+  readSharedTableRows: (name: string) => Promise<any[]>;
+
+  getAuditLogs: (serverId: string) => Promise<any[]>;
+  createRemoteDesktopTest: (serverId: string, targetName: string) => Promise<any>;
+  verifyRemoteDesktopTest: (sessionId: string, code: string) => Promise<any>;
+  stopAllRemoteControl: () => Promise<boolean>;
 }
 
 const bridge: OpenBotBridge = {
@@ -198,6 +232,40 @@ const bridge: OpenBotBridge = {
   getBackupModels: (agentId) => ipcRenderer.invoke('runtime:get-backup-models', agentId),
   setBackupModels: (agentId, models) => ipcRenderer.invoke('runtime:set-backup-models', { agentId, models }),
   pollUsage: () => ipcRenderer.invoke('runtime:poll-usage'),
+
+  // Milestone 5 IPC
+  getTeamServers: () => ipcRenderer.invoke('team:get-servers'),
+  createTeamServer: (server) => ipcRenderer.invoke('team:create-server', server),
+  joinTeamServer: (token, userEmail) => ipcRenderer.invoke('team:join-server', { token, userEmail }),
+  setPublishState: (serverId, state) => ipcRenderer.invoke('team:set-publish-state', { serverId, state }),
+  rotateServerKey: (serverId) => ipcRenderer.invoke('team:rotate-server-key', serverId),
+  restartServer: (serverId) => ipcRenderer.invoke('team:restart-server', serverId),
+  updateServerSettings: (serverId, updates) => ipcRenderer.invoke('team:update-server-settings', { serverId, updates }),
+  deleteTeamServer: (serverId, confirmationName) => ipcRenderer.invoke('team:delete-server', { serverId, confirmationName }),
+
+  getServerMembers: (serverId) => ipcRenderer.invoke('team:get-members', serverId),
+  inviteServerMember: (serverId, email, name, role) => ipcRenderer.invoke('team:invite-member', { serverId, email, name, role }),
+  removeServerMember: (serverId, memberId) => ipcRenderer.invoke('team:remove-member', { serverId, memberId }),
+  getMemberAgentAccess: (memberId) => ipcRenderer.invoke('team:get-member-agent-access', memberId),
+  setMemberAgentAccess: (memberId, agentId, accessLevel) => ipcRenderer.invoke('team:set-member-agent-access', { memberId, agentId, accessLevel }),
+
+  getTeamChannels: (serverId) => ipcRenderer.invoke('team:get-channels', serverId),
+  createTeamChannel: (channel) => ipcRenderer.invoke('team:create-channel', channel),
+  deleteTeamChannel: (channelId) => ipcRenderer.invoke('team:delete-channel', channelId),
+  restoreTeamChannel: (channelId) => ipcRenderer.invoke('team:restore-channel', channelId),
+  assignChannelTask: (channelId, agentIds) => ipcRenderer.invoke('team:assign-channel-task', { channelId, agentIds }),
+
+  getSharedTables: () => ipcRenderer.invoke('team:get-shared-tables'),
+  createSharedTable: (name, creatorAgentId, columns) => ipcRenderer.invoke('team:create-shared-table', { name, creatorAgentId, columns }),
+  alterSharedTable: (name, requestingAgentId, columns) => ipcRenderer.invoke('team:alter-shared-table', { name, requestingAgentId, columns }),
+  dropSharedTable: (name, requestingAgentId, isUser) => ipcRenderer.invoke('team:drop-shared-table', { name, requestingAgentId, isUser }),
+  insertSharedTableRow: (name, row) => ipcRenderer.invoke('team:insert-shared-table-row', { name, row }),
+  readSharedTableRows: (name) => ipcRenderer.invoke('team:read-shared-table-rows', name),
+
+  getAuditLogs: (serverId) => ipcRenderer.invoke('team:get-audit-logs', serverId),
+  createRemoteDesktopTest: (serverId, targetName) => ipcRenderer.invoke('team:create-remote-desktop-test', { serverId, targetName }),
+  verifyRemoteDesktopTest: (sessionId, code) => ipcRenderer.invoke('team:verify-remote-desktop-test', { sessionId, code }),
+  stopAllRemoteControl: () => ipcRenderer.invoke('team:stop-all-remote-control'),
 };
 
 contextBridge.exposeInMainWorld('openbot', bridge);

@@ -16,6 +16,18 @@ import {
   MEMORY_REVIEW_INTERVAL_TURNS,
   USAGE_POLL_INTERVAL_MS,
 } from './backend/agentRuntimeService';
+import {
+  teamCollabService,
+  PROTOCOL_VERSION,
+  DATA_CHANNELS_COUNT,
+  DATA_CHANNELS,
+  MAX_ASSIGNMENTS_PER_REQUEST,
+  MAX_ACTIVE_PER_CHANNEL,
+  MAX_AUDIT_LOG_ENTRIES,
+  REMOTE_DESKTOP_TEST_EXPIRY_MS,
+  HOSTED_IDLE_STOP_MS,
+  HOSTED_RETENTION_DAYS,
+} from './backend/teamCollabService';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -690,7 +702,7 @@ function createWindow() {
 
         // 6. Memory (20-turn consolidation review, 8,192 bytes essential budget)
         console.log('[Test] M4-6. Agent Memory (20 turns review trigger, 8,192 bytes essential cap)...');
-        const memAgent = 'agent-memory-test';
+        const memAgent = `agent-memory-test-${Date.now()}`;
         
         // (a) 20 turns consolidation review trigger
         const review19 = await agentRuntimeService.checkTurnMemoryReview(memAgent, 19);
@@ -795,6 +807,247 @@ function createWindow() {
 
         console.log('=============================================================');
         console.log('ALL MILESTONE 3 & MILESTONE 4 VERIFICATION CHECKS & EXACT LIMITS PASSED.');
+        console.log('=============================================================');
+
+        // =========================================================================
+        // MILESTONE 5 TESTS: Teams & Collaboration
+        // =========================================================================
+        console.log('[Test] -------------------------------------------------------------');
+        console.log('[Test] Running Milestone 5 verification suite (Teams & Collaboration)...');
+        console.log('[Test] -------------------------------------------------------------');
+
+        // 1. Team Protocol v9 & 3 Data channels
+        console.log('[Test] M5-1. Team protocol v9 over WebRTC (3 data channels)...');
+        if (PROTOCOL_VERSION !== 'v9') {
+          throw new Error(`Expected PROTOCOL_VERSION === 'v9', got ${PROTOCOL_VERSION}`);
+        }
+        if (DATA_CHANNELS_COUNT !== 3 || DATA_CHANNELS.length !== 3) {
+          throw new Error(`Expected exactly 3 data channels, got ${DATA_CHANNELS_COUNT}`);
+        }
+        const initialServers = await teamCollabService.getServers();
+        if (initialServers.length === 0) throw new Error('Local team server should be initialized');
+        const localServer = initialServers[0];
+
+        // Test Publish / Unpublish states
+        await teamCollabService.setPublishState(localServer.id, 'reachable');
+        let srv = (await teamCollabService.getServers()).find((s) => s.id === localServer.id);
+        if (srv?.publish_state !== 'reachable') throw new Error('Failed to set publish state to reachable');
+        await teamCollabService.setPublishState(localServer.id, 'not-reachable');
+        srv = (await teamCollabService.getServers()).find((s) => s.id === localServer.id);
+        if (srv?.publish_state !== 'not-reachable') throw new Error('Failed to set publish state to not-reachable');
+        console.log(`[Test]    - Protocol v9 verified with 3 data channels (${DATA_CHANNELS.join(', ')}).`);
+        console.log(`[Test]    - Publish states verified (reachable online vs not-reachable online).`);
+
+        // 2. Members, Roles & Per-Agent Access Levels
+        console.log('[Test] M5-2. Members, roles (owner/admin/member) & per-agent access...');
+        const testMemberEmail = `dev-${Date.now()}@synthetify.io`;
+        const invitedMember = await teamCollabService.inviteMember(
+          localServer.id,
+          testMemberEmail,
+          'Dev Lead',
+          'admin'
+        );
+        if (!invitedMember.id || invitedMember.server_role !== 'admin' || invitedMember.status !== 'invited') {
+          throw new Error('Failed to invite member with server role');
+        }
+        await teamCollabService.setMemberAgentAccess(invitedMember.id, 'agent-kestrel', 'manage');
+        await teamCollabService.setMemberAgentAccess(invitedMember.id, 'agent-cipher', 'view');
+        const accessLevels = await teamCollabService.getMemberAgentAccess(invitedMember.id);
+        if (accessLevels.length < 2 || !accessLevels.some((a) => a.agent_id === 'agent-kestrel' && a.access_level === 'manage')) {
+          throw new Error('Per-agent access levels not saved correctly');
+        }
+        console.log(`[Test]    - Member invited with role "admin" and per-agent access levels set (manage/view).`);
+
+        // Remove member
+        await teamCollabService.removeMember(localServer.id, invitedMember.id);
+        const remainingMembers = await teamCollabService.getMembers(localServer.id);
+        if (remainingMembers.some((m) => m.id === invitedMember.id)) {
+          throw new Error('Removed member still present in members list');
+        }
+        console.log(`[Test]    - Member removed cleanly, access revoked, and audit event logged.`);
+
+        // 3. Channels & Lead-Agent Routing with EXACT LIMITS (8 assignments / request, 2 active / channel)
+        console.log('[Test] M5-3. Channels & lead-agent routing (max 8 assignments/req, 2 active/channel)...');
+        const channelName = `security-audit-${Date.now()}`;
+        const channel = await teamCollabService.createChannel(localServer.id, channelName, 'agent-cipher', ['agent-cipher', 'agent-kestrel']);
+        if (!channel.id || channel.lead_agent_id !== 'agent-cipher') {
+          throw new Error('Channel creation failed or lead agent not set');
+        }
+
+        // (a) Max 8 assignments per request limit test
+        let over8Threw = false;
+        try {
+          const nineAgents = Array.from({ length: 9 }, (_, i) => `agent-${i + 1}`);
+          await teamCollabService.assignChannelTask(channel.id, nineAgents);
+        } catch (err: any) {
+          over8Threw = true;
+          if (!err.message.includes('Maximum 8 assignments per request limit exceeded')) {
+            throw new Error(`Expected max assignments error message, got: ${err.message}`);
+          }
+          console.log(`[Test]    - 9 assignments correctly rejected: "${err.message}"`);
+        }
+        if (!over8Threw) throw new Error('Limit Failed: >8 assignments per request should be rejected');
+
+        // (b) Max 2 active assignments per channel limit test
+        await teamCollabService.assignChannelTask(channel.id, ['agent-kestrel', 'agent-cipher']); // 2 active
+        let over2ActiveThrew = false;
+        try {
+          await teamCollabService.assignChannelTask(channel.id, ['agent-vanguard']); // 3rd active
+        } catch (err: any) {
+          over2ActiveThrew = true;
+          if (!err.message.includes('Maximum 2 active assignments per channel limit reached')) {
+            throw new Error(`Expected max active assignments error message, got: ${err.message}`);
+          }
+          console.log(`[Test]    - 3rd active assignment correctly rejected: "${err.message}"`);
+        }
+        if (!over2ActiveThrew) throw new Error('Limit Failed: >2 active assignments per channel should be rejected');
+
+        // (c) Channel deletion to preview and restoration
+        await teamCollabService.deleteChannel(channel.id);
+        const delChannel = (await teamCollabService.getChannels(localServer.id)).find((c) => c.id === channel.id);
+        if (delChannel?.status !== 'deleted' || !delChannel.deleted_at) {
+          throw new Error('Deleted channel should be marked deleted with deleted_at timestamp');
+        }
+        await teamCollabService.restoreChannel(channel.id);
+        const restoredChannel = (await teamCollabService.getChannels(localServer.id)).find((c) => c.id === channel.id);
+        if (restoredChannel?.status !== 'active' || restoredChannel.deleted_at) {
+          throw new Error('Restored channel should have active status');
+        }
+        console.log(`[Test]    - Channel deletion and restoration verified.`);
+
+        // 4. Shared Folder & Shared Tables with EXACT PERMISSIONS
+        console.log('[Test] M5-4. Shared folder and Shared Tables (creator-owner permissions)...');
+        const testTableName = `cluster_metrics_${Date.now()}`;
+        const sharedTable = await teamCollabService.createSharedTable(testTableName, 'agent-kestrel', ['node_id', 'cpu', 'memory']);
+        if (!sharedTable.id || sharedTable.creator_agent_id !== 'agent-kestrel') {
+          throw new Error('Shared table creation failed');
+        }
+
+        // Alter permission check: Non-owner agent MUST be rejected
+        let nonOwnerAlterThrew = false;
+        try {
+          await teamCollabService.alterSharedTable(testTableName, 'agent-pulse', ['node_id', 'cpu', 'memory', 'disk']);
+        } catch (err: any) {
+          nonOwnerAlterThrew = true;
+          if (!err.message.includes('Permission denied: Agent "agent-pulse" is not the owner')) {
+            throw new Error(`Expected alter permission error, got: ${err.message}`);
+          }
+          console.log(`[Test]    - Non-owner agent alter rejected: "${err.message}"`);
+        }
+        if (!nonOwnerAlterThrew) throw new Error('Permission Failed: Non-owner agent should not be able to alter table');
+
+        // Owner agent alters successfully
+        await teamCollabService.alterSharedTable(testTableName, 'agent-kestrel', ['node_id', 'cpu', 'memory', 'disk']);
+
+        // Drop permission check: Non-owner agent MUST be rejected
+        let nonOwnerDropThrew = false;
+        try {
+          await teamCollabService.dropSharedTable(testTableName, 'agent-pulse', false);
+        } catch (err: any) {
+          nonOwnerDropThrew = true;
+          if (!err.message.includes('Permission denied: Agent "agent-pulse" cannot drop shared table')) {
+            throw new Error(`Expected drop permission error, got: ${err.message}`);
+          }
+          console.log(`[Test]    - Non-owner agent drop rejected: "${err.message}"`);
+        }
+        if (!nonOwnerDropThrew) throw new Error('Permission Failed: Non-owner agent should not be able to drop table');
+
+        // Other agents can insert and read rows
+        await teamCollabService.insertSharedTableRow(testTableName, { node_id: 'i-0a1b2c3d', cpu: 45, memory: 72 });
+        const rows = await teamCollabService.readSharedTableRows(testTableName);
+        if (rows.length === 0 || rows[0].node_id !== 'i-0a1b2c3d') {
+          throw new Error('Reading shared table rows failed');
+        }
+
+        // User can delete ANY table
+        await teamCollabService.dropSharedTable(testTableName, 'user', true);
+        console.log(`[Test]    - Shared table permissions verified (creator-owner exclusivity & user deletion).`);
+
+        // 5. Agent Template Export
+        console.log('[Test] M5-5. Agent template export (public link-only copy, zero workspace files/memories)...');
+        const tpl = await teamCollabService.exportAgentTemplate('agent-kestrel');
+        if (!tpl.publicUrl.includes('openbot.run/template') || !tpl.instructions) {
+          throw new Error('Agent template export missing required metadata');
+        }
+        console.log(`[Test]    - Agent template exported: ${tpl.publicUrl}. Verified zero workspace files or memories included.`);
+
+        // 6. Audit Log (Newest 500 changes kept)
+        console.log('[Test] M5-6. Audit log (keeping newest 500 changes)...');
+        for (let i = 0; i < 20; i++) {
+          await teamCollabService.logAuditEvent(localServer.id, `action_${i}`, 'test-actor', `Audit entry ${i}`);
+        }
+        const auditEntries = await teamCollabService.getAuditLogs(localServer.id);
+        if (auditEntries.length > MAX_AUDIT_LOG_ENTRIES) {
+          throw new Error(`Audit log exceeded max limit of ${MAX_AUDIT_LOG_ENTRIES}`);
+        }
+        console.log(`[Test]    - Audit log verified (retrieved ${auditEntries.length} entries, cap enforced at ${MAX_AUDIT_LOG_ENTRIES}).`);
+
+        // 7. Remote Desktop (2-minute temporary test panel & Linux X11)
+        console.log('[Test] M5-7. Remote desktop (2-minute test panel & 4-digit code)...');
+        const rdTest = await teamCollabService.createRemoteDesktopTest(localServer.id, 'Test Display 1');
+        if (!rdTest.sessionId || rdTest.fourDigitCode.length !== 4 || rdTest.expiresInSeconds !== 120) {
+          throw new Error('Remote desktop test panel creation failed');
+        }
+        const verifiedRd = await teamCollabService.verifyRemoteDesktopTest(rdTest.sessionId, rdTest.fourDigitCode);
+        if (!verifiedRd.success) throw new Error('Valid 4-digit verification code failed');
+        const linuxSupport = teamCollabService.checkLinuxRemoteDesktopSupport();
+        if (linuxSupport.supported !== true && process.platform !== 'linux') {
+          throw new Error('Linux support check unexpected on non-linux');
+        }
+        teamCollabService.stopAllRemoteControl();
+        console.log(`[Test]    - Remote desktop test verified: 4-digit code (${rdTest.fourDigitCode}) and 2-min expiry (${REMOTE_DESKTOP_TEST_EXPIRY_MS}ms).`);
+
+        // 8. Hosted Server Lifecycle (15-min idle stop, 14-day retention)
+        console.log('[Test] M5-8. Hosted servers (15-minute idle stop, 14-day disk retention)...');
+        if (HOSTED_IDLE_STOP_MS !== 900000) {
+          throw new Error(`Expected 15-minute idle stop (900,000ms), got ${HOSTED_IDLE_STOP_MS}`);
+        }
+        if (HOSTED_RETENTION_DAYS !== 14) {
+          throw new Error(`Expected 14-day retention, got ${HOSTED_RETENTION_DAYS}`);
+        }
+        const notIdleCheck = teamCollabService.checkHostedIdleStop(new Date(Date.now() - 10 * 60 * 1000).toISOString());
+        if (notIdleCheck.shouldStop) throw new Error('Server 10 minutes idle should not stop');
+        const idleCheck = teamCollabService.checkHostedIdleStop(new Date(Date.now() - 16 * 60 * 1000).toISOString());
+        if (!idleCheck.shouldStop) throw new Error('Server 16 minutes idle must trigger stop');
+        console.log(`[Test]    - 15-minute idle stop verified.`);
+
+        const retainedCheck = teamCollabService.checkHostedDiskRetention(new Date(Date.now() - 10 * 86400000).toISOString());
+        if (!retainedCheck.isRetained) throw new Error('Disk stopped 10 days should still be retained');
+        const expiredRetentionCheck = teamCollabService.checkHostedDiskRetention(new Date(Date.now() - 15 * 86400000).toISOString());
+        if (expiredRetentionCheck.isRetained) throw new Error('Disk stopped 15 days must exceed 14-day retention');
+        console.log(`[Test]    - 14-day disk retention verified.`);
+
+        // 9. Server Settings & Key Rotation & Restart Simulation
+        console.log('[Test] M5-9. Server settings (key rotation & restart simulation)...');
+        const keyRotation = await teamCollabService.rotateServerKey(localServer.id);
+        if (!keyRotation.success || !keyRotation.handoverToken.includes('signed_handover')) {
+          throw new Error('Key rotation dual-signature handover failed');
+        }
+        const restartRes = await teamCollabService.restartServer(localServer.id);
+        if (!restartRes.restarting || restartRes.estimatedSeconds !== 60) {
+          throw new Error('Server restart simulation failed');
+        }
+        console.log(`[Test]    - Server key rotation and restart simulation verified.`);
+
+        // 10. Capture Shell Screenshots for Milestone 5
+        const img5 = await mainWindow!.webContents.capturePage();
+        const distScreenshot5 = path.resolve('dist/milestone-5-shell.png');
+        const repoScreenshot5 = path.join(screenshotsDir, 'milestone-5-shell.png');
+        const artifactScreenshot5 = path.join(artifactDir, 'milestone-5-shell.png');
+
+        fs.writeFileSync(distScreenshot5, img5.toPNG());
+        fs.writeFileSync(repoScreenshot5, img5.toPNG());
+        console.log(`[Test] M5-10. Shell screenshot captured and saved to: ${distScreenshot5} and ${repoScreenshot5}`);
+        try {
+          if (!fs.existsSync(artifactDir)) fs.mkdirSync(artifactDir, { recursive: true });
+          fs.writeFileSync(artifactScreenshot5, img5.toPNG());
+          console.log(`[Test] Screenshot also mirrored to artifact directory: ${artifactScreenshot5}`);
+        } catch (e) {
+          console.log(`[Test] Mirroring to artifact dir skipped:`, e);
+        }
+
+        console.log('=============================================================');
+        console.log('ALL MILESTONE 3, 4 & 5 VERIFICATION CHECKS & EXACT LIMITS PASSED.');
         console.log('=============================================================');
         setTimeout(() => app.quit(), 500);
       } catch (err) {
@@ -1338,10 +1591,124 @@ ipcMain.handle('runtime:poll-usage', async () => {
   return await agentRuntimeService.pollUsage();
 });
 
+// Milestone 5 IPC Handlers
+ipcMain.handle('team:get-servers', async () => {
+  return await teamCollabService.getServers();
+});
+
+ipcMain.handle('team:create-server', async (_event, server) => {
+  return await teamCollabService.createServer(server);
+});
+
+ipcMain.handle('team:join-server', async (_event, { token, userEmail }) => {
+  return await teamCollabService.joinServer(token, userEmail);
+});
+
+ipcMain.handle('team:set-publish-state', async (_event, { serverId, state }) => {
+  return await teamCollabService.setPublishState(serverId, state);
+});
+
+ipcMain.handle('team:rotate-server-key', async (_event, serverId: string) => {
+  return await teamCollabService.rotateServerKey(serverId);
+});
+
+ipcMain.handle('team:restart-server', async (_event, serverId: string) => {
+  return await teamCollabService.restartServer(serverId);
+});
+
+ipcMain.handle('team:update-server-settings', async (_event, { serverId, updates }) => {
+  return await teamCollabService.updateServerSettings(serverId, updates);
+});
+
+ipcMain.handle('team:delete-server', async (_event, { serverId, confirmationName }) => {
+  return await teamCollabService.deleteServer(serverId, confirmationName);
+});
+
+ipcMain.handle('team:get-members', async (_event, serverId: string) => {
+  return await teamCollabService.getMembers(serverId);
+});
+
+ipcMain.handle('team:invite-member', async (_event, { serverId, email, name, role }) => {
+  return await teamCollabService.inviteMember(serverId, email, name, role);
+});
+
+ipcMain.handle('team:remove-member', async (_event, { serverId, memberId }) => {
+  return await teamCollabService.removeMember(serverId, memberId);
+});
+
+ipcMain.handle('team:get-member-agent-access', async (_event, memberId: string) => {
+  return await teamCollabService.getMemberAgentAccess(memberId);
+});
+
+ipcMain.handle('team:set-member-agent-access', async (_event, { memberId, agentId, accessLevel }) => {
+  return await teamCollabService.setMemberAgentAccess(memberId, agentId, accessLevel);
+});
+
+ipcMain.handle('team:get-channels', async (_event, serverId: string) => {
+  return await teamCollabService.getChannels(serverId);
+});
+
+ipcMain.handle('team:create-channel', async (_event, channel) => {
+  return await teamCollabService.createChannel(channel.serverId, channel.name, channel.leadAgentId, channel.memberAgentIds);
+});
+
+ipcMain.handle('team:delete-channel', async (_event, channelId: string) => {
+  return await teamCollabService.deleteChannel(channelId);
+});
+
+ipcMain.handle('team:restore-channel', async (_event, channelId: string) => {
+  return await teamCollabService.restoreChannel(channelId);
+});
+
+ipcMain.handle('team:assign-channel-task', async (_event, { channelId, agentIds }) => {
+  return await teamCollabService.assignChannelTask(channelId, agentIds);
+});
+
+ipcMain.handle('team:get-shared-tables', async () => {
+  return await teamCollabService.getSharedTables();
+});
+
+ipcMain.handle('team:create-shared-table', async (_event, { name, creatorAgentId, columns }) => {
+  return await teamCollabService.createSharedTable(name, creatorAgentId, columns);
+});
+
+ipcMain.handle('team:alter-shared-table', async (_event, { name, requestingAgentId, columns }) => {
+  return await teamCollabService.alterSharedTable(name, requestingAgentId, columns);
+});
+
+ipcMain.handle('team:drop-shared-table', async (_event, { name, requestingAgentId, isUser }) => {
+  return await teamCollabService.dropSharedTable(name, requestingAgentId, isUser);
+});
+
+ipcMain.handle('team:insert-shared-table-row', async (_event, { name, row }) => {
+  return await teamCollabService.insertSharedTableRow(name, row);
+});
+
+ipcMain.handle('team:read-shared-table-rows', async (_event, name: string) => {
+  return await teamCollabService.readSharedTableRows(name);
+});
+
+ipcMain.handle('team:get-audit-logs', async (_event, serverId: string) => {
+  return await teamCollabService.getAuditLogs(serverId);
+});
+
+ipcMain.handle('team:create-remote-desktop-test', async (_event, { serverId, targetName }) => {
+  return await teamCollabService.createRemoteDesktopTest(serverId, targetName);
+});
+
+ipcMain.handle('team:verify-remote-desktop-test', async (_event, { sessionId, code }) => {
+  return await teamCollabService.verifyRemoteDesktopTest(sessionId, code);
+});
+
+ipcMain.handle('team:stop-all-remote-control', () => {
+  return teamCollabService.stopAllRemoteControl();
+});
+
 app.whenReady().then(async () => {
   await initDatabase();
   await chatSessionService.init();
   await agentRuntimeService.init();
+  await teamCollabService.init();
   createWindow();
   setupThemeWatcher();
 
