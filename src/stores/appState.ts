@@ -16,6 +16,15 @@ import {
   Turn,
   QueueEntry,
   MessageAttachment,
+  BackgroundProcess,
+  MCPServer,
+  Skill,
+  Routine,
+  Workflow,
+  WorkflowRun,
+  BackupModel,
+  MemoryUsage,
+  MetaMemory,
 } from '../types';
 import { i18n } from '../shared/i18n';
 
@@ -439,6 +448,122 @@ export const [state, setState] = createStore({
     providerDownloading: false,
     providerConnected: false,
   } as OnboardingState,
+
+  // Milestone 4 states
+  backgroundProcesses: [] as BackgroundProcess[],
+  mcpServers: [
+    { id: 'mcp-pg', name: 'PostgreSQL MCP Bridge', type: 'stdio', command: 'npx @modelcontextprotocol/server-postgres', enabled: 1, status: 'connected', created_at: '2026-11-09T10:00:00Z' },
+    { id: 'mcp-git', name: 'Git Repository Context', type: 'stdio', command: 'npx @modelcontextprotocol/server-git', enabled: 1, status: 'connected', created_at: '2026-11-09T10:05:00Z' },
+    { id: 'mcp-fetch', name: 'HTTP Fetcher & DOM Inspector', type: 'http', url: 'http://127.0.0.1:8080/sse', enabled: 1, status: 'connected', created_at: '2026-11-09T10:10:00Z' },
+    { id: 'mcp-fs', name: 'Local Workspace Filesystem', type: 'stdio', command: 'npx @modelcontextprotocol/server-filesystem', enabled: 1, status: 'connected', created_at: '2026-11-09T10:15:00Z' },
+  ] as MCPServer[],
+  isMCPDirty: false,
+  skills: [
+    { id: 'skill-pr-review', name: 'GitHub PR Reviewer', instructions: 'Analyze git diffs against security standards, coverage benchmarks, and style conventions.', description: 'Audits pull request diffs, checks test coverage, and enforces code standards.', icon: 'checklist', enabled: 1 },
+    { id: 'skill-docker', name: 'Docker Compose Orchestrator', instructions: 'Generate and validate multi-container docker-compose files with volume isolation.', description: 'Configures multi-container environments and networks.', icon: 'deployed_code', enabled: 1 },
+    { id: 'skill-api-tester', name: 'REST API Tester', instructions: 'Probe REST endpoints with varied status codes and payload validations.', description: 'Generates integration test suites for HTTP endpoints.', icon: 'api', enabled: 1 },
+    { id: 'skill-refactor', name: 'Code Refactoring Expert', instructions: 'Identify code smells, duplicate logic, and simplify cyclomatic complexity.', description: 'Suggests idiomatic architecture refactorings.', icon: 'auto_fix_high', enabled: 1 },
+  ] as Skill[],
+  agentSkills: {
+    'agent-kestrel': [
+      { id: 'skill-pr-review', name: 'GitHub PR Reviewer', instructions: 'Analyze git diffs against security standards.', icon: 'checklist', enabled: 1 },
+      { id: 'skill-docker', name: 'Docker Compose Orchestrator', instructions: 'Generate docker-compose files.', icon: 'deployed_code', enabled: 1 },
+    ],
+    'agent-cipher': [
+      { id: 'skill-api-tester', name: 'REST API Tester', instructions: 'Probe REST endpoints.', icon: 'api', enabled: 1 },
+    ],
+    'agent-vanguard': [
+      { id: 'skill-refactor', name: 'Code Refactoring Expert', instructions: 'Identify code smells.', icon: 'auto_fix_high', enabled: 1 },
+    ],
+  } as Record<string, Skill[]>,
+  routines: [
+    {
+      id: 'routine-audit',
+      agent_id: 'agent-kestrel',
+      instruction: 'Run daily dependency audit and verify invariant constraints across submodules.',
+      trigger_type: 'schedule',
+      trigger_value: '08:00 UTC',
+      filters: '["dependencies", "cve"]',
+      on_closed_action: 'run_once_on_open',
+      is_quiet: 0,
+      state: 'active',
+      next_run: 'Tomorrow, 08:00 UTC',
+      created_at: '2026-11-09T08:00:00Z',
+    },
+    {
+      id: 'routine-health',
+      agent_id: 'agent-pulse',
+      instruction: 'Probe staging health check endpoints every hour; trigger alert on p99 > 250ms.',
+      trigger_type: 'schedule',
+      trigger_value: 'Every 60m',
+      filters: '["otel", "latency"]',
+      on_closed_action: 'skip',
+      is_quiet: 1,
+      state: 'active',
+      next_run: 'In 42 minutes',
+      created_at: '2026-11-09T09:00:00Z',
+    },
+    {
+      id: 'routine-webhook-deploy',
+      agent_id: 'agent-vanguard',
+      instruction: 'Triggered on GitHub deployment webhook: dry-run terraform plan and post summary.',
+      trigger_type: 'webhook',
+      trigger_value: 'https://openbot.local/webhook/route-gh-deploy',
+      webhook_route_id: 'route-gh-deploy',
+      filters: '["production", "terraform"]',
+      on_closed_action: 'skip',
+      is_quiet: 0,
+      state: 'active',
+      created_at: '2026-11-09T10:00:00Z',
+    },
+  ] as Routine[],
+  workflows: [
+    {
+      id: 'wf-ci-cd-dag',
+      title: 'Production Deployment & Security Gate',
+      description: 'Multi-agent sequential and parallel orchestration: Ingest -> Lint & Scan -> Human Approval -> Publish.',
+      graph_json: JSON.stringify({
+        nodes: [
+          { id: 'node-ingest', name: '1. Ingest Commit Diff', agent: 'Kestrel', status: 'completed' },
+          { id: 'node-analysis', name: '2. Deep Security Audit', agent: 'Cipher', status: 'completed' },
+          { id: 'node-gate', name: '3. Human Approval Gate', agent: 'User', status: 'waiting_approval' },
+          { id: 'node-output', name: '4. Deploy Artifacts', agent: 'Vanguard', status: 'pending' },
+        ],
+      }),
+      created_at: '2026-11-09T10:00:00Z',
+      updated_at: '2026-11-09T12:00:00Z',
+    },
+  ] as Workflow[],
+  workflowRuns: [] as WorkflowRun[],
+  agentMemories: {
+    'agent-kestrel': [
+      { id: 'mem-1', agent_id: 'agent-kestrel', fact_text: 'Strict clean-room requirement: All specifications are drawn from openbot-complete-feature-spec-2026-11-09.md.', is_essential: 1, byte_size: 118, created_at: '2026-11-09T10:00:00Z' },
+      { id: 'mem-2', agent_id: 'agent-kestrel', fact_text: 'Core invariant: Provider runtimes must stop before agent service on shutdown.', is_essential: 1, byte_size: 82, created_at: '2026-11-09T10:05:00Z' },
+      { id: 'mem-3', agent_id: 'agent-kestrel', fact_text: 'Target production cluster uses AWS EKS us-east-1 VPC with strict CIDR masks.', is_essential: 0, byte_size: 79, created_at: '2026-11-09T11:00:00Z' },
+    ],
+    'agent-vanguard': [
+      { id: 'mem-4', agent_id: 'agent-vanguard', fact_text: 'Terraform apply commands require interactive human approval confirmation.', is_essential: 1, byte_size: 78, created_at: '2026-11-09T12:00:00Z' },
+    ],
+  } as Record<string, MetaMemory[]>,
+  agentMemoryUsage: {
+    'agent-kestrel': { totalBytes: 279, essentialBytes: 200, budgetBytes: 8192 },
+    'agent-vanguard': { totalBytes: 78, essentialBytes: 78, budgetBytes: 8192 },
+  } as Record<string, MemoryUsage>,
+  agentBackupModels: {
+    'agent-kestrel': [
+      { agent_id: 'agent-kestrel', model_name: 'Claude 3.7 Sonnet', provider_id: 'claude', priority: 1 },
+      { agent_id: 'agent-kestrel', model_name: 'Codex o3-mini', provider_id: 'codex', priority: 2 },
+      { agent_id: 'agent-kestrel', model_name: 'OpenCode Free', provider_id: 'opencode', priority: 3 },
+    ],
+  } as Record<string, BackupModel[]>,
+  computerUseStatus: {
+    enabled: false,
+    driverRunning: false,
+    permissions: { screenRecording: true, accessibility: true },
+    platform: 'win32',
+  },
+  isPiPActive: false,
+  recentlyDeletedWorkflow: null as Workflow | null,
 });
 
 export function selectPage(page: PageId) {
@@ -959,3 +1084,343 @@ export function handleApproval(agentId: string, messageId: string, approved: boo
     approved ? 'Action approved and executed' : 'Action declined'
   );
 }
+
+// =========================================================================
+// Milestone 4: Agent Runtime Actions
+// =========================================================================
+
+export async function loadBackgroundProcesses() {
+  try {
+    if ((window as any).openbot?.getBackgroundProcesses) {
+      const procs = await (window as any).openbot.getBackgroundProcesses();
+      setState('backgroundProcesses', procs || []);
+    }
+  } catch (err) {
+    console.error('Failed to load background processes:', err);
+  }
+}
+
+export async function startBackgroundProcessAction(command: string, agentId?: string, ports: number[] = [3000]) {
+  try {
+    if ((window as any).openbot?.startBackgroundProcess) {
+      const proc = await (window as any).openbot.startBackgroundProcess(command, agentId, ports);
+      setState('backgroundProcesses', (prev) => [proc, ...prev]);
+      addToast('success', 'Background process started', `${command} (PID: ${proc.pid})`);
+      return proc;
+    }
+  } catch (err: any) {
+    addToast('error', 'Failed to start process', err?.message);
+  }
+}
+
+export async function stopBackgroundProcessAction(id: string) {
+  try {
+    if ((window as any).openbot?.stopBackgroundProcess) {
+      await (window as any).openbot.stopBackgroundProcess(id);
+      setState('backgroundProcesses', (prev) => prev.filter((p) => p.id !== id));
+      addToast('warning', 'Process stopped', 'Process was terminated cleanly');
+    }
+  } catch (err: any) {
+    addToast('error', 'Failed to stop process', err?.message);
+  }
+}
+
+export async function loadMCPServers() {
+  try {
+    if ((window as any).openbot?.getMCPServers) {
+      const servers = await (window as any).openbot.getMCPServers();
+      if (servers && servers.length) {
+        setState('mcpServers', servers);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load MCP servers:', err);
+  }
+}
+
+export async function addMCPServerAction(server: { name: string; type?: 'stdio' | 'sse' | 'http'; command?: string; url?: string }) {
+  try {
+    if ((window as any).openbot?.addMCPServer) {
+      const created = await (window as any).openbot.addMCPServer(server);
+      setState('mcpServers', (prev) => [...prev, created]);
+      setState('isMCPDirty', true);
+      addToast('success', `MCP server "${created.name}" added`, 'Server available to agents on this computer');
+      return created;
+    }
+  } catch (err: any) {
+    addToast('error', 'Failed to add MCP server', err?.message);
+  }
+}
+
+export async function testMCPServerAction(id: string) {
+  try {
+    if ((window as any).openbot?.testMCPServer) {
+      const res = await (window as any).openbot.testMCPServer(id);
+      if (res.success) {
+        addToast('success', 'MCP Probe Successful', `Handshake responded in ${res.latencyMs}ms`);
+      } else {
+        addToast('error', 'MCP Probe Failed', res.error || 'Endpoint unreachable');
+      }
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Test probe error', err?.message);
+  }
+}
+
+export async function removeMCPServerAction(id: string) {
+  try {
+    if ((window as any).openbot?.removeMCPServer) {
+      await (window as any).openbot.removeMCPServer(id);
+      setState('mcpServers', (prev) => prev.filter((s) => s.id !== id));
+      setState('isMCPDirty', true);
+      addToast('warning', 'MCP server removed', 'Server disconnected from workspace');
+    }
+  } catch (err: any) {
+    addToast('error', 'Failed to remove MCP server', err?.message);
+  }
+}
+
+export async function saveMCPServersAction() {
+  try {
+    if ((window as any).openbot?.markMCPSaved) {
+      await (window as any).openbot.markMCPSaved();
+      setState('isMCPDirty', false);
+      addToast('success', 'MCP configuration saved', 'All tool bridges synced');
+    }
+  } catch (err: any) {
+    addToast('error', 'Failed to save MCP configuration', err?.message);
+  }
+}
+
+export async function loadSkills() {
+  try {
+    if ((window as any).openbot?.getSkills) {
+      const skills = await (window as any).openbot.getSkills();
+      if (skills && skills.length) {
+        setState('skills', skills);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load skills:', err);
+  }
+}
+
+export async function loadAgentSkills(agentId: string) {
+  try {
+    if ((window as any).openbot?.getAgentSkills) {
+      const skills = await (window as any).openbot.getAgentSkills(agentId);
+      setState('agentSkills', agentId, skills || []);
+    }
+  } catch (err) {
+    console.error(`Failed to load skills for agent ${agentId}:`, err);
+  }
+}
+
+export async function attachSkillAction(agentId: string, skill: Skill) {
+  try {
+    if ((window as any).openbot?.attachSkillToAgent) {
+      await (window as any).openbot.attachSkillToAgent(agentId, skill.id);
+    }
+    const current = state.agentSkills[agentId] || [];
+    if (!current.some((s) => s.id === skill.id)) {
+      setState('agentSkills', agentId, [...current, skill]);
+    }
+    addToast('success', `Skill attached`, `Attached "${skill.name}" to agent`);
+  } catch (err: any) {
+    addToast('error', 'Failed to attach skill', err?.message);
+  }
+}
+
+export async function detachSkillAction(agentId: string, skillId: string) {
+  try {
+    if ((window as any).openbot?.detachSkillFromAgent) {
+      await (window as any).openbot.detachSkillFromAgent(agentId, skillId);
+    }
+    const current = state.agentSkills[agentId] || [];
+    setState('agentSkills', agentId, current.filter((s) => s.id !== skillId));
+    addToast('warning', `Skill detached`, 'Skill removed from agent workspace');
+  } catch (err: any) {
+    addToast('error', 'Failed to detach skill', err?.message);
+  }
+}
+
+export async function loadRoutines() {
+  try {
+    if ((window as any).openbot?.getRoutines) {
+      const routines = await (window as any).openbot.getRoutines();
+      if (routines && routines.length) {
+        setState('routines', routines);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load routines:', err);
+  }
+}
+
+export async function createRoutineAction(routine: any) {
+  try {
+    if ((window as any).openbot?.createRoutine) {
+      const created = await (window as any).openbot.createRoutine(routine);
+      setState('routines', (prev) => [created, ...prev]);
+      addToast('success', 'Automated routine created', routine.instruction?.substring(0, 50));
+      return created;
+    }
+  } catch (err: any) {
+    addToast('error', 'Routine creation failed', err?.message);
+  }
+}
+
+export async function downloadCalendarFeed() {
+  try {
+    let icsContent = '';
+    if ((window as any).openbot?.getCalendarFeed) {
+      icsContent = await (window as any).openbot.getCalendarFeed();
+    } else {
+      icsContent = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//OpenBot//Automated Routines//EN\r\nEND:VCALENDAR';
+    }
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'openbot-routines-next-30-days.ics');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    addToast('success', 'Calendar feed exported', 'Exported next 30 days of scheduled routines (.ics)');
+  } catch (err: any) {
+    addToast('error', 'Failed to export calendar feed', err?.message);
+  }
+}
+
+export async function loadWorkflows() {
+  try {
+    if ((window as any).openbot?.getWorkflows) {
+      const wfs = await (window as any).openbot.getWorkflows();
+      if (wfs && wfs.length) {
+        setState('workflows', wfs);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load workflows:', err);
+  }
+}
+
+export async function runWorkflowAction(workflowId: string) {
+  try {
+    addToast('success', 'Workflow Run Started', 'Executing DAG node dependencies across agents...');
+    if ((window as any).openbot?.runWorkflow) {
+      const run = await (window as any).openbot.runWorkflow(workflowId);
+      setState('workflowRuns', (prev) => [run, ...prev]);
+      addToast('success', 'Workflow Run Completed', run.result);
+      return run;
+    }
+  } catch (err: any) {
+    addToast('error', 'Workflow execution error', err?.message);
+  }
+}
+
+export async function deleteWorkflowAction(id: string) {
+  try {
+    const target = state.workflows.find((w) => w.id === id);
+    if (!target) return;
+
+    if ((window as any).openbot?.deleteWorkflow) {
+      const res = await (window as any).openbot.deleteWorkflow(id);
+      setState('recentlyDeletedWorkflow', res.deletedWorkflow || target);
+    } else {
+      setState('recentlyDeletedWorkflow', target);
+    }
+
+    setState('workflows', (prev) => prev.filter((w) => w.id !== id));
+    addToast('warning', `Workflow "${target.title}" deleted`, 'Click "Undo" in the next 10 seconds to restore');
+  } catch (err: any) {
+    addToast('error', 'Failed to delete workflow', err?.message);
+  }
+}
+
+export async function restoreDeletedWorkflowAction() {
+  const target = state.recentlyDeletedWorkflow;
+  if (!target) return;
+
+  try {
+    if ((window as any).openbot?.restoreWorkflow) {
+      await (window as any).openbot.restoreWorkflow(target);
+    }
+    setState('workflows', (prev) => [target, ...prev]);
+    setState('recentlyDeletedWorkflow', null);
+    addToast('success', 'Workflow restored', `"${target.title}" restored successfully`);
+  } catch (err: any) {
+    addToast('error', 'Failed to restore workflow', err?.message);
+  }
+}
+
+export async function loadMemories(agentId: string) {
+  try {
+    if ((window as any).openbot?.getMemories) {
+      const mems = await (window as any).openbot.getMemories(agentId);
+      setState('agentMemories', agentId, mems || []);
+    }
+    if ((window as any).openbot?.getMemoryUsage) {
+      const usage = await (window as any).openbot.getMemoryUsage(agentId);
+      setState('agentMemoryUsage', agentId, usage);
+    }
+  } catch (err) {
+    console.error(`Failed to load memory for agent ${agentId}:`, err);
+  }
+}
+
+export async function addMemoryAction(agentId: string, factText: string, isEssential: boolean = false) {
+  try {
+    if ((window as any).openbot?.addMemory) {
+      const created = await (window as any).openbot.addMemory(agentId, factText, isEssential);
+      const prev = state.agentMemories[agentId] || [];
+      setState('agentMemories', agentId, [created, ...prev]);
+      await loadMemories(agentId);
+      addToast('success', isEssential ? 'Essential memory added' : 'Memory fact recorded', factText.substring(0, 40));
+      return created;
+    }
+  } catch (err: any) {
+    addToast('error', 'Memory limit error', err?.message);
+  }
+}
+
+export async function deleteMemoryAction(agentId: string, memoryId: string) {
+  try {
+    if ((window as any).openbot?.deleteMemory) {
+      await (window as any).openbot.deleteMemory(memoryId);
+    }
+    const prev = state.agentMemories[agentId] || [];
+    setState('agentMemories', agentId, prev.filter((m) => m.id !== memoryId));
+    await loadMemories(agentId);
+    addToast('warning', 'Memory deleted', 'Invariant memory cleared');
+  } catch (err: any) {
+    addToast('error', 'Failed to delete memory', err?.message);
+  }
+}
+
+export async function toggleBrowserPiPAction() {
+  try {
+    if ((window as any).openbot?.toggleBrowserPiP) {
+      const active = await (window as any).openbot.toggleBrowserPiP();
+      setState('isPiPActive', active);
+      addToast(active ? 'success' : 'warning', active ? 'Browser Picture-in-Picture opened' : 'Picture-in-Picture closed');
+    }
+  } catch (err: any) {
+    addToast('error', 'PiP error', err?.message);
+  }
+}
+
+export async function toggleComputerUseAction(enabled: boolean) {
+  try {
+    if ((window as any).openbot?.setComputerUseEnabled) {
+      const res = await (window as any).openbot.setComputerUseEnabled(enabled);
+      setState('computerUseStatus', 'enabled', res);
+      setState('computerUseStatus', 'driverRunning', res);
+      addToast(res ? 'success' : 'warning', res ? 'Computer Use driver active' : 'Computer Use disabled');
+    }
+  } catch (err: any) {
+    addToast('error', 'Computer Use error', err?.message);
+  }
+}
+

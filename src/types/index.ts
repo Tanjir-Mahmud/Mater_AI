@@ -263,3 +263,103 @@ export interface OnboardingState {
   downloadProgress?: number;
   error?: string | null;
 }
+
+// Milestone 4 Types
+export interface BackgroundProcess {
+  id: string;
+  command: string;
+  pid: number;
+  started_at: string;
+  ports: string;
+  agent_id?: string;
+  state: 'running' | 'stopped';
+}
+
+export interface MCPServer {
+  id: string;
+  name: string;
+  type: 'stdio' | 'sse' | 'http';
+  command?: string;
+  args?: string;
+  url?: string;
+  headers?: string;
+  enabled: number;
+  status: 'connected' | 'error' | 'connecting';
+  created_at: string;
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  instructions: string;
+  description?: string;
+  icon?: string;
+  enabled: number;
+}
+
+export interface Routine {
+  id: string;
+  agent_id?: string;
+  channel_id?: string;
+  instruction: string;
+  trigger_type: 'schedule' | 'webhook';
+  trigger_value: string;
+  filters: string;
+  webhook_route_id?: string;
+  on_closed_action: 'skip' | 'run_once_on_open';
+  is_quiet: number;
+  state: 'active' | 'paused';
+  last_run?: string;
+  next_run?: string;
+  created_at: string;
+}
+
+export interface Workflow {
+  id: string;
+  title: string;
+  description?: string;
+  graph_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkflowRun {
+  id: string;
+  workflow_id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'waiting_approval';
+  started_at: string;
+  finished_at?: string;
+  result?: string;
+}
+
+export interface WorkflowStep {
+  id: string;
+  run_id: string;
+  node_id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'waiting_approval';
+  attempt: number;
+  error?: string;
+}
+
+export interface BackupModel {
+  agent_id: string;
+  model_name: string;
+  provider_id: string;
+  priority: number;
+}
+
+export interface MemoryUsage {
+  totalBytes: number;
+  essentialBytes: number;
+  budgetBytes: number;
+}
+
+export interface MetaMemory {
+  id: string;
+  agent_id: string;
+  fact_text: string;
+  is_essential: number;
+  byte_size: number;
+  created_at: string;
+}
+

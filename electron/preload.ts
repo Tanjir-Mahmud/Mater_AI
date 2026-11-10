@@ -50,6 +50,49 @@ export interface OpenBotBridge {
     attachments?: any[];
   }) => Promise<{ queued: boolean; turnId?: string; reply?: any; error?: string }>;
   getActiveTurnCount: () => Promise<number>;
+
+  // Milestone 4 IPC
+  getBackgroundProcesses: () => Promise<any[]>;
+  startBackgroundProcess: (command: string, agentId?: string, ports?: number[]) => Promise<any>;
+  stopBackgroundProcess: (id: string) => Promise<boolean>;
+
+  getMCPServers: () => Promise<any[]>;
+  addMCPServer: (server: any) => Promise<any>;
+  updateMCPServer: (id: string, updates: any) => Promise<boolean>;
+  removeMCPServer: (id: string) => Promise<boolean>;
+  testMCPServer: (id: string) => Promise<{ success: boolean; latencyMs: number; error?: string }>;
+  isMCPDirty: () => Promise<boolean>;
+  markMCPSaved: () => Promise<void>;
+
+  getSkills: () => Promise<any[]>;
+  createSkill: (skill: any) => Promise<any>;
+  getAgentSkills: (agentId: string) => Promise<any[]>;
+  attachSkillToAgent: (agentId: string, skillId: string) => Promise<boolean>;
+  detachSkillFromAgent: (agentId: string, skillId: string) => Promise<boolean>;
+
+  getRoutines: () => Promise<any[]>;
+  createRoutine: (routine: any) => Promise<any>;
+  triggerWebhook: (routeId: string, deliveryId: string) => Promise<any>;
+  getCalendarFeed: () => Promise<string>;
+
+  getWorkflows: () => Promise<any[]>;
+  createWorkflow: (workflow: any) => Promise<any>;
+  runWorkflow: (workflowId: string) => Promise<any>;
+  deleteWorkflow: (id: string) => Promise<{ success: boolean; deletedWorkflow: any }>;
+  restoreWorkflow: (workflow: any) => Promise<boolean>;
+
+  getMemories: (agentId: string) => Promise<any[]>;
+  addMemory: (agentId: string, factText: string, isEssential?: boolean) => Promise<any>;
+  deleteMemory: (memoryId: string) => Promise<boolean>;
+  getMemoryUsage: (agentId: string) => Promise<{ totalBytes: number; essentialBytes: number; budgetBytes: number }>;
+
+  toggleBrowserPiP: () => Promise<boolean>;
+  getComputerUseStatus: () => Promise<{ enabled: boolean; driverRunning: boolean; permissions: any; platform: string }>;
+  setComputerUseEnabled: (enabled: boolean) => Promise<boolean>;
+
+  getBackupModels: (agentId: string) => Promise<any[]>;
+  setBackupModels: (agentId: string, models: any[]) => Promise<boolean>;
+  pollUsage: () => Promise<{ polled: boolean; tokens: number; resetTime: string }>;
 }
 
 const bridge: OpenBotBridge = {
@@ -110,6 +153,51 @@ const bridge: OpenBotBridge = {
   cancelQueuedMessage: (queueId) => ipcRenderer.invoke('chat:cancel-queued', queueId),
   submitTurnMessage: (payload) => ipcRenderer.invoke('chat:submit-turn', payload),
   getActiveTurnCount: () => ipcRenderer.invoke('chat:get-active-turn-count'),
+
+  // Milestone 4 IPC
+  getBackgroundProcesses: () => ipcRenderer.invoke('runtime:get-bg-processes'),
+  startBackgroundProcess: (command, agentId, ports) =>
+    ipcRenderer.invoke('runtime:start-bg-process', { command, agentId, ports }),
+  stopBackgroundProcess: (id) => ipcRenderer.invoke('runtime:stop-bg-process', id),
+
+  getMCPServers: () => ipcRenderer.invoke('runtime:get-mcp-servers'),
+  addMCPServer: (server) => ipcRenderer.invoke('runtime:add-mcp-server', server),
+  updateMCPServer: (id, updates) => ipcRenderer.invoke('runtime:update-mcp-server', { id, updates }),
+  removeMCPServer: (id) => ipcRenderer.invoke('runtime:remove-mcp-server', id),
+  testMCPServer: (id) => ipcRenderer.invoke('runtime:test-mcp-server', id),
+  isMCPDirty: () => ipcRenderer.invoke('runtime:is-mcp-dirty'),
+  markMCPSaved: () => ipcRenderer.invoke('runtime:mark-mcp-saved'),
+
+  getSkills: () => ipcRenderer.invoke('runtime:get-skills'),
+  createSkill: (skill) => ipcRenderer.invoke('runtime:create-skill', skill),
+  getAgentSkills: (agentId) => ipcRenderer.invoke('runtime:get-agent-skills', agentId),
+  attachSkillToAgent: (agentId, skillId) => ipcRenderer.invoke('runtime:attach-skill', { agentId, skillId }),
+  detachSkillFromAgent: (agentId, skillId) => ipcRenderer.invoke('runtime:detach-skill', { agentId, skillId }),
+
+  getRoutines: () => ipcRenderer.invoke('runtime:get-routines'),
+  createRoutine: (routine) => ipcRenderer.invoke('runtime:create-routine', routine),
+  triggerWebhook: (routeId, deliveryId) => ipcRenderer.invoke('runtime:trigger-webhook', { routeId, deliveryId }),
+  getCalendarFeed: () => ipcRenderer.invoke('runtime:get-calendar-feed'),
+
+  getWorkflows: () => ipcRenderer.invoke('runtime:get-workflows'),
+  createWorkflow: (workflow) => ipcRenderer.invoke('runtime:create-workflow', workflow),
+  runWorkflow: (workflowId) => ipcRenderer.invoke('runtime:run-workflow', workflowId),
+  deleteWorkflow: (id) => ipcRenderer.invoke('runtime:delete-workflow', id),
+  restoreWorkflow: (workflow) => ipcRenderer.invoke('runtime:restore-workflow', workflow),
+
+  getMemories: (agentId) => ipcRenderer.invoke('runtime:get-memories', agentId),
+  addMemory: (agentId, factText, isEssential) =>
+    ipcRenderer.invoke('runtime:add-memory', { agentId, factText, isEssential }),
+  deleteMemory: (memoryId) => ipcRenderer.invoke('runtime:delete-memory', memoryId),
+  getMemoryUsage: (agentId) => ipcRenderer.invoke('runtime:get-memory-usage', agentId),
+
+  toggleBrowserPiP: () => ipcRenderer.invoke('runtime:toggle-browser-pip'),
+  getComputerUseStatus: () => ipcRenderer.invoke('runtime:get-computer-use-status'),
+  setComputerUseEnabled: (enabled) => ipcRenderer.invoke('runtime:set-computer-use-enabled', enabled),
+
+  getBackupModels: (agentId) => ipcRenderer.invoke('runtime:get-backup-models', agentId),
+  setBackupModels: (agentId, models) => ipcRenderer.invoke('runtime:set-backup-models', { agentId, models }),
+  pollUsage: () => ipcRenderer.invoke('runtime:poll-usage'),
 };
 
 contextBridge.exposeInMainWorld('openbot', bridge);

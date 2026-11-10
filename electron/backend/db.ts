@@ -82,6 +82,89 @@ export interface DBMessage {
   created_at: string;
 }
 
+export interface DBBackgroundProcess {
+  id: string;
+  command: string;
+  pid: number;
+  started_at: string;
+  ports: string; // JSON array of numbers e.g. [3000, 8080]
+  agent_id?: string;
+  state: 'running' | 'stopped';
+}
+
+export interface DBMCPServer {
+  id: string;
+  name: string;
+  type: 'stdio' | 'sse' | 'http';
+  command?: string;
+  args?: string;
+  url?: string;
+  headers?: string;
+  enabled: number;
+  status: 'connected' | 'disconnected' | 'testing';
+  created_at: string;
+}
+
+export interface DBSkill {
+  id: string;
+  name: string;
+  instructions: string;
+  description?: string;
+  icon?: string;
+  enabled: number;
+}
+
+export interface DBMetaMemory {
+  id: string;
+  agent_id: string;
+  fact_text: string;
+  is_essential: number;
+  byte_size: number;
+  created_at: string;
+}
+
+export interface DBRoutine {
+  id: string;
+  agent_id?: string;
+  channel_id?: string;
+  instruction: string;
+  trigger_type: 'schedule' | 'webhook';
+  trigger_value: string;
+  filters: string; // JSON array (max 128)
+  webhook_route_id?: string; // (max 64 routes system-wide)
+  on_closed_action: 'skip' | 'run_once_on_open';
+  is_quiet: number;
+  state: 'active' | 'paused';
+  last_run?: string;
+  next_run?: string;
+  created_at: string;
+}
+
+export interface DBWorkflow {
+  id: string;
+  title: string;
+  description?: string;
+  graph_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBWorkflowRun {
+  id: string;
+  workflow_id: string;
+  status: 'running' | 'waiting_approval' | 'completed' | 'failed';
+  started_at: string;
+  finished_at?: string;
+  result?: string;
+}
+
+export interface DBBackupModel {
+  agent_id: string;
+  model_name: string;
+  provider_id: string;
+  priority: number; // 1 to 8 (max 8)
+}
+
 let SQL: SqlJsStatic | null = null;
 let dbInstance: Database | null = null;
 
@@ -266,6 +349,7 @@ export async function initDatabase(): Promise<Database> {
       agent_id TEXT NOT NULL,
       fact_text TEXT NOT NULL,
       is_essential INTEGER NOT NULL DEFAULT 0,
+      byte_size INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
     );
@@ -277,18 +361,134 @@ export async function initDatabase(): Promise<Database> {
       instruction TEXT NOT NULL,
       trigger_type TEXT NOT NULL,
       trigger_value TEXT NOT NULL,
+      filters TEXT NOT NULL DEFAULT '[]',
+      webhook_route_id TEXT,
+      on_closed_action TEXT NOT NULL DEFAULT 'skip',
+      is_quiet INTEGER NOT NULL DEFAULT 0,
       state TEXT NOT NULL DEFAULT 'active',
       last_run TEXT,
       next_run TEXT,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS background_processes (
+      id TEXT PRIMARY KEY,
+      command TEXT NOT NULL,
+      pid INTEGER NOT NULL,
+      started_at TEXT NOT NULL,
+      ports TEXT NOT NULL DEFAULT '[]',
+      agent_id TEXT,
+      state TEXT NOT NULL DEFAULT 'running'
+    );
+
+    CREATE TABLE IF NOT EXISTS mcp_servers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'stdio',
+      command TEXT,
+      args TEXT,
+      url TEXT,
+      headers TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'connected',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS skills (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      instructions TEXT NOT NULL,
+      description TEXT,
+      icon TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_skills (
+      agent_id TEXT NOT NULL,
+      skill_id TEXT NOT NULL,
+      PRIMARY KEY (agent_id, skill_id),
+      FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+      FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS webhook_receipts (
+      delivery_id TEXT PRIMARY KEY,
+      route_id TEXT NOT NULL,
+      received_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS workflows (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      graph_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS workflow_runs (
+      id TEXT PRIMARY KEY,
+      workflow_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'running',
+      started_at TEXT NOT NULL,
+      finished_at TEXT,
+      result TEXT,
+      FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS workflow_steps (
+      id TEXT PRIMARY KEY,
+      run_id TEXT NOT NULL,
+      node_id TEXT NOT NULL,
+      agent_id TEXT,
+      status TEXT NOT NULL DEFAULT 'running',
+      output TEXT,
+      attempt INTEGER NOT NULL DEFAULT 1,
+      FOREIGN KEY (run_id) REFERENCES workflow_runs(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS workflow_versions (
+      id TEXT PRIMARY KEY,
+      workflow_id TEXT NOT NULL,
+      version INTEGER NOT NULL,
+      graph_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS backup_models (
+      agent_id TEXT NOT NULL,
+      model_name TEXT NOT NULL,
+      provider_id TEXT NOT NULL,
+      priority INTEGER NOT NULL,
+      PRIMARY KEY (agent_id, priority),
+      FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+    );
   `);
 
   try {
     db.run(`ALTER TABLE threads ADD COLUMN title TEXT NOT NULL DEFAULT 'Main Thread';`);
-  } catch {
-    // Column already exists
-  }
+  } catch {}
+
+  try {
+    db.run(`ALTER TABLE memories ADD COLUMN byte_size INTEGER NOT NULL DEFAULT 0;`);
+  } catch {}
+
+  try {
+    db.run(`ALTER TABLE routines ADD COLUMN filters TEXT NOT NULL DEFAULT '[]';`);
+  } catch {}
+
+  try {
+    db.run(`ALTER TABLE routines ADD COLUMN webhook_route_id TEXT;`);
+  } catch {}
+
+  try {
+    db.run(`ALTER TABLE routines ADD COLUMN on_closed_action TEXT NOT NULL DEFAULT 'skip';`);
+  } catch {}
+
+  try {
+    db.run(`ALTER TABLE routines ADD COLUMN is_quiet INTEGER NOT NULL DEFAULT 0;`);
+  } catch {}
 
   saveDatabase(db);
   dbInstance = db;

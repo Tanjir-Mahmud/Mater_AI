@@ -18,6 +18,11 @@ import {
   pauseAgentQueue,
   resumeAgentQueue,
   cancelQueueItem,
+  downloadCalendarFeed,
+  createRoutineAction,
+  runWorkflowAction,
+  deleteWorkflowAction,
+  restoreDeletedWorkflowAction,
 } from '../../stores/appState';
 import { RightSidePanel } from './RightSidePanel';
 import { i18n } from '../../shared/i18n';
@@ -189,33 +194,85 @@ export const MainWorkspace: Component = () => {
 
               {/* View specifics */}
               <Show when={state.activePage === 'schedule'}>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30">
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="font-semibold text-sm">Automated Routines</span>
-                      <span class="px-2 py-0.5 rounded text-[10px] font-label-sm bg-secondary-container/20 text-secondary">
-                        3 Active
-                      </span>
-                    </div>
-                    <p class="text-xs text-outline mb-4">
-                      Routines run on schedule when the computer is awake.
-                    </p>
-                    <div class="space-y-2">
-                      <div class="p-2.5 rounded bg-surface-container-low border border-outline-variant/20 flex items-center justify-between text-xs">
-                        <div>
-                          <div class="font-medium text-on-surface">Daily Dependency Audit</div>
-                          <div class="text-[11px] text-outline font-mono">08:00 UTC · Kestrel</div>
-                        </div>
-                        <span class="text-secondary font-label-sm text-[11px]">Ready</span>
+                <div class="space-y-4 max-w-5xl">
+                  {/* Top limits bar */}
+                  <div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-between">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="font-semibold text-sm text-on-surface">Automated Agent Routines</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-label-sm bg-secondary-container/20 text-secondary font-semibold uppercase">
+                          {state.routines.length} Active
+                        </span>
                       </div>
-                      <div class="p-2.5 rounded bg-surface-container-low border border-outline-variant/20 flex items-center justify-between text-xs">
-                        <div>
-                          <div class="font-medium text-on-surface">Hourly Prod Health Check</div>
-                          <div class="text-[11px] text-outline font-mono">Every 60m · Pulse</div>
-                        </div>
-                        <span class="text-secondary font-label-sm text-[11px]">Active</span>
+                      <p class="text-xs text-outline mt-1">
+                        Routines run only while computer is awake and OpenBot is open. Overdue routines run once when network returns.
+                      </p>
+                      <div class="flex items-center gap-4 mt-2 text-[11px] font-mono text-outline">
+                        <span>Webhook Routes: <strong class="text-primary">{state.routines.filter((r) => r.trigger_type === 'webhook').length}/64</strong></span>
+                        <span>·</span>
+                        <span>Filters Limit: <strong class="text-secondary">128 max / routine</strong></span>
+                        <span>·</span>
+                        <span>Closed Handling: <strong class="text-on-surface">Run once on open</strong></span>
                       </div>
                     </div>
+                    <div class="flex items-center gap-2">
+                      <button
+                        onClick={downloadCalendarFeed}
+                        class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/30 text-xs font-semibold text-on-surface flex items-center gap-1.5 transition-colors"
+                        title="Download 30-day iCalendar feed"
+                      >
+                        <span class="material-symbols-outlined text-[15px] text-primary">calendar_month</span>
+                        <span>Calendar Feed (.ics)</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          const inst = prompt('Routine instruction for agent:', 'Daily security audit and scan report');
+                          if (inst) {
+                            createRoutineAction({
+                              instruction: inst,
+                              trigger_type: 'schedule',
+                              trigger_value: '08:00 UTC',
+                              agent_id: 'agent-kestrel',
+                              filters: ['audit', 'daily'],
+                              on_closed_action: 'run_once_on_open',
+                            });
+                          }
+                        }}
+                        class="px-3.5 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:brightness-110 flex items-center gap-1"
+                      >
+                        <span class="material-symbols-outlined text-[15px]">add</span>
+                        <span>New Routine</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Routines Grid */}
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <For each={state.routines}>
+                      {(r) => (
+                        <div class="p-3.5 rounded-xl bg-surface-container border border-outline-variant/20 flex flex-col justify-between gap-3 hover:border-outline-variant/40 transition-colors">
+                          <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-surface-container-high text-primary font-semibold uppercase">
+                                {r.trigger_type} · {r.trigger_value}
+                              </span>
+                              <span class="text-[11px] font-label-sm text-secondary flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-secondary" />
+                                Active
+                              </span>
+                            </div>
+                            <h4 class="font-medium text-xs text-on-surface leading-snug">{r.instruction}</h4>
+                          </div>
+
+                          <div class="pt-2 border-t border-outline-variant/20 flex items-center justify-between text-[11px] text-outline font-mono">
+                            <span>Agent: {r.agent_id ? state.agents.find((a) => a.id === r.agent_id)?.name || r.agent_id : 'All Agents'}</span>
+                            <span class="text-[10px] bg-surface-container-low px-1.5 py-0.5 rounded">
+                              {r.on_closed_action === 'run_once_on_open' ? 'Run on open' : 'Skip'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </For>
                   </div>
                 </div>
               </Show>
@@ -253,40 +310,158 @@ export const MainWorkspace: Component = () => {
               </Show>
 
               <Show when={state.activePage === 'usage'}>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30 flex flex-col gap-1">
-                    <span class="text-xs text-outline font-label-sm">Tokens Today</span>
-                    <span class="text-2xl font-bold font-mono text-primary">124,892</span>
-                    <span class="text-[11px] text-secondary">↑ 12% vs yesterday</span>
+                <div class="space-y-4 max-w-5xl">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30 flex flex-col gap-1">
+                      <span class="text-xs text-outline font-label-sm">Tokens Today</span>
+                      <span class="text-2xl font-bold font-mono text-primary">124,892</span>
+                      <span class="text-[11px] text-secondary">↑ 12% vs yesterday</span>
+                    </div>
+                    <div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30 flex flex-col gap-1">
+                      <span class="text-xs text-outline font-label-sm">Active Agents</span>
+                      <span class="text-2xl font-bold font-mono text-on-surface">6</span>
+                      <span class="text-[11px] text-outline">Across 2 servers</span>
+                    </div>
+                    <div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30 flex flex-col gap-1">
+                      <span class="text-xs text-outline font-label-sm">Quota Reset & Poller</span>
+                      <span class="text-2xl font-bold font-mono text-tertiary">14:00 UTC</span>
+                      <span class="text-[11px] text-outline">5-minute usage poll active (300,000ms)</span>
+                    </div>
                   </div>
-                  <div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30 flex flex-col gap-1">
-                    <span class="text-xs text-outline font-label-sm">Active Agents</span>
-                    <span class="text-2xl font-bold font-mono text-on-surface">6</span>
-                    <span class="text-[11px] text-outline">Across 2 servers</span>
-                  </div>
-                  <div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30 flex flex-col gap-1">
-                    <span class="text-xs text-outline font-label-sm">Quota Reset</span>
-                    <span class="text-2xl font-bold font-mono text-tertiary">14:00 UTC</span>
-                    <span class="text-[11px] text-outline">5-minute usage poll active</span>
+
+                  {/* Backup Models and Failover Rules */}
+                  <div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30 space-y-3">
+                    <div class="flex items-center justify-between border-b border-outline-variant/20 pb-2">
+                      <div>
+                        <div class="font-semibold text-xs text-on-surface">Agent Quota Failover & Backup Models</div>
+                        <p class="text-[11px] text-outline mt-0.5">
+                          When a provider limit is reached, agents wait until the reset time ("Waits for limit" chip in sidebar) or switch to backup models (max 8 models).
+                        </p>
+                      </div>
+                      <span class="text-[10px] font-mono text-secondary px-2 py-0.5 rounded bg-surface-container-high">
+                        Max 8 Backup Models
+                      </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <For each={state.agentBackupModels['agent-kestrel'] || []}>
+                        {(bm) => (
+                          <div class="p-2.5 rounded-lg bg-surface-container-low border border-outline-variant/20 flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2">
+                              <span class="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-[10px]">
+                                {bm.priority}
+                              </span>
+                              <div>
+                                <div class="font-semibold text-on-surface">{bm.model_name}</div>
+                                <div class="text-[10px] font-mono text-outline uppercase">{bm.provider_id}</div>
+                              </div>
+                            </div>
+                            <span class="text-[10px] text-outline">Priority {bm.priority}</span>
+                          </div>
+                        )}
+                      </For>
+                    </div>
                   </div>
                 </div>
               </Show>
 
               <Show when={state.activePage === 'workflows'}>
-                <div class="p-8 rounded-xl bg-surface-container border border-outline-variant/30 flex flex-col items-center justify-center text-center">
-                  <span class="material-symbols-outlined text-5xl text-primary mb-3">
-                    account_tree
-                  </span>
-                  <h3 class="font-headline-sm text-on-surface mb-1">Multi-Agent DAG Studio</h3>
-                  <p class="text-xs text-outline max-w-md mb-4">
-                    Orchestrate sequential and parallel agent workflows with condition, approval, and output nodes.
-                  </p>
-                  <button
-                    onClick={() => addToast('success', 'New workflow template created')}
-                    class="px-4 py-2 rounded-lg bg-primary text-on-primary text-xs font-semibold"
-                  >
-                    + Create Workflow Graph
-                  </button>
+                <div class="space-y-4 max-w-5xl">
+                  {/* Workflow Studio Header */}
+                  <div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-between">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-xl">account_tree</span>
+                        <h3 class="font-headline-sm text-sm text-on-surface font-semibold">
+                          {state.workflows[0]?.title || 'Multi-Agent DAG Studio'}
+                        </h3>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-surface-container-high text-outline">
+                          Version 1.0
+                        </span>
+                      </div>
+                      <p class="text-xs text-outline mt-1 max-w-2xl">
+                        {state.workflows[0]?.description || 'Multi-agent sequential and parallel orchestration with conditions, approvals, and outputs.'}
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <Show when={state.recentlyDeletedWorkflow}>
+                        <button
+                          onClick={restoreDeletedWorkflowAction}
+                          class="px-3 py-1.5 rounded-lg bg-tertiary text-on-tertiary text-xs font-semibold hover:brightness-110 flex items-center gap-1 shadow-sm"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">undo</span>
+                          <span>Undo Delete</span>
+                        </button>
+                      </Show>
+                      <button
+                        onClick={() => {
+                          if (state.workflows[0]) runWorkflowAction(state.workflows[0].id);
+                        }}
+                        class="px-3.5 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:brightness-110 flex items-center gap-1.5 shadow-sm"
+                      >
+                        <span class="material-symbols-outlined text-[15px]">play_arrow</span>
+                        <span>Run Workflow</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (state.workflows[0]) deleteWorkflowAction(state.workflows[0].id);
+                        }}
+                        class="p-1.5 rounded-lg bg-surface-container-high hover:bg-error/20 hover:text-error text-outline border border-outline-variant/30 transition-colors"
+                        title="Delete Workflow"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Multi-Agent DAG Visual Graph */}
+                  <div class="p-6 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 flex flex-col items-center justify-center relative overflow-hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 w-full max-w-4xl z-10">
+                      {/* Node 1 */}
+                      <div class="p-3.5 rounded-xl bg-surface-container border border-secondary/40 shadow-xs flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] font-mono font-bold text-secondary uppercase">Node 1</span>
+                          <span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>
+                        </div>
+                        <div class="font-semibold text-xs text-on-surface">Ingest Commit Diff</div>
+                        <div class="text-[11px] text-outline font-mono">Agent: Kestrel</div>
+                        <span class="text-[10px] text-secondary font-semibold">Completed</span>
+                      </div>
+
+                      {/* Node 2 */}
+                      <div class="p-3.5 rounded-xl bg-surface-container border border-secondary/40 shadow-xs flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] font-mono font-bold text-secondary uppercase">Node 2</span>
+                          <span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>
+                        </div>
+                        <div class="font-semibold text-xs text-on-surface">Deep Security Audit</div>
+                        <div class="text-[11px] text-outline font-mono">Agent: Cipher</div>
+                        <span class="text-[10px] text-secondary font-semibold">Completed</span>
+                      </div>
+
+                      {/* Node 3 */}
+                      <div class="p-3.5 rounded-xl bg-surface-container border border-tertiary/60 shadow-xs flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] font-mono font-bold text-tertiary uppercase">Node 3</span>
+                          <span class="material-symbols-outlined text-tertiary text-[16px]">pending</span>
+                        </div>
+                        <div class="font-semibold text-xs text-on-surface">Human Approval Gate</div>
+                        <div class="text-[11px] text-outline font-mono">Agent: User Confirm</div>
+                        <span class="text-[10px] text-tertiary font-semibold animate-pulse">Waiting approval</span>
+                      </div>
+
+                      {/* Node 4 */}
+                      <div class="p-3.5 rounded-xl bg-surface-container border border-outline-variant/30 shadow-xs flex flex-col gap-2 opacity-70">
+                        <div class="flex items-center justify-between">
+                          <span class="text-[10px] font-mono font-bold text-outline uppercase">Node 4</span>
+                          <span class="material-symbols-outlined text-outline text-[16px]">hourglass_empty</span>
+                        </div>
+                        <div class="font-semibold text-xs text-on-surface">Deploy Artifacts</div>
+                        <div class="text-[11px] text-outline font-mono">Agent: Vanguard</div>
+                        <span class="text-[10px] text-outline">Pending</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </Show>
 

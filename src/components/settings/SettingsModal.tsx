@@ -1,5 +1,16 @@
 import { Component, createSignal, For, Show } from 'solid-js';
-import { state, setState, toggleTheme, addToast } from '../../stores/appState';
+import {
+  state,
+  setState,
+  toggleTheme,
+  addToast,
+  stopBackgroundProcessAction,
+  addMCPServerAction,
+  testMCPServerAction,
+  removeMCPServerAction,
+  saveMCPServersAction,
+  toggleComputerUseAction,
+} from '../../stores/appState';
 import { SUPPORTED_LOCALES, i18n } from '../../shared/i18n';
 import { AppTheme, SendShortcut, HoldCmdQMode, LogoColor } from '../../types';
 
@@ -14,6 +25,7 @@ interface SettingsTabItem {
 const SETTINGS_TABS: SettingsTabItem[] = [
   { id: 'general', name: 'General', icon: 'tune', description: 'Control how OpenBot behaves on this computer.' },
   { id: 'agents', name: 'Agents', icon: 'smart_toy', description: 'Choose what the agents on this computer can do when you do not set it for an agent.' },
+  { id: 'mcp', name: 'MCP Servers', icon: 'hub', description: 'Model Context Protocol servers that give agents tools on this computer.' },
   { id: 'profile', name: 'Profile', icon: 'account_circle', description: 'Manage how you appear in OpenBot.' },
   { id: 'notifications', name: 'Notifications', icon: 'notifications', description: 'Choose how OpenBot alerts you.' },
   { id: 'voice', name: 'Voice', icon: 'mic', description: 'Dictation in the message box. Local models run on this computer; ElevenLabs and Groq run in the cloud.' },
@@ -275,12 +287,173 @@ export const SettingsModal: Component = () => {
                   </div>
 
                   <div class="p-3.5 rounded-lg bg-surface-container-low border border-outline-variant/20">
-                    <div class="font-semibold text-xs text-on-surface mb-1">Background processes</div>
+                    <div class="flex items-center justify-between mb-1">
+                      <div class="font-semibold text-xs text-on-surface">Background processes</div>
+                      <span class="text-[10px] font-mono text-outline">{state.backgroundProcesses.length} running</span>
+                    </div>
                     <p class="text-[11px] text-outline mb-3">
                       Programs agents started and left running, such as dev servers. They keep running after chat ends and after quitting OpenBot.
                     </p>
-                    <div class="p-3 rounded bg-surface-container text-xs text-outline text-center">
-                      No programs from agents are running.
+
+                    <Show
+                      when={state.backgroundProcesses.length > 0}
+                      fallback={
+                        <div class="p-3 rounded bg-surface-container text-xs text-outline text-center">
+                          No programs from agents are running.
+                        </div>
+                      }
+                    >
+                      <div class="space-y-2">
+                        <For each={state.backgroundProcesses}>
+                          {(proc) => (
+                            <div class="p-2.5 rounded bg-surface-container border border-outline-variant/30 flex items-center justify-between text-xs font-mono">
+                              <div>
+                                <div class="font-semibold text-on-surface flex items-center gap-1.5">
+                                  <span class="w-2 h-2 rounded-full bg-secondary" />
+                                  <span>{proc.command}</span>
+                                </div>
+                                <div class="text-[10px] text-outline mt-0.5">
+                                  PID: {proc.pid} · Ports: {proc.ports} · Started: {new Date(proc.started_at).toLocaleTimeString()}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => stopBackgroundProcessAction(proc.id)}
+                                class="px-2.5 py-1 rounded bg-error/20 hover:bg-error/30 text-error text-[11px] font-semibold transition-colors"
+                              >
+                                Stop
+                              </button>
+                            </div>
+                          )}
+                        </For>
+                      </div>
+                    </Show>
+                  </div>
+                </div>
+              </Show>
+
+              {/* TAB 3: MCP SERVERS */}
+              <Show when={state.activeSettingsTab === 'mcp'}>
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between p-3.5 rounded-lg bg-surface-container-low border border-outline-variant/20">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="font-semibold text-xs text-on-surface">MCP Tool Servers</span>
+                        <span
+                          class={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                            state.isMCPDirty ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-surface-container text-outline'
+                          }`}
+                        >
+                          {state.isMCPDirty ? 'Unsaved changes' : 'Synced'}
+                        </span>
+                      </div>
+                      <p class="text-[11px] text-outline mt-0.5">
+                        Servers belong to this machine and provide native tool steps for all agents.
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <Show when={state.isMCPDirty}>
+                        <button
+                          onClick={saveMCPServersAction}
+                          class="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:brightness-110"
+                        >
+                          Save Changes
+                        </button>
+                      </Show>
+                      <button
+                        onClick={() => {
+                          const name = prompt('MCP Server Name:', 'PostgreSQL Database');
+                          if (name) {
+                            addMCPServerAction({ name, type: 'stdio', command: 'npx -y @modelcontextprotocol/server-postgres' });
+                          }
+                        }}
+                        class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-xs font-semibold text-on-surface border border-outline-variant/30 flex items-center gap-1"
+                      >
+                        <span class="material-symbols-outlined text-[14px]">add</span>
+                        <span>Add Server</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="space-y-2">
+                    <For each={state.mcpServers}>
+                      {(server) => (
+                        <div class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 flex items-center justify-between">
+                          <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                              <span class="material-symbols-outlined text-[18px]">hub</span>
+                            </div>
+                            <div>
+                              <div class="flex items-center gap-2">
+                                <span class="font-semibold text-xs text-on-surface">{server.name}</span>
+                                <span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-surface-container text-outline uppercase">
+                                  {server.type}
+                                </span>
+                              </div>
+                              <div class="text-[11px] font-mono text-outline mt-0.5 truncate max-w-md">
+                                {server.command || server.url || 'stdio process'}
+                              </div>
+                            </div>
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <button
+                              onClick={() => testMCPServerAction(server.id)}
+                              class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-xs text-on-surface border border-outline-variant/30 transition-colors"
+                            >
+                              Test Probe
+                            </button>
+                            <button
+                              onClick={() => removeMCPServerAction(server.id)}
+                              class="p-1 rounded text-outline hover:text-error hover:bg-surface-container transition-colors"
+                              title="Remove MCP server"
+                            >
+                              <span class="material-symbols-outlined text-[16px]">delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </div>
+              </Show>
+
+              {/* TAB 8: COMPUTER USE */}
+              <Show when={state.activeSettingsTab === 'computer_use'}>
+                <div class="space-y-4">
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 flex items-center justify-between">
+                    <div>
+                      <div class="font-semibold text-xs text-on-surface">Enable Computer Use driver</div>
+                      <p class="text-[11px] text-outline mt-0.5">
+                        Agents with Computer Use tools can see desktop displays, move the cursor, and click controls.
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={state.computerUseStatus.enabled}
+                      onChange={(e) => toggleComputerUseAction(e.currentTarget.checked)}
+                      class="accent-primary cursor-pointer w-4 h-4"
+                    />
+                  </div>
+
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-3">
+                    <span class="font-semibold text-xs text-on-surface block">Driver Permissions & Platform Readiness</span>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                      <div class="p-3 rounded bg-surface-container border border-outline-variant/20 flex items-center justify-between">
+                        <span class="text-outline">Screen Capture</span>
+                        <span class="text-secondary font-semibold flex items-center gap-1">
+                          <span class="w-1.5 h-1.5 rounded-full bg-secondary" />
+                          Ready
+                        </span>
+                      </div>
+                      <div class="p-3 rounded bg-surface-container border border-outline-variant/20 flex items-center justify-between">
+                        <span class="text-outline">System Automation</span>
+                        <span class="text-secondary font-semibold flex items-center gap-1">
+                          <span class="w-1.5 h-1.5 rounded-full bg-secondary" />
+                          Ready
+                        </span>
+                      </div>
+                    </div>
+                    <div class="text-[11px] text-outline font-mono">
+                      Platform: {state.computerUseStatus.platform} · Windows/Linux driver answers ready without extra prompt.
                     </div>
                   </div>
                 </div>
@@ -326,7 +499,7 @@ export const SettingsModal: Component = () => {
               </Show>
 
               {/* OTHER TABS PLACEHOLDER / REALISTIC DETAILS */}
-              <Show when={!['general', 'agents', 'billing', 'updates'].includes(state.activeSettingsTab)}>
+              <Show when={!['general', 'agents', 'mcp', 'computer_use', 'billing', 'updates'].includes(state.activeSettingsTab)}>
                 <div class="p-6 rounded-xl bg-surface-container-low border border-outline-variant/20 text-center flex flex-col items-center justify-center gap-2">
                   <span class="material-symbols-outlined text-3xl text-outline">{currentTab().icon}</span>
                   <div class="font-semibold text-xs text-on-surface">{currentTab().name} Settings</div>

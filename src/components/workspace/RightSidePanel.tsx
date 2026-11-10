@@ -6,6 +6,10 @@ import {
   openEditAgentModal,
   exportAgentTemplate,
   switchAgentThread,
+  addMemoryAction,
+  deleteMemoryAction,
+  attachSkillAction,
+  detachSkillAction,
 } from '../../stores/appState';
 import { i18n } from '../../shared/i18n';
 
@@ -252,6 +256,115 @@ export const RightSidePanel: Component = () => {
                     <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-3">
                       {currentAgent()?.sections?.fallbackStrategies || 'On execution failure, log diagnostics and retry.'}
                     </p>
+                  </div>
+                </div>
+
+                {/* Attached Skills Section */}
+                <div class="pt-2 border-t border-outline-variant/20 flex flex-col gap-2">
+                  <div class="flex items-center justify-between">
+                    <span class="font-label-sm text-[10px] text-outline uppercase tracking-wider font-semibold">
+                      Attached Skills
+                    </span>
+                    <button
+                      onClick={() => {
+                        const available = state.skills.find((s) => !(state.agentSkills[currentAgent()!.id] || []).some((as) => as.id === s.id));
+                        if (available && currentAgent()) {
+                          attachSkillAction(currentAgent()!.id, available);
+                        } else {
+                          addToast('warning', 'All skills attached');
+                        }
+                      }}
+                      class="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                    >
+                      <span class="material-symbols-outlined text-[12px]">add</span>
+                      <span>Attach Skill</span>
+                    </button>
+                  </div>
+
+                  <div class="flex flex-wrap gap-1.5">
+                    <For each={state.agentSkills[currentAgent()?.id || ''] || []}>
+                      {(skill) => (
+                        <div class="inline-flex items-center gap-1 px-2 py-1 rounded bg-surface-container border border-outline-variant/30 text-[11px] text-on-surface">
+                          <span class="material-symbols-outlined text-[13px] text-primary">{skill.icon || 'star'}</span>
+                          <span>{skill.name}</span>
+                          <button
+                            onClick={() => currentAgent() && detachSkillAction(currentAgent()!.id, skill.id)}
+                            class="hover:text-error ml-0.5"
+                            title="Detach skill"
+                          >
+                            <span class="material-symbols-outlined text-[11px]">close</span>
+                          </button>
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </div>
+
+                {/* Agent Memory Management & 8,192 Byte Essential Budget */}
+                <div class="pt-2 border-t border-outline-variant/20 flex flex-col gap-2">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <span class="font-label-sm text-[10px] text-outline uppercase tracking-wider font-semibold block">
+                        Agent Memory
+                      </span>
+                      <span class="text-[10px] text-secondary font-mono">Consolidation: every 20 turns</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const fact = prompt('Enter invariant fact to save into memory:');
+                        if (fact && currentAgent()) {
+                          addMemoryAction(currentAgent()!.id, fact, true);
+                        }
+                      }}
+                      class="px-2 py-0.5 rounded bg-primary text-on-primary text-[10px] font-semibold hover:brightness-110 flex items-center gap-0.5"
+                    >
+                      <span class="material-symbols-outlined text-[12px]">add</span>
+                      <span>Add Fact</span>
+                    </button>
+                  </div>
+
+                  {/* 8,192 Byte Budget Bar */}
+                  <div class="p-2 rounded bg-surface-container border border-outline-variant/20 flex flex-col gap-1">
+                    <div class="flex items-center justify-between text-[10px] font-mono text-outline">
+                      <span>Essential Budget</span>
+                      <span>
+                        {state.agentMemoryUsage[currentAgent()?.id || '']?.essentialBytes || 200} / 8,192 bytes
+                      </span>
+                    </div>
+                    <div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+                      <div
+                        class="h-full bg-primary transition-all rounded-full"
+                        style={{
+                          width: `${Math.min(100, (((state.agentMemoryUsage[currentAgent()?.id || '']?.essentialBytes || 200) / 8192) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Fact Cards */}
+                  <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    <For each={state.agentMemories[currentAgent()?.id || ''] || []}>
+                      {(mem) => (
+                        <div class="p-2 rounded bg-surface-container-low border border-outline-variant/20 flex items-start justify-between gap-1 text-[11px]">
+                          <div class="flex-1">
+                            <p class="text-on-surface leading-tight font-body-sm">{mem.fact_text}</p>
+                            <div class="flex items-center gap-2 mt-1 text-[9px] font-mono text-outline">
+                              <span>{mem.byte_size} bytes</span>
+                              <Show when={mem.is_essential === 1}>
+                                <span class="text-secondary font-semibold uppercase">Essential</span>
+                              </Show>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => currentAgent() && deleteMemoryAction(currentAgent()!.id, mem.id)}
+                            class="text-outline hover:text-error p-0.5 transition-colors"
+                            title="Delete memory"
+                          >
+                            <span class="material-symbols-outlined text-[13px]">delete</span>
+                          </button>
+                        </div>
+                      )}
+                    </For>
                   </div>
                 </div>
               </div>

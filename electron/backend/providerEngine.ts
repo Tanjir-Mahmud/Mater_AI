@@ -664,6 +664,17 @@ export class ProviderEngine {
       }
     }
   }
+
+  public async shutdownAll(): Promise<void> {
+    console.log('[ProviderEngine] Stopping all active provider sessions...');
+    for (const providerId of this.activeSessions.keys()) {
+      try {
+        await this.disconnectProvider(providerId);
+      } catch (err) {
+        console.error(`[ProviderEngine] Error stopping provider ${providerId}:`, err);
+      }
+    }
+  }
 }
 
 export const providerEngine = new ProviderEngine();
