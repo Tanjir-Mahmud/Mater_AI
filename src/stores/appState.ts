@@ -594,13 +594,17 @@ export async function sendMessageToCurrentAgent(messageText: string) {
       });
     }
 
+    if (!reply || !reply.text) {
+      throw new Error(`Provider "${agent.provider}" is not connected or requires sign-in. No response generated.`);
+    }
+
     const agentMsg: ChatMessage = {
       id: `msg-${Date.now()}-agent`,
       agentId: agent.id,
       author: 'agent',
-      body: reply?.text || `Task completed under ${agent.provider} (${agent.model}). Workspace state updated.`,
-      reasoning: reply?.reasoning,
-      toolStep: reply?.toolStep,
+      body: reply.text,
+      reasoning: reply.reasoning,
+      toolStep: reply.toolStep,
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
@@ -608,7 +612,7 @@ export async function sendMessageToCurrentAgent(messageText: string) {
     setState('agents', (a) => a.id === agent.id, 'status', 'responded');
   } catch (err: any) {
     setState('agents', (a) => a.id === agent.id, 'status', 'error');
-    addToast('error', 'Execution error', err.message);
+    addToast('error', 'Provider error', err?.message || 'Provider execution failed');
   }
 }
 

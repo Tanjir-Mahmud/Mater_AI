@@ -178,3 +178,81 @@ export function killProcessTree(child: ChildProcess): void {
     }
   }
 }
+
+/**
+ * Probes the installed version of a binary with 10-second timeout and 64KB cap per Section 3
+ */
+export function probeBinaryVersion(command: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const resolved = resolveWindowsBinary(command);
+    if (!resolved) {
+      return resolve(null);
+    }
+
+    const isWin = process.platform === 'win32';
+    let execCmd = resolved.path;
+    let args = ['--version'];
+
+    if (isWin && resolved.isCmdWrapper) {
+      execCmd = process.env.COMSPEC || 'cmd.exe';
+      args = ['/d', '/s', '/c', `"${resolved.path}" --version`];
+    }
+
+    let child: ChildProcess;
+    try {
+      child = spawn(execCmd, args, {
+        windowsVerbatimArguments: isWin && resolved.isCmdWrapper,
+        shell: false,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+    } catch {
+      return resolve(null);
+    }
+
+    let stdout = '';
+    const timeout = setTimeout(() => {
+      try {
+        killProcessTree(child);
+      } catch {}
+      resolve(null);
+    }, 10_000); // 10s version probe timeout per Section 3
+
+    child.stdout?.on('data', (d: Buffer) => {
+      stdout += d.toString('utf-8');
+      if (stdout.length > 64 * 1024) {
+        killProcessTree(child);
+      }
+    });
+
+    child.on('close', () => {
+      clearTimeout(timeout);
+      const match = stdout.match(/(\d+\.\d+\.\d+)/);
+      resolve(match ? match[1] : null);
+    });
+
+    child.on('error', () => {
+      clearTimeout(timeout);
+      resolve(null);
+    });
+  });
+}
+
+/**
+ * Compares two semantic version strings (e.g. "3.0.68" vs "3.0.60").
+ * Returns true if detected >= minimum.
+ */
+export function isVersionAtLeast(detected: string, minimum: string): boolean {
+  const parse = (v: string) => {
+    const m = v.match(/(\d+)\.(\d+)\.(\d+)/);
+    if (!m) return [0, 0, 0];
+    return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)];
+  };
+  const [dMaj, dMin, dPatch] = parse(detected);
+  const [mMaj, mMin, mPatch] = parse(minimum);
+
+  if (dMaj > mMaj) return true;
+  if (dMaj < mMaj) return false;
+  if (dMin > mMin) return true;
+  if (dMin < mMin) return false;
+  return dPatch >= mPatch;
+}
