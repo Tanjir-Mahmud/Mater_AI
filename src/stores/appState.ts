@@ -66,7 +66,7 @@ const initialServers: ServerInfo[] = [
     id: 'server-local',
     name: 'This computer',
     isLocal: true,
-    publishState: 'reachable',
+    publishState: 'not-reachable',
     status: 'online',
     storage: {
       totalBytes: 512 * 1024 * 1024 * 1024,
@@ -74,32 +74,7 @@ const initialServers: ServerInfo[] = [
       freeBytes: 92 * 1024 * 1024 * 1024,
       percentUsed: 82,
     },
-    machineMetrics: {
-      cpuPercent: 34,
-      memoryPercent: 68,
-      diskPercent: 82,
-      alertRecipient: 'owner',
-    },
-    timezone: 'UTC+0',
-  },
-  {
-    id: 'server-cloud-us',
-    name: 'Prod Cluster US-East',
-    isLocal: false,
-    publishState: 'reachable',
-    status: 'online',
-    storage: {
-      totalBytes: 100 * 1024 * 1024 * 1024,
-      usedBytes: 96 * 1024 * 1024 * 1024,
-      freeBytes: 4 * 1024 * 1024 * 1024,
-      percentUsed: 96, // Under 5GB free -> Storage almost full alert
-    },
-    machineMetrics: {
-      cpuPercent: 91, // Machine metric alert
-      memoryPercent: 74,
-      diskPercent: 96,
-    },
-    timezone: 'America/New_York',
+    timezone: 'Automatic',
   },
 ];
 
@@ -300,35 +275,9 @@ const initialAgentMessages: Record<string, ChatMessage[]> = {
   ],
 };
 
-const initialChannels: Channel[] = [
-  {
-    id: 'channel-dev',
-    name: 'Dev Team Channel',
-    memberAgentIds: ['agent-kestrel', 'agent-cipher', 'agent-vanguard'],
-    taskOwnerId: 'agent-kestrel',
-    status: 'active',
-    unreadCount: 3,
-    lastPreview: 'Branch verification and test run completed successfully.',
-    isWorking: true,
-  },
-];
+const initialChannels: Channel[] = [];
 
-const initialPeople: Person[] = [
-  {
-    id: 'person-sarah',
-    name: 'Sarah Chen',
-    email: 'sarah@synthetify.io',
-    status: 'online',
-    unreadCount: 1,
-  },
-  {
-    id: 'person-marcus',
-    name: 'Marcus Brody',
-    email: 'marcus@synthetify.io',
-    status: 'offline',
-    unreadCount: 0,
-  },
-];
+const initialPeople: Person[] = [];
 
 const initialFolders: Folder[] = [
   {
@@ -573,30 +522,18 @@ export const [state, setState] = createStore({
   recentlyDeletedWorkflow: null as Workflow | null,
 
   // Milestone 5: Teams and Collaboration states
-  serverMembers: [
-    { id: 'mem-alex', serverId: 'server-local', name: 'Alex Rivera', email: 'alex@synthetify.io', serverRole: 'owner', status: 'online', createdAt: '2026-11-09T08:00:00Z' },
-    { id: 'mem-sophia', serverId: 'server-local', name: 'Sophia Chen', email: 'sophia@synthetify.io', serverRole: 'admin', status: 'online', createdAt: '2026-11-09T08:15:00Z' },
-    { id: 'mem-marcus', serverId: 'server-local', name: 'Marcus Brody', email: 'marcus@synthetify.io', serverRole: 'member', status: 'offline', createdAt: '2026-11-09T08:30:00Z' },
-  ] as ServerMember[],
+  serverMembers: [] as ServerMember[],
   memberAgentAccess: {} as Record<string, MemberAgentAccess[]>,
-  sharedTables: [
-    {
-      id: 'table-metrics',
-      name: 'cluster_metrics',
-      creatorAgentId: 'agent-kestrel',
-      columns: ['node_id', 'cpu', 'memory', 'disk'],
-      rows: [
-        { node_id: 'i-0a1b2c3d', cpu: 34, memory: 68, disk: 82 },
-        { node_id: 'i-0e4f5a6b', cpu: 91, memory: 74, disk: 96 },
-      ],
-      createdAt: '2026-11-09T10:00:00Z',
-      updatedAt: '2026-11-09T12:00:00Z',
-    },
-  ] as SharedTable[],
+  sharedTables: [] as SharedTable[],
   auditLogs: [
-    { id: 'audit-1', serverId: 'server-local', action: 'server_initialized', actor: 'alex@synthetify.io', details: 'Local team server initialized with WebRTC protocol v9.', timestamp: '2026-11-09T08:00:00Z' },
-    { id: 'audit-2', serverId: 'server-local', action: 'member_joined', actor: 'sophia@synthetify.io', details: 'Sophia Chen assigned role Admin.', timestamp: '2026-11-09T08:15:00Z' },
-    { id: 'audit-3', serverId: 'server-local', action: 'key_rotation', actor: 'owner', details: 'Dual-signed handover token validated.', timestamp: '2026-11-09T08:30:00Z' },
+    {
+      id: 'audit-init',
+      serverId: 'server-local',
+      action: 'server_created',
+      actor: 'system',
+      details: 'Local team server created.',
+      timestamp: new Date().toISOString(),
+    },
   ] as AuditLogEntry[],
   activeRemoteDesktopSession: null as RemoteDesktopSession | null,
   isRemoteDesktopActive: false,

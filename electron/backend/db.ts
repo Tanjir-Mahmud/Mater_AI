@@ -174,6 +174,9 @@ export interface DBTeamServer {
   status: string;
   plan?: string;
   timezone: string;
+  public_key?: string;
+  private_key?: string;
+  key_fingerprint?: string;
   key_rotated_at?: string;
   last_active_at?: string;
   created_at: string;
@@ -556,6 +559,9 @@ export async function initDatabase(): Promise<Database> {
       status TEXT NOT NULL DEFAULT 'online',
       plan TEXT DEFAULT 'Starter',
       timezone TEXT NOT NULL DEFAULT 'Automatic',
+      public_key TEXT,
+      private_key TEXT,
+      key_fingerprint TEXT,
       key_rotated_at TEXT,
       last_active_at TEXT,
       created_at TEXT NOT NULL,
@@ -657,6 +663,18 @@ export async function initDatabase(): Promise<Database> {
 
   try {
     db.run(`ALTER TABLE routines ADD COLUMN is_quiet INTEGER NOT NULL DEFAULT 0;`);
+  } catch {}
+
+  try {
+    db.run(`ALTER TABLE team_servers ADD COLUMN public_key TEXT;`);
+  } catch {}
+
+  try {
+    db.run(`ALTER TABLE team_servers ADD COLUMN private_key TEXT;`);
+  } catch {}
+
+  try {
+    db.run(`ALTER TABLE team_servers ADD COLUMN key_fingerprint TEXT;`);
   } catch {}
 
   saveDatabase(db);

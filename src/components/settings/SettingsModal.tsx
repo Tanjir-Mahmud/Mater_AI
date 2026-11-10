@@ -584,35 +584,44 @@ export const SettingsModal: Component = () => {
 
                   {/* Member List */}
                   <div class="space-y-2">
-                    <For each={state.serverMembers}>
-                      {(member) => (
-                        <div class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 flex items-center justify-between text-xs">
-                          <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">
-                              {member.name.charAt(0)}
-                            </div>
-                            <div>
-                              <div class="font-semibold text-on-surface flex items-center gap-2">
-                                <span>{member.name}</span>
-                                <span class="px-1.5 py-0.2 rounded text-[10px] font-label-sm bg-surface-container uppercase text-outline">
-                                  {member.serverRole}
-                                </span>
-                              </div>
-                              <div class="text-[11px] text-outline">{member.email} · {member.status}</div>
-                            </div>
-                          </div>
-                          <Show when={member.serverRole !== 'owner'}>
-                            <button
-                              onClick={() => removeServerMemberAction(member.serverId, member.id)}
-                              class="text-outline hover:text-error text-xs p-1"
-                              title="Remove member"
-                            >
-                              <span class="material-symbols-outlined text-[16px]">person_remove</span>
-                            </button>
-                          </Show>
+                    <Show
+                      when={state.serverMembers.length > 0}
+                      fallback={
+                        <div class="p-6 rounded-xl bg-surface-container-low border border-outline-variant/20 text-center text-xs text-outline">
+                          No team members yet. Invite a teammate above to begin collaboration.
                         </div>
-                      )}
-                    </For>
+                      }
+                    >
+                      <For each={state.serverMembers}>
+                        {(member) => (
+                          <div class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-3">
+                              <div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">
+                                {member.name.charAt(0)}
+                              </div>
+                              <div>
+                                <div class="font-semibold text-on-surface flex items-center gap-2">
+                                  <span>{member.name}</span>
+                                  <span class="px-1.5 py-0.2 rounded text-[10px] font-label-sm bg-surface-container uppercase text-outline">
+                                    {member.serverRole}
+                                  </span>
+                                </div>
+                                <div class="text-[11px] text-outline">{member.email} · {member.status}</div>
+                              </div>
+                            </div>
+                            <Show when={member.serverRole !== 'owner'}>
+                              <button
+                                onClick={() => removeServerMemberAction(member.serverId, member.id)}
+                                class="text-outline hover:text-error text-xs p-1"
+                                title="Remove member"
+                              >
+                                <span class="material-symbols-outlined text-[16px]">person_remove</span>
+                              </button>
+                            </Show>
+                          </div>
+                        )}
+                      </For>
+                    </Show>
                   </div>
                 </div>
               </Show>
@@ -628,22 +637,31 @@ export const SettingsModal: Component = () => {
                   </div>
 
                   <div class="space-y-2 text-xs">
-                    <For each={state.serverMembers}>
-                      {(member) => (
-                        <div class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 flex items-center justify-between">
-                          <div>
-                            <span class="font-semibold text-on-surface">{member.name}</span>
-                            <span class="text-[10px] text-outline uppercase ml-2 font-mono">({member.serverRole})</span>
-                          </div>
-                          <div class="flex items-center gap-2">
-                            <span class="text-[11px] text-outline">All agents access:</span>
-                            <span class="font-mono text-secondary font-semibold">
-                              {member.serverRole === 'owner' || member.serverRole === 'admin' ? 'Manage (Full)' : 'Chat (Standard)'}
-                            </span>
-                          </div>
+                    <Show
+                      when={state.serverMembers.length > 0}
+                      fallback={
+                        <div class="p-6 rounded-xl bg-surface-container-low border border-outline-variant/20 text-center text-xs text-outline">
+                          No team members to configure. Invite members in the Members tab first.
                         </div>
-                      )}
-                    </For>
+                      }
+                    >
+                      <For each={state.serverMembers}>
+                        {(member) => (
+                          <div class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 flex items-center justify-between">
+                            <div>
+                              <span class="font-semibold text-on-surface">{member.name}</span>
+                              <span class="text-[10px] text-outline uppercase ml-2 font-mono">({member.serverRole})</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                              <span class="text-[11px] text-outline">All agents access:</span>
+                              <span class="font-mono text-secondary font-semibold">
+                                {member.serverRole === 'owner' || member.serverRole === 'admin' ? 'Manage (Full)' : 'Chat (Standard)'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </For>
+                    </Show>
                   </div>
                 </div>
               </Show>

@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import {
   initDatabase,
   saveDatabase,
@@ -27,6 +28,25 @@ export const REMOTE_DESKTOP_TEST_EXPIRY_MS = 2 * 60 * 1000; // 2 minutes
 export const HOSTED_IDLE_STOP_MS = 15 * 60 * 1000; // 15 minutes
 export const HOSTED_RETENTION_DAYS = 14; // 14 days
 
+export interface GeneratedKeyPair {
+  publicKeyPem: string;
+  privateKeyPem: string;
+  fingerprint: string;
+}
+
+export function generateEd25519KeyPair(): GeneratedKeyPair {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
+  const fingerprint = `SHA256:${crypto
+    .createHash('sha256')
+    .update(publicKey)
+    .digest('hex')
+    .substring(0, 16)}`;
+  return { publicKeyPem: publicKey, privateKeyPem: privateKey, fingerprint };
+}
+
 export class TeamCollabService {
   private activeRemoteControllers: string[] = [];
 
@@ -37,11 +57,39 @@ export class TeamCollabService {
     getSharedDir();
     getSharedTransfersDir();
 
+    // Clean up any legacy fake seed members, fake channels, or false WebRTC audit lines
+    try {
+      db.run(`DELETE FROM server_members WHERE email LIKE '%@synthetify.io' OR email = 'owner@openbot.local' OR server_id = 'server-local';`);
+      db.run(`DELETE FROM channels WHERE id = 'channel-infra' OR server_id = 'server-local';`);
+      db.run(`DELETE FROM audit_logs WHERE details LIKE '%WebRTC%' OR details LIKE '%Alex Rivera%' OR details LIKE '%Sophia Chen%' OR actor LIKE '%@synthetify.io%';`);
+      db.run(`UPDATE team_servers SET publish_state = 'not-reachable' WHERE id = 'server-local';`);
+    } catch (e) {
+      console.warn('Database cleanup warning:', e);
+    }
+
     // Seed local server if none exist
     const serversRes = db.exec(`SELECT count(*) FROM team_servers;`);
     const serverCount = serversRes.length && serversRes[0].values.length ? (serversRes[0].values[0][0] as number) : 0;
     if (serverCount === 0) {
       this.seedDefaultServerAndMembers(db);
+    } else {
+      // Ensure existing local server has an initial Ed25519 keypair if none was present
+      try {
+        const keyRes = db.exec(`SELECT public_key, private_key FROM team_servers WHERE id = 'server-local';`);
+        if (keyRes.length && keyRes[0].values.length) {
+          const pub = keyRes[0].values[0][0];
+          const priv = keyRes[0].values[0][1];
+          if (!pub || !priv) {
+            const kp = generateEd25519KeyPair();
+            db.run(
+              `UPDATE team_servers SET public_key = ?, private_key = ?, key_fingerprint = ? WHERE id = 'server-local';`,
+              [kp.publicKeyPem, kp.privateKeyPem, kp.fingerprint]
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('Keypair initialization warning:', err);
+      }
     }
 
     saveDatabase(db);
@@ -54,7 +102,7 @@ export class TeamCollabService {
   public async getServers(): Promise<DBTeamServer[]> {
     const db = await initDatabase();
     const res = db.exec(
-      `SELECT id, name, logo, is_local, publish_state, status, plan, timezone, key_rotated_at, last_active_at, created_at, updated_at
+      `SELECT id, name, logo, is_local, publish_state, status, plan, timezone, key_rotated_at, last_active_at, created_at, updated_at, public_key, key_fingerprint
        FROM team_servers
        ORDER BY is_local DESC, created_at ASC;`
     );
@@ -72,6 +120,8 @@ export class TeamCollabService {
       last_active_at: (v[9] as string) || undefined,
       created_at: v[10] as string,
       updated_at: v[11] as string,
+      public_key: (v[12] as string) || undefined,
+      key_fingerprint: (v[13] as string) || undefined,
     }));
   }
 
@@ -89,21 +139,16 @@ export class TeamCollabService {
     const plan = params.plan || 'Starter';
     const timezone = params.timezone || 'Automatic';
 
+    // Generate real Ed25519 identity keypair
+    const keyPair = generateEd25519KeyPair();
+
     db.run(
-      `INSERT INTO team_servers (id, name, logo, is_local, publish_state, status, plan, timezone, last_active_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'not-reachable', 'online', ?, ?, ?, ?, ?);`,
-      [id, params.name, params.logo || null, isLocal, plan, timezone, now, now, now]
+      `INSERT INTO team_servers (id, name, logo, is_local, publish_state, status, plan, timezone, public_key, private_key, key_fingerprint, last_active_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'not-reachable', 'online', ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [id, params.name, params.logo || null, isLocal, plan, timezone, keyPair.publicKeyPem, keyPair.privateKeyPem, keyPair.fingerprint, now, now, now]
     );
 
-    // Create default owner member for this server
-    const ownerMemberId = `mem-owner-${Date.now()}`;
-    db.run(
-      `INSERT INTO server_members (id, server_id, name, email, server_role, status, created_at)
-       VALUES (?, ?, 'Workspace Owner', 'owner@openbot.local', 'owner', 'online', ?);`,
-      [ownerMemberId, id, now]
-    );
-
-    await this.logAuditEvent(id, 'server_created', 'owner@openbot.local', `Server "${params.name}" initialized on ${timezone} timezone`);
+    await this.logAuditEvent(id, 'server_created', 'system', `Server "${params.name}" created with timezone ${timezone}`);
 
     saveDatabase(db);
 
@@ -116,6 +161,8 @@ export class TeamCollabService {
       status: 'online',
       plan,
       timezone,
+      public_key: keyPair.publicKeyPem,
+      key_fingerprint: keyPair.fingerprint,
       last_active_at: now,
       created_at: now,
       updated_at: now,
@@ -150,7 +197,7 @@ export class TeamCollabService {
 
     db.run(
       `INSERT INTO server_members (id, server_id, name, email, server_role, status, created_at)
-       VALUES (?, ?, ?, ?, 'member', 'online', ?);`,
+       VALUES (?, ?, ?, ?, 'member', 'offline', ?);`,
       [memberId, serverId, targetEmail.split('@')[0], targetEmail, now]
     );
 
@@ -171,7 +218,7 @@ export class TeamCollabService {
         name: targetEmail.split('@')[0],
         email: targetEmail,
         server_role: 'member',
-        status: 'online',
+        status: 'offline',
         created_at: now,
       },
     };
@@ -194,26 +241,120 @@ export class TeamCollabService {
     return true;
   }
 
-  public async rotateServerKey(serverId: string): Promise<{ success: boolean; handoverToken: string; rotatedAt: string }> {
+  public async rotateServerKey(serverId: string): Promise<{
+    success: boolean;
+    handoverToken: string;
+    signature?: string;
+    oldPublicKey?: string;
+    newPublicKey: string;
+    newFingerprint: string;
+    rotatedAt: string;
+  }> {
     const db = await initDatabase();
     const now = new Date().toISOString();
 
-    // Generate simulated cryptographic keys and dual-signature handover token
-    const oldKey = `key-old-${Math.random().toString(36).substring(2, 12)}`;
-    const newKey = `key-v9-${Math.random().toString(36).substring(2, 12)}`;
-    const handoverToken = `${oldKey}:signed_handover:${newKey}`;
+    // 1. Fetch current stored server keys
+    const res = db.exec(
+      `SELECT public_key, private_key, key_fingerprint FROM team_servers WHERE id = ?;`,
+      [serverId]
+    );
 
-    db.run(`UPDATE team_servers SET key_rotated_at = ?, updated_at = ? WHERE id = ?;`, [now, now, serverId]);
+    let oldPublicKey = '';
+    let oldPrivateKey = '';
+    let oldFingerprint = '';
 
-    await this.logAuditEvent(
-      serverId,
-      'server_key_rotated',
-      'owner',
-      `Server identity key rotated. Both keys signed handover token. Paired computers, mobile devices, and webhook routes stay connected.`
+    if (res.length && res[0].values.length) {
+      oldPublicKey = (res[0].values[0][0] as string) || '';
+      oldPrivateKey = (res[0].values[0][1] as string) || '';
+      oldFingerprint = (res[0].values[0][2] as string) || '';
+    }
+
+    // 2. Generate new real Ed25519 keypair
+    const newKeyPair = generateEd25519KeyPair();
+    const newPublicKey = newKeyPair.publicKeyPem;
+    const newPrivateKey = newKeyPair.privateKeyPem;
+    const newFingerprint = newKeyPair.fingerprint;
+
+    let handoverToken = '';
+    let signatureBase64: string | undefined = undefined;
+
+    // 3. Build handover token
+    if (oldPrivateKey && oldPublicKey) {
+      // Prior key exists: real signature over the new public key using old private key
+      const dataToSign = Buffer.from(newPublicKey, 'utf8');
+      const sigBuffer = crypto.sign(null, dataToSign, oldPrivateKey);
+      signatureBase64 = sigBuffer.toString('base64');
+
+      handoverToken = JSON.stringify({
+        version: PROTOCOL_VERSION,
+        serverId,
+        type: 'key-handover',
+        oldFingerprint,
+        oldPublicKey,
+        newFingerprint,
+        newPublicKey,
+        signature: signatureBase64,
+        signedAt: now,
+      });
+
+      await this.logAuditEvent(
+        serverId,
+        'server_key_rotated',
+        'owner',
+        `Server identity key rotated. New Ed25519 public key (${newFingerprint}) signed with previous private key (${oldFingerprint}). Handover token issued.`
+      );
+    } else {
+      // First rotation when no prior key existed: record honestly without inventing a signature
+      handoverToken = JSON.stringify({
+        version: PROTOCOL_VERSION,
+        serverId,
+        type: 'initial-key',
+        newFingerprint,
+        newPublicKey,
+        generatedAt: now,
+      });
+
+      await this.logAuditEvent(
+        serverId,
+        'server_key_generated',
+        'owner',
+        `Initial server Ed25519 identity key generated (${newFingerprint}). No prior key existed to sign a handover token.`
+      );
+    }
+
+    // 4. Persist the new keypair and fingerprint in SQLite
+    db.run(
+      `UPDATE team_servers
+       SET public_key = ?, private_key = ?, key_fingerprint = ?, key_rotated_at = ?, updated_at = ?
+       WHERE id = ?;`,
+      [newPublicKey, newPrivateKey, newFingerprint, now, now, serverId]
     );
 
     saveDatabase(db);
-    return { success: true, handoverToken, rotatedAt: now };
+
+    return {
+      success: true,
+      handoverToken,
+      signature: signatureBase64,
+      oldPublicKey: oldPublicKey || undefined,
+      newPublicKey,
+      newFingerprint,
+      rotatedAt: now,
+    };
+  }
+
+  public verifyHandoverSignature(
+    newPublicKeyPem: string,
+    signatureBase64: string,
+    signerPublicKeyPem: string
+  ): boolean {
+    try {
+      const data = Buffer.from(newPublicKeyPem, 'utf8');
+      const sig = Buffer.from(signatureBase64, 'base64');
+      return crypto.verify(null, data, signerPublicKeyPem, sig);
+    } catch {
+      return false;
+    }
   }
 
   public async restartServer(serverId: string): Promise<{ restarting: boolean; message: string; estimatedSeconds: number }> {
@@ -830,38 +971,22 @@ export class TeamCollabService {
     const now = new Date().toISOString();
     const serverName = process.platform === 'darwin' ? 'This Mac' : 'This computer';
 
-    // 1. Local Server
+    // Generate initial real Ed25519 identity keypair
+    const initialKeyPair = generateEd25519KeyPair();
+
+    // 1. Local Server: ONLY seed the local server row with publish_state 'not-reachable'
     db.run(
-      `INSERT INTO team_servers (id, name, is_local, publish_state, status, plan, timezone, created_at, updated_at)
-       VALUES ('server-local', ?, 1, 'reachable', 'online', 'Starter', 'UTC+0', ?, ?);`,
-      [serverName, now, now]
+      `INSERT INTO team_servers (id, name, is_local, publish_state, status, plan, timezone, public_key, private_key, key_fingerprint, created_at, updated_at)
+       VALUES ('server-local', ?, 1, 'not-reachable', 'online', 'Starter', 'Automatic', ?, ?, ?, ?, ?);`,
+      [serverName, initialKeyPair.publicKeyPem, initialKeyPair.privateKeyPem, initialKeyPair.fingerprint, now, now]
     );
 
-    // 2. Members
-    const members = [
-      { id: 'mem-alex', name: 'Alex Rivera', email: 'alex@synthetify.io', role: 'owner', status: 'online' },
-      { id: 'mem-sophia', name: 'Sophia Chen', email: 'sophia@synthetify.io', role: 'admin', status: 'online' },
-      { id: 'mem-marcus', name: 'Marcus Brody', email: 'marcus@synthetify.io', role: 'member', status: 'offline' },
-    ];
-    for (const m of members) {
-      db.run(
-        `INSERT INTO server_members (id, server_id, name, email, server_role, status, created_at)
-         VALUES (?, 'server-local', ?, ?, ?, ?, ?);`,
-        [m.id, m.name, m.email, m.role, m.status, now]
-      );
-    }
-
-    // 3. Channels
-    db.run(
-      `INSERT INTO channels (id, server_id, name, lead_agent_id, member_agent_ids, status, active_assignments_count, created_at)
-       VALUES ('channel-infra', 'server-local', 'infrastructure', 'agent-kestrel', '["agent-kestrel", "agent-vanguard"]', 'active', 1, ?);`,
-      [now]
-    );
-
-    // 4. Audit Log Seed
+    // 2. NO members seeded. The member list starts EMPTY until the user invites a real person.
+    // 3. NO channels seeded.
+    // 4. Audit Log Seed: Describes ONLY what really happened.
     db.run(
       `INSERT INTO audit_logs (id, server_id, action, actor, details, timestamp)
-       VALUES ('audit-init', 'server-local', 'server_initialized', 'alex@synthetify.io', 'Local team server initialized with WebRTC protocol v9.', ?);`,
+       VALUES ('audit-init', 'server-local', 'server_created', 'system', 'Local team server created.', ?);`,
       [now]
     );
   }

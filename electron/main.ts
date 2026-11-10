@@ -817,7 +817,7 @@ function createWindow() {
         console.log('[Test] -------------------------------------------------------------');
 
         // 1. Team Protocol v9 & 3 Data channels
-        console.log('[Test] M5-1. Team protocol v9 over WebRTC (3 data channels)...');
+        console.log('[Test] M5-1. Team protocol v9 & data channels definition...');
         if (PROTOCOL_VERSION !== 'v9') {
           throw new Error(`Expected PROTOCOL_VERSION === 'v9', got ${PROTOCOL_VERSION}`);
         }
@@ -827,6 +827,20 @@ function createWindow() {
         const initialServers = await teamCollabService.getServers();
         if (initialServers.length === 0) throw new Error('Local team server should be initialized');
         const localServer = initialServers[0];
+
+        // Defect 1 & 3 test: Assert seeded local server is 'not-reachable' and member list starts empty
+        if (localServer.publish_state !== 'not-reachable') {
+          throw new Error(`Expected seeded local server to have publish_state 'not-reachable', got '${localServer.publish_state}'`);
+        }
+        const initialMembers = await teamCollabService.getMembers(localServer.id);
+        if (initialMembers.length !== 0) {
+          throw new Error(`Expected member list to start empty, but found ${initialMembers.length} members`);
+        }
+        const initialChannels = await teamCollabService.getChannels(localServer.id);
+        if (initialChannels.length !== 0) {
+          throw new Error(`Expected channel list to start empty, but found ${initialChannels.length} channels`);
+        }
+        console.log(`[Test]    - Seeded local server "${localServer.name}" is 'not-reachable' with 0 members and 0 channels.`);
 
         // Test Publish / Unpublish states
         await teamCollabService.setPublishState(localServer.id, 'reachable');
@@ -840,7 +854,7 @@ function createWindow() {
 
         // 2. Members, Roles & Per-Agent Access Levels
         console.log('[Test] M5-2. Members, roles (owner/admin/member) & per-agent access...');
-        const testMemberEmail = `dev-${Date.now()}@synthetify.io`;
+        const testMemberEmail = `dev-${Date.now()}@openbot.team`;
         const invitedMember = await teamCollabService.inviteMember(
           localServer.id,
           testMemberEmail,
@@ -1017,19 +1031,76 @@ function createWindow() {
         if (expiredRetentionCheck.isRetained) throw new Error('Disk stopped 15 days must exceed 14-day retention');
         console.log(`[Test]    - 14-day disk retention verified.`);
 
-        // 9. Server Settings & Key Rotation & Restart Simulation
-        console.log('[Test] M5-9. Server settings (key rotation & restart simulation)...');
-        const keyRotation = await teamCollabService.rotateServerKey(localServer.id);
-        if (!keyRotation.success || !keyRotation.handoverToken.includes('signed_handover')) {
-          throw new Error('Key rotation dual-signature handover failed');
+        // 9. Server Settings & Key Rotation with Real Ed25519 Cryptography
+        console.log('[Test] M5-9. Server settings (Ed25519 key rotation & signature verification)...');
+        const serverBeforeRotation = (await teamCollabService.getServers()).find((s) => s.id === localServer.id);
+        const oldPublicKey = serverBeforeRotation?.public_key;
+        if (!oldPublicKey) {
+          throw new Error('Local server must have initial Ed25519 public key');
         }
+
+        // Perform real key rotation
+        const keyRotation = await teamCollabService.rotateServerKey(localServer.id);
+        if (!keyRotation.success || !keyRotation.signature) {
+          throw new Error('Key rotation failed to produce real cryptographic signature');
+        }
+
+        // Verify the handover signature with the stored previous public key
+        const isSignatureValid = teamCollabService.verifyHandoverSignature(
+          keyRotation.newPublicKey,
+          keyRotation.signature,
+          oldPublicKey
+        );
+        if (!isSignatureValid) {
+          throw new Error('Cryptographic signature verification failed against stored public key');
+        }
+
+        // Test tamper resistance: modified public key fails verification
+        const tamperedKey = keyRotation.newPublicKey.replace('M', 'N');
+        const isTamperedValid = teamCollabService.verifyHandoverSignature(
+          tamperedKey,
+          keyRotation.signature,
+          oldPublicKey
+        );
+        if (isTamperedValid) {
+          throw new Error('Tampered public key must fail cryptographic verification');
+        }
+
+        // Verify new key is persisted in the database
+        const serverAfterRotation = (await teamCollabService.getServers()).find((s) => s.id === localServer.id);
+        if (
+          serverAfterRotation?.public_key !== keyRotation.newPublicKey ||
+          serverAfterRotation?.key_fingerprint !== keyRotation.newFingerprint
+        ) {
+          throw new Error('New Ed25519 public key or fingerprint not persisted in database');
+        }
+        console.log(`[Test]    - Real Ed25519 key rotation verified: signature valid (${keyRotation.newFingerprint}).`);
+
         const restartRes = await teamCollabService.restartServer(localServer.id);
         if (!restartRes.restarting || restartRes.estimatedSeconds !== 60) {
           throw new Error('Server restart simulation failed');
         }
-        console.log(`[Test]    - Server key rotation and restart simulation verified.`);
+        console.log(`[Test]    - Server restart simulation verified.`);
 
-        // 10. Capture Shell Screenshots for Milestone 5
+        // 10. Capture Shell Screenshots for Milestone 5 (Waiting for settled UI)
+        console.log('[Test] Waiting for loading animation to dismiss and shell UI to fully settle...');
+        await mainWindow!.webContents.executeJavaScript(`
+          new Promise((resolve) => {
+            const startTime = Date.now();
+            const check = () => {
+              const bounceEl = document.querySelector('.animate-bounce');
+              if (!bounceEl || Date.now() - startTime > 4000) {
+                resolve(true);
+              } else {
+                setTimeout(check, 100);
+              }
+            };
+            check();
+          });
+        `);
+        // Wait additional 600ms for SolidJS transitions and paint to finish
+        await new Promise((r) => setTimeout(r, 600));
+
         const img5 = await mainWindow!.webContents.capturePage();
         const distScreenshot5 = path.resolve('dist/milestone-5-shell.png');
         const repoScreenshot5 = path.join(screenshotsDir, 'milestone-5-shell.png');
