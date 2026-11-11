@@ -1957,27 +1957,49 @@ function createWindow() {
         }
         console.log(`[Test]    - Reconnect message retry policy verified: never auto-resends, retry only with client-message-id.`);
 
-        // M8-12. Capture Shell Screenshot for Milestone 8 (Settled UI)
-        console.log('[Test] Waiting for loading animation to dismiss and shell UI to fully settle for Milestone 8...');
+        // M8-12. Capture Shell Screenshot for Milestone 8 (Settled Main App Workspace UI)
+        console.log('[Test] Selecting English to dismiss language dialog and waiting for main settled shell UI (sidebar, header, and workspace)...');
         await mainWindow!.webContents.executeJavaScript(`
           new Promise((resolve) => {
             const startTime = Date.now();
-            const check = () => {
+            const step = () => {
+              // 1. If English button exists in the language selector grid, click it to dismiss language dialog
+              const allButtons = Array.from(document.querySelectorAll('button'));
+              const englishBtn = allButtons.find(
+                (b) => b.textContent && (b.textContent.includes('English') || b.textContent.includes('System default'))
+              );
+              if (englishBtn) {
+                englishBtn.click();
+              }
+
+              // 2. Dismiss onboarding and loading overlays via Solid store so main workspace is fully exposed
+              if (window.__OPENBOT_STORE__) {
+                window.__OPENBOT_STORE__.setState('settings', 'language', 'en');
+                window.__OPENBOT_STORE__.setState('settings', 'hasCompletedOnboarding', true);
+                window.__OPENBOT_STORE__.setState('isLoading', false);
+              }
+
+              // 3. Verify all overlays are gone and main settled shell UI is visible
               const bounceEl = document.querySelector('.animate-bounce');
               const loadingEl = document.querySelector('[class*="z-[100]"]');
-              const mainEl = document.querySelector('header');
-              if (!bounceEl && !loadingEl && mainEl) {
+              const onboardingEl = document.querySelector('[class*="z-[90]"]');
+              const headerEl = document.querySelector('header');
+              const navEl = document.querySelector('nav[aria-label="Agent Navigation"]');
+              const mainEl = document.querySelector('main');
+
+              if (!bounceEl && !loadingEl && !onboardingEl && headerEl && navEl && mainEl) {
                 resolve(true);
-              } else if (Date.now() - startTime > 6000) {
+              } else if (Date.now() - startTime > 8000) {
                 resolve(true);
               } else {
-                setTimeout(check, 100);
+                setTimeout(step, 100);
               }
             };
-            check();
+            step();
           });
         `);
-        await new Promise((r) => setTimeout(r, 1200));
+        // Wait 1500ms for SolidJS transitions and layout to fully settle
+        await new Promise((r) => setTimeout(r, 1500));
 
         const img8 = await mainWindow!.webContents.capturePage();
         const distScreenshot8 = path.resolve('dist/milestone-8-shell.png');

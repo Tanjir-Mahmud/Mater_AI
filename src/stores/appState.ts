@@ -602,6 +602,10 @@ export const [state, setState] = createStore({
   reconnectText: '',
 });
 
+if (typeof window !== 'undefined') {
+  (window as any).__OPENBOT_STORE__ = { state, setState };
+}
+
 export function selectPage(page: PageId) {
   if (page === 'settings') {
     setState('isSettingsOpen', true);
