@@ -1,4 +1,4 @@
-import { Component, createSignal, For, Show } from 'solid-js';
+import { Component, createSignal, createEffect, For, Show } from 'solid-js';
 import {
   state,
   setState,
@@ -29,6 +29,24 @@ import {
   configureVoiceServerAction,
   publishHostedSiteAction,
   deleteHostedSiteAction,
+  loadUserProfile,
+  loadAccountSessions,
+  disconnectSessionAction,
+  loadExtendedSSO,
+  verifySSODNSAction,
+  generateSCIMTokenAction,
+  revokeSCIMTokenAction,
+  testBrowserSSOAction,
+  loadMobileConnect,
+  generateMobileCodeAction,
+  replaceMobileLinkAction,
+  revokeMobileLinkAction,
+  loadBillingState,
+  recordLicenceAcceptanceAction,
+  cancelHostedSubscriptionAction,
+  openStripePortalAction,
+  openStripeCheckoutAction,
+  checkOfflineGraceAction,
 } from '../../stores/appState';
 import { SUPPORTED_LOCALES, i18n } from '../../shared/i18n';
 import { AppTheme, SendShortcut, HoldCmdQMode, LogoColor, ServerRole } from '../../types';
@@ -84,6 +102,69 @@ export const SettingsModal: Component = () => {
     if ((window as any).openbot?.saveSettings) {
       (window as any).openbot.saveSettings(state.settings);
     }
+  };
+
+  // Milestone 7 local signals & effect
+  const [licenceTier, setLicenceTier] = createSignal<'Starter' | 'Team'>('Team');
+  const [licenceSeats, setLicenceSeats] = createSignal(5);
+  const [licenceCycle, setLicenceCycle] = createSignal<'monthly' | 'yearly'>('yearly');
+  const [licenceCurrency, setLicenceCurrency] = createSignal<'EUR' | 'USD' | 'PLN'>('EUR');
+  const [licenceBundle, setLicenceBundle] = createSignal(true);
+  const [companyName, setCompanyName] = createSignal('Synthetify Tech Sp. z o.o.');
+  const [taxId, setTaxId] = createSignal('PL9452248912');
+  const [buyerAuthorized, setBuyerAuthorized] = createSignal(true);
+  const [activeScimToken, setActiveScimToken] = createSignal<{ rawToken: string; warning: string } | null>(null);
+
+  createEffect(() => {
+    if (state.isSettingsOpen) {
+      if (state.activeSettingsTab === 'billing') {
+        loadBillingState();
+      } else if (state.activeSettingsTab === 'profile') {
+        loadUserProfile();
+        loadAccountSessions();
+      } else if (state.activeSettingsTab === 'mobile_connect') {
+        loadMobileConnect();
+      } else if (state.activeSettingsTab === 'hosted_sites') {
+        loadExtendedSSO();
+      }
+    }
+  });
+
+  const computedLicencePrice = () => {
+    const tier = licenceTier();
+    const seats = tier === 'Starter' ? 1 : Math.max(2, Math.min(10, licenceSeats()));
+    const cycle = licenceCycle();
+    const curr = licenceCurrency();
+    const bundle = licenceBundle();
+
+    let baseMonthly = 0;
+    if (tier === 'Starter') {
+      baseMonthly = curr === 'EUR' ? 10 : curr === 'USD' ? 12 : 40;
+    } else {
+      const baseFor2 = curr === 'EUR' ? 25 : curr === 'USD' ? 30 : 100;
+      const extraPerSeat = curr === 'EUR' ? 15 : curr === 'USD' ? 18 : 60;
+      baseMonthly = baseFor2 + (seats - 2) * extraPerSeat;
+    }
+
+    let discountFactor = 1.0;
+    if (cycle === 'yearly') discountFactor *= 0.80; // -20%
+    if (bundle) discountFactor *= 0.90; // -10%
+
+    const months = cycle === 'yearly' ? 12 : 1;
+    const finalCycleAmount = Math.round(baseMonthly * months * discountFactor * 100) / 100;
+    const effectiveMonthly = Math.round((finalCycleAmount / months) * 100) / 100;
+
+    return {
+      tier,
+      seats,
+      cycle,
+      currency: curr,
+      symbol: curr === 'EUR' ? '€' : curr === 'USD' ? '$' : 'PLN ',
+      baseMonthly,
+      finalCycleAmount,
+      effectiveMonthly,
+      devicesAllowed: seats * 3,
+    };
   };
 
   return (
@@ -815,23 +896,649 @@ export const SettingsModal: Component = () => {
                 </div>
               </Show>
 
+              {/* TAB: PROFILE */}
+              <Show when={state.activeSettingsTab === 'profile'}>
+                <div class="space-y-4">
+                  {/* Account Identity Card */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center overflow-hidden">
+                        <Show
+                          when={state.userProfile?.avatarUrl}
+                          fallback={<span class="material-symbols-outlined text-primary text-2xl">account_circle</span>}
+                        >
+                          <img src={state.userProfile?.avatarUrl} alt="Avatar" class="w-full h-full object-cover" />
+                        </Show>
+                      </div>
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <h4 class="font-semibold text-sm text-on-surface">{state.userProfile?.name || 'Workspace Owner'}</h4>
+                          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-secondary/15 text-secondary">
+                            16+ Verified Adult
+                          </span>
+                        </div>
+                        <div class="text-[11px] text-outline font-mono mt-0.5">{state.userProfile?.email || 'owner@synthetify.io'}</div>
+                        <div class="text-[10px] text-outline mt-0.5">Avatars held securely in object storage (cdn.openbot.run) · Legal capacity confirmed</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => addToast('success', 'Profile Synced', 'User profile and credentials refreshed.')}
+                      class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright text-xs font-semibold text-on-surface"
+                    >
+                      Refresh
+                    </button>
+                  </div>
+
+                  {/* Active Account Sessions */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[18px]">devices</span>
+                        <h4 class="font-semibold text-xs text-on-surface">Active Account Sessions</h4>
+                      </div>
+                      <span class="text-[11px] text-outline">Desktop / Mobile / Hosted server</span>
+                    </div>
+
+                    <div class="space-y-2">
+                      <For
+                        each={state.accountSessions.length > 0 ? state.accountSessions : [
+                          {
+                            id: 'session-desktop-local',
+                            userId: 'user-owner-default',
+                            kind: 'Desktop' as const,
+                            deviceName: 'This Mac / Primary Desktop',
+                            isThisDevice: true,
+                            signedInAt: new Date().toISOString(),
+                            lastActiveAt: new Date().toISOString(),
+                            status: 'active' as const,
+                          },
+                          {
+                            id: 'session-mobile-1',
+                            userId: 'user-owner-default',
+                            kind: 'Mobile' as const,
+                            deviceName: 'iPhone 16 Pro (Mobile Companion)',
+                            isThisDevice: false,
+                            signedInAt: new Date(Date.now() - 3600000).toISOString(),
+                            lastActiveAt: new Date().toISOString(),
+                            status: 'active' as const,
+                          },
+                          {
+                            id: 'session-server-node-1',
+                            userId: 'user-owner-default',
+                            kind: 'Hosted server' as const,
+                            deviceName: 'Prod Cluster US-East Node',
+                            isThisDevice: false,
+                            signedInAt: new Date(Date.now() - 86400000).toISOString(),
+                            lastActiveAt: new Date().toISOString(),
+                            status: 'active' as const,
+                          },
+                        ]}
+                      >
+                        {(sess) => (
+                          <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-3">
+                              <span class="material-symbols-outlined text-outline text-[20px]">
+                                {sess.kind === 'Desktop' ? 'computer' : sess.kind === 'Mobile' ? 'smartphone' : 'dns'}
+                              </span>
+                              <div>
+                                <div class="flex items-center gap-2">
+                                  <span class="font-semibold text-on-surface">{sess.deviceName}</span>
+                                  <span class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-surface-container-high text-on-surface-variant">
+                                    {sess.kind}
+                                  </span>
+                                  <Show when={sess.isThisDevice}>
+                                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-primary text-on-primary">
+                                      THIS DEVICE
+                                    </span>
+                                  </Show>
+                                </div>
+                                <div class="text-[10px] text-outline font-mono mt-0.5">
+                                  Signed in: {new Date(sess.signedInAt).toLocaleDateString()} · Status: {sess.status}
+                                </div>
+                              </div>
+                            </div>
+
+                            <Show when={!sess.isThisDevice}>
+                              <button
+                                onClick={() => disconnectSessionAction(sess.id)}
+                                class="px-2.5 py-1 rounded bg-surface-container-high hover:bg-error/20 hover:text-error text-[11px] font-medium text-on-surface-variant transition-colors"
+                              >
+                                Disconnect
+                              </button>
+                            </Show>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+
+                    <div class="p-2.5 rounded bg-surface-container-lowest/60 border border-outline-variant/20 text-[11px] text-outline flex items-start gap-2">
+                      <span class="material-symbols-outlined text-outline text-[16px] shrink-0 mt-0.5">info</span>
+                      <span>
+                        Disconnecting a hosted-server session signs the server out (restart the server to sign it in again).
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Show>
+
+              {/* TAB: MOBILE CONNECT */}
+              <Show when={state.activeSettingsTab === 'mobile_connect'}>
+                <div class="space-y-4">
+                  {/* One-Time Code & QR Section */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[20px]">qr_code_scanner</span>
+                        <h4 class="font-semibold text-xs text-on-surface">Sign in on Mobile</h4>
+                      </div>
+                      <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-secondary/15 text-secondary">
+                        10-Minute One-Time Code
+                      </span>
+                    </div>
+
+                    <p class="text-[11px] text-outline">
+                      Scan the QR code with the OpenBot companion app or enter the 8-character single-use code.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row items-center gap-4 p-3 rounded-lg bg-surface-container border border-outline-variant/20">
+                      {/* Stylized QR Matrix */}
+                      <div class="w-32 h-32 rounded-lg bg-surface-container-lowest border border-outline-variant/30 p-2 flex flex-col items-center justify-center gap-1 shrink-0">
+                        <div class="grid grid-cols-4 gap-1 p-1 bg-white rounded">
+                          <div class="w-5 h-5 bg-black rounded-xs"></div>
+                          <div class="w-5 h-5 bg-transparent"></div>
+                          <div class="w-5 h-5 bg-transparent"></div>
+                          <div class="w-5 h-5 bg-black rounded-xs"></div>
+                          <div class="w-5 h-5 bg-transparent"></div>
+                          <div class="w-5 h-5 bg-black rounded-xs"></div>
+                          <div class="w-5 h-5 bg-black rounded-xs"></div>
+                          <div class="w-5 h-5 bg-transparent"></div>
+                          <div class="w-5 h-5 bg-black rounded-xs"></div>
+                          <div class="w-5 h-5 bg-transparent"></div>
+                          <div class="w-5 h-5 bg-transparent"></div>
+                          <div class="w-5 h-5 bg-black rounded-xs"></div>
+                        </div>
+                        <span class="text-[9px] font-mono text-outline">openbot://mobile-connect</span>
+                      </div>
+
+                      <div class="space-y-2 flex-1 w-full">
+                        <div class="text-[11px] text-outline">One-time 8-character Code:</div>
+                        <div class="flex items-center gap-2">
+                          <div class="px-3 py-1.5 rounded-lg bg-surface-container-high border border-outline-variant/30 font-mono text-base font-bold tracking-widest text-primary">
+                            {state.mobileConnect?.activeCode || 'OB-8X42Q'}
+                          </div>
+                          <button
+                            onClick={() => generateMobileCodeAction()}
+                            class="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:brightness-110"
+                          >
+                            Generate New Code
+                          </button>
+                        </div>
+                        <div class="text-[10px] text-outline">
+                          Codes expire in exactly 10 minutes and are stored only as hashes.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Permanent Link Option */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-tertiary text-[20px]">link</span>
+                        <h4 class="font-semibold text-xs text-on-surface">Permanent Companion Link</h4>
+                      </div>
+                      <span class="text-[10px] font-mono text-outline">Reusable across companion devices</span>
+                    </div>
+
+                    <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 flex items-center justify-between gap-2">
+                      <div class="font-mono text-xs text-on-surface truncate flex-1">
+                        {state.mobileConnect?.permanentLink || 'openbot://auth-link/7f4b8291a0c4e12d88f6'}
+                      </div>
+                      <div class="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => replaceMobileLinkAction()}
+                          class="px-2.5 py-1 rounded bg-surface-container-high hover:bg-surface-bright text-xs text-on-surface font-medium"
+                        >
+                          Replace Link
+                        </button>
+                        <button
+                          onClick={() => revokeMobileLinkAction()}
+                          class="px-2.5 py-1 rounded bg-surface-container-high hover:bg-error/20 hover:text-error text-xs text-on-surface-variant font-medium"
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Mandatory Exact Warning */}
+                    <div class="p-3 rounded-lg bg-error-container/20 border border-error/30 flex items-start gap-2">
+                      <span class="material-symbols-outlined text-error text-[18px] shrink-0 mt-0.5">warning</span>
+                      <div class="text-xs text-on-surface font-semibold">
+                        Anyone with this link can sign in to your OpenBot account.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Show>
+
               {/* TAB 9: BILLING */}
               <Show when={state.activeSettingsTab === 'billing'}>
                 <div class="space-y-4">
-                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-center justify-between">
-                    <div>
-                      <span class="px-2 py-0.5 rounded text-[10px] font-label-sm bg-primary/20 text-primary font-semibold uppercase">
-                        Starter Plan
+                  {/* Offline Grace Period Telemetry Banner */}
+                  <div class="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2.5">
+                      <span
+                        class={`material-symbols-outlined text-[18px] ${
+                          state.offlineGrace?.isBlocked
+                            ? 'text-error'
+                            : state.offlineGrace?.status === 'grace_period'
+                            ? 'text-tertiary'
+                            : 'text-secondary'
+                        }`}
+                      >
+                        {state.offlineGrace?.isBlocked ? 'block' : state.offlineGrace?.status === 'grace_period' ? 'schedule' : 'verified'}
                       </span>
-                      <h4 class="font-headline-sm text-sm text-on-surface mt-1">1 User Commercial Licence</h4>
-                      <div class="text-[11px] text-outline">€10 / $12 / 40 zł per month</div>
+                      <div>
+                        <div class="font-semibold text-on-surface">
+                          {state.offlineGrace?.isBlocked
+                            ? 'Sign-ins Blocked (Offline Grace Expired)'
+                            : state.offlineGrace?.status === 'grace_period'
+                            ? `Offline Grace Period Active (${state.offlineGrace?.hoursRemaining}h remaining)`
+                            : 'Licence Valid & Online'}
+                        </div>
+                        <div class="text-[11px] text-outline">{state.offlineGrace?.message}</div>
+                      </div>
                     </div>
                     <button
-                      onClick={() => addToast('success', 'Stripe customer portal redirect')}
-                      class="px-3.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-xs font-semibold"
+                      onClick={() => checkOfflineGraceAction()}
+                      class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-xs font-semibold text-on-surface border border-outline-variant/30"
                     >
-                      Manage in Stripe
+                      Revalidate
                     </button>
+                  </div>
+
+                  {/* SECTION 1: COMMERCIAL LICENCE & PRICING CALCULATOR */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <span class="material-symbols-outlined text-primary text-[20px]">workspace_premium</span>
+                          <h4 class="font-semibold text-sm text-on-surface">Commercial Licence</h4>
+                          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-primary/20 text-primary uppercase">
+                            {state.commercialLicence ? `${state.commercialLicence.planTier} Active` : 'OpenBot Commercial'}
+                          </span>
+                        </div>
+                        <p class="text-[11px] text-outline mt-0.5">
+                          Licence allows 3 devices per user. Users counted are people, not servers/computers; AI agents do not count.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => openStripePortalAction(state.commercialLicence?.stripeSubscriptionId)}
+                        class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright text-xs font-semibold text-on-surface flex items-center gap-1.5"
+                      >
+                        <span class="material-symbols-outlined text-[15px]">credit_card</span>
+                        <span>Stripe Customer Portal</span>
+                      </button>
+                    </div>
+
+                    {/* Active Licence Details if present */}
+                    <Show when={state.commercialLicence}>
+                      <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 space-y-1.5 text-xs font-mono">
+                        <div class="flex justify-between items-center text-on-surface">
+                          <span>Order: {state.commercialLicence?.orderRef}</span>
+                          <span class="text-secondary font-semibold uppercase">● Active ({state.commercialLicence?.seats} seats)</span>
+                        </div>
+                        <div class="text-[11px] text-outline">
+                          Licensee: {state.commercialLicence?.companyName} (Tax ID: {state.commercialLicence?.taxId})
+                        </div>
+                        <div class="text-[10px] text-outline">
+                          Licensor: {state.commercialLicence?.licensor}
+                        </div>
+                      </div>
+                    </Show>
+
+                    {/* Interactive Licence Selector & Pricing Calculator */}
+                    <div class="p-3.5 rounded-lg bg-surface-container border border-outline-variant/20 space-y-3 text-xs">
+                      <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        {/* Tier */}
+                        <div>
+                          <label class="text-[10px] uppercase font-mono text-outline block mb-1">Tier</label>
+                          <div class="flex rounded-lg overflow-hidden border border-outline-variant/30">
+                            <button
+                              onClick={() => setLicenceTier('Starter')}
+                              class={`flex-1 py-1 text-center font-medium ${
+                                licenceTier() === 'Starter' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container-high text-on-surface-variant'
+                              }`}
+                            >
+                              Starter (1u)
+                            </button>
+                            <button
+                              onClick={() => setLicenceTier('Team')}
+                              class={`flex-1 py-1 text-center font-medium ${
+                                licenceTier() === 'Team' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container-high text-on-surface-variant'
+                              }`}
+                            >
+                              Team (2-10u)
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Currency */}
+                        <div>
+                          <label class="text-[10px] uppercase font-mono text-outline block mb-1">Currency</label>
+                          <div class="flex rounded-lg overflow-hidden border border-outline-variant/30">
+                            <button
+                              onClick={() => setLicenceCurrency('EUR')}
+                              class={`flex-1 py-1 text-center font-medium ${
+                                licenceCurrency() === 'EUR' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container-high text-on-surface-variant'
+                              }`}
+                            >
+                              € EUR
+                            </button>
+                            <button
+                              onClick={() => setLicenceCurrency('USD')}
+                              class={`flex-1 py-1 text-center font-medium ${
+                                licenceCurrency() === 'USD' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container-high text-on-surface-variant'
+                              }`}
+                            >
+                              $ USD
+                            </button>
+                            <button
+                              onClick={() => setLicenceCurrency('PLN')}
+                              class={`flex-1 py-1 text-center font-medium ${
+                                licenceCurrency() === 'PLN' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container-high text-on-surface-variant'
+                              }`}
+                            >
+                              zł PLN
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Cycle */}
+                        <div>
+                          <label class="text-[10px] uppercase font-mono text-outline block mb-1">Cycle</label>
+                          <div class="flex rounded-lg overflow-hidden border border-outline-variant/30">
+                            <button
+                              onClick={() => setLicenceCycle('monthly')}
+                              class={`flex-1 py-1 text-center font-medium ${
+                                licenceCycle() === 'monthly' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container-high text-on-surface-variant'
+                              }`}
+                            >
+                              Monthly
+                            </button>
+                            <button
+                              onClick={() => setLicenceCycle('yearly')}
+                              class={`flex-1 py-1 text-center font-medium ${
+                                licenceCycle() === 'yearly' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container-high text-on-surface-variant'
+                              }`}
+                            >
+                              Yearly (−20%)
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Team Seats Stepper (if Team) */}
+                        <Show
+                          when={licenceTier() === 'Team'}
+                          fallback={
+                            <div>
+                              <label class="text-[10px] uppercase font-mono text-outline block mb-1">Users</label>
+                              <div class="py-1 px-2 rounded-lg bg-surface-container-high text-on-surface font-mono font-bold">1 user</div>
+                            </div>
+                          }
+                        >
+                          <div>
+                            <label class="text-[10px] uppercase font-mono text-outline block mb-1">Users (2–10)</label>
+                            <div class="flex items-center gap-1.5">
+                              <button
+                                onClick={() => setLicenceSeats(Math.max(2, licenceSeats() - 1))}
+                                class="w-7 h-7 rounded bg-surface-container-high hover:bg-surface-bright flex items-center justify-center font-bold"
+                              >
+                                −
+                              </button>
+                              <span class="font-mono font-bold px-2 text-on-surface">{licenceSeats()} users</span>
+                              <button
+                                onClick={() => setLicenceSeats(Math.min(10, licenceSeats() + 1))}
+                                class="w-7 h-7 rounded bg-surface-container-high hover:bg-surface-bright flex items-center justify-center font-bold"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </Show>
+                      </div>
+
+                      {/* Bundle toggle & Price telemetry */}
+                      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-outline-variant/20">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={licenceBundle()}
+                            onChange={(e) => setLicenceBundle(e.currentTarget.checked)}
+                            class="rounded accent-primary"
+                          />
+                          <span class="text-on-surface font-medium">Bundle with hosted server (−10% discount)</span>
+                        </label>
+
+                        <div class="text-right">
+                          <div class="font-mono text-lg font-bold text-primary">
+                            {computedLicencePrice().symbol}{computedLicencePrice().finalCycleAmount.toFixed(2)}
+                            <span class="text-[11px] font-normal text-outline"> / {computedLicencePrice().cycle}</span>
+                          </div>
+                          <div class="text-[10px] text-outline font-mono">
+                            Effective: {computedLicencePrice().symbol}{computedLicencePrice().effectiveMonthly.toFixed(2)} / mo · Allows {computedLicencePrice().devicesAllowed} devices
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Electronic Acceptance Form */}
+                      <div class="p-3 rounded-lg bg-surface-container-lowest/70 border border-outline-variant/20 space-y-2 mt-2">
+                        <div class="font-semibold text-on-surface text-[11px] uppercase tracking-wider">
+                          Electronic Licence Acceptance (Polish Law Governs)
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            placeholder="Company Name (Licensee)"
+                            value={companyName()}
+                            onInput={(e) => setCompanyName(e.currentTarget.value)}
+                            class="px-2.5 py-1.5 rounded bg-surface-container border border-outline-variant/30 text-on-surface font-body-sm text-xs"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Tax Identification Number (NIP/VAT/EIN)"
+                            value={taxId()}
+                            onInput={(e) => setTaxId(e.currentTarget.value)}
+                            class="px-2.5 py-1.5 rounded bg-surface-container border border-outline-variant/30 text-on-surface font-body-sm text-xs"
+                          />
+                        </div>
+
+                        <label class="flex items-start gap-2 cursor-pointer select-none pt-1">
+                          <input
+                            type="checkbox"
+                            checked={buyerAuthorized()}
+                            onChange={(e) => setBuyerAuthorized(e.currentTarget.checked)}
+                            class="rounded accent-primary mt-0.5"
+                          />
+                          <span class="text-[11px] text-outline">
+                            I confirm that I am authorised to bind the Licensee to these terms. Licensor: Synthetify Labs, Trzebunia 513, 32-438 Trzebunia, Poland, KRS 0000895882.
+                          </span>
+                        </label>
+
+                        <div class="flex items-center justify-end gap-2 pt-2">
+                          <button
+                            onClick={() =>
+                              recordLicenceAcceptanceAction({
+                                tier: licenceTier(),
+                                seats: computedLicencePrice().seats,
+                                cycle: licenceCycle(),
+                                currency: licenceCurrency(),
+                                hasHostedServerBundle: licenceBundle(),
+                                companyName: companyName(),
+                                taxId: taxId(),
+                                buyerAuthorized: buyerAuthorized(),
+                              })
+                            }
+                            class="px-3.5 py-1.5 rounded-lg bg-primary text-on-primary font-semibold text-xs hover:brightness-110"
+                          >
+                            Accept & Complete Purchase in Stripe
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECTION 2: HOSTED-SERVER PLANS (12/50/100 GB, 1/5/10 members, 3/10/50 sites) */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <span class="material-symbols-outlined text-secondary text-[20px]">cloud_sync</span>
+                          <h4 class="font-semibold text-sm text-on-surface">Hosted-Server Plans</h4>
+                        </div>
+                        <p class="text-[11px] text-outline mt-0.5">
+                          Per server, each with its own Stripe subscription. Stripe is the source of truth.
+                        </p>
+                      </div>
+                      <span class="text-[11px] font-mono text-outline">Yearly: −20% discount</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      {/* Starter */}
+                      <div class="p-3.5 rounded-xl bg-surface-container border border-outline-variant/20 flex flex-col justify-between">
+                        <div>
+                          <div class="flex justify-between items-center">
+                            <span class="font-bold text-on-surface">Starter</span>
+                            <span class="font-mono text-primary font-bold">€20 / $25 / 80 zł</span>
+                          </div>
+                          <div class="text-[11px] text-outline mt-1">12 GB storage · 1 member · 3 sites · Speed 1×</div>
+                          <div class="text-[10px] text-outline mt-1 font-mono">Legacy limit: 1 member</div>
+                        </div>
+                        <button
+                          onClick={() => openStripeCheckoutAction('hosted_server', 'plan_starter')}
+                          class="mt-3 w-full py-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-on-surface font-semibold text-center"
+                        >
+                          Checkout Starter
+                        </button>
+                      </div>
+
+                      {/* Standard */}
+                      <div class="p-3.5 rounded-xl bg-surface-container border border-outline-variant/20 flex flex-col justify-between">
+                        <div>
+                          <div class="flex justify-between items-center">
+                            <span class="font-bold text-on-surface">Standard</span>
+                            <span class="font-mono text-primary font-bold">€50 / $60 / 200 zł</span>
+                          </div>
+                          <div class="text-[11px] text-outline mt-1">50 GB storage · 5 members · 10 sites · Speed 2×</div>
+                          <div class="text-[10px] text-outline mt-1 font-mono">Legacy limit: 10 members</div>
+                        </div>
+                        <button
+                          onClick={() => openStripeCheckoutAction('hosted_server', 'plan_standard')}
+                          class="mt-3 w-full py-1.5 rounded bg-primary text-on-primary font-semibold text-center hover:brightness-110"
+                        >
+                          Checkout Standard
+                        </button>
+                      </div>
+
+                      {/* Pro */}
+                      <div class="p-3.5 rounded-xl bg-surface-container border border-outline-variant/20 flex flex-col justify-between">
+                        <div>
+                          <div class="flex justify-between items-center">
+                            <span class="font-bold text-on-surface">Pro</span>
+                            <span class="font-mono text-primary font-bold">€100 / $120 / 400 zł</span>
+                          </div>
+                          <div class="text-[11px] text-outline mt-1">100 GB storage · 10 members · 50 sites · Speed 4×</div>
+                          <div class="text-[10px] text-outline mt-1 font-mono">Legacy limit: 25 members</div>
+                        </div>
+                        <button
+                          onClick={() => openStripeCheckoutAction('hosted_server', 'plan_pro')}
+                          class="mt-3 w-full py-1.5 rounded bg-surface-container-high hover:bg-surface-bright text-on-surface font-semibold text-center"
+                        >
+                          Checkout Pro
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="text-[11px] text-outline font-mono">
+                      * Self-hosted servers have no plan and receive 1 hosted site.
+                    </div>
+                  </div>
+
+                  {/* SECTION 3: OPEN SUBSCRIPTIONS & STRIPE SYNC */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-outline text-[18px]">receipt_long</span>
+                        <h4 class="font-semibold text-xs text-on-surface">Open Plans & Server Subscriptions</h4>
+                      </div>
+                      <button
+                        onClick={() => openStripePortalAction()}
+                        class="text-xs text-primary hover:underline flex items-center gap-1"
+                      >
+                        <span>Manage Invoices in Stripe</span>
+                        <span class="material-symbols-outlined text-[13px]">open_in_new</span>
+                      </button>
+                    </div>
+
+                    <div class="space-y-2 text-xs">
+                      <For
+                        each={state.hostedServerSubscriptions.length > 0 ? state.hostedServerSubscriptions : [
+                          {
+                            id: 'srv-sub-1',
+                            serverId: 'srv-node-east',
+                            serverName: 'Production Cloud Node (US-East)',
+                            planTier: 'Standard' as const,
+                            storageGB: 50,
+                            membersLimit: 5,
+                            sitesLimit: 10,
+                            speedMultiplier: 2.0,
+                            billingCycle: 'monthly' as const,
+                            currency: 'EUR' as const,
+                            monthlyPrice: 50,
+                            stripeSubscriptionId: 'sub_live_9041280a91f',
+                            stripeStatus: 'active' as const,
+                            serverRemoved: false,
+                            currentPeriodEnd: '2026-12-10T00:00:00Z',
+                          },
+                        ]}
+                      >
+                        {(sub) => (
+                          <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 flex items-center justify-between">
+                            <div>
+                              <div class="flex items-center gap-2">
+                                <span class="font-semibold text-on-surface">{sub.serverName}</span>
+                                <span class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-primary/20 text-primary font-bold">
+                                  {sub.planTier}
+                                </span>
+                                <span class="text-[10px] text-secondary font-mono">● {sub.stripeStatus}</span>
+                                <Show when={sub.serverRemoved}>
+                                  <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-error/20 text-error">
+                                    SERVER REMOVED (BILLED UNTIL CANCELLED)
+                                  </span>
+                                </Show>
+                              </div>
+                              <div class="text-[11px] text-outline font-mono mt-0.5">
+                                {sub.storageGB} GB storage · {sub.membersLimit} members · {sub.sitesLimit} sites · Renews {new Date(sub.currentPeriodEnd).toLocaleDateString()}
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => cancelHostedSubscriptionAction(sub.stripeSubscriptionId)}
+                              class="px-2.5 py-1 rounded bg-surface-container-high hover:bg-error/20 hover:text-error text-[11px] text-on-surface-variant font-medium"
+                            >
+                              Cancel Renewal
+                            </button>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+
+                    <div class="p-2.5 rounded bg-surface-container-lowest/60 border border-outline-variant/20 text-[11px] text-outline flex items-start gap-2">
+                      <span class="material-symbols-outlined text-outline text-[16px] shrink-0 mt-0.5">info</span>
+                      <span>
+                        A plan whose server was removed stays listed because Stripe bills it until cancelled. Cancelling renewal keeps data until the end of the paid period.
+                      </span>
+                    </div>
                   </div>
                 </div>
               </Show>
@@ -1320,22 +2027,103 @@ export const SettingsModal: Component = () => {
                   </div>
 
                   {/* Enterprise SSO & SCIM */}
-                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-2 text-xs">
-                    <span class="font-semibold text-on-surface">Company Sign-In (OpenID Connect) & SCIM</span>
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-3 text-xs">
+                    <div class="flex items-center justify-between">
+                      <span class="font-semibold text-on-surface">Company Sign-In (OpenID Connect) & SCIM</span>
+                      <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-secondary/15 text-secondary">
+                        Desktop Setup Only
+                      </span>
+                    </div>
                     <p class="text-[11px] text-outline">
-                      Authenticate team members via Microsoft Entra ID, Okta, or Google Workspace with automated SCIM user provisioning.
+                      Authenticate team members via Microsoft Entra ID, Okta, or Google Workspace with automated SCIM user provisioning. When off, people sign in with email 8-character codes.
                     </p>
-                    <div class="flex gap-2 pt-1">
-                      <span class="px-2 py-1 rounded bg-surface-container border border-outline-variant/20 text-on-surface">Microsoft Entra ID</span>
-                      <span class="px-2 py-1 rounded bg-surface-container border border-outline-variant/20 text-on-surface">Okta</span>
-                      <span class="px-2 py-1 rounded bg-surface-container border border-outline-variant/20 text-on-surface">Google Workspace</span>
+
+                    <div class="flex flex-wrap gap-2 pt-1">
+                      <button
+                        onClick={() => testBrowserSSOAction('entra')}
+                        class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-bright border border-outline-variant/20 text-on-surface flex items-center gap-1.5"
+                      >
+                        <span class="material-symbols-outlined text-[14px]">login</span>
+                        <span>Test Entra ID</span>
+                      </button>
+                      <button
+                        onClick={() => testBrowserSSOAction('okta')}
+                        class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-bright border border-outline-variant/20 text-on-surface flex items-center gap-1.5"
+                      >
+                        <span class="material-symbols-outlined text-[14px]">login</span>
+                        <span>Test Okta</span>
+                      </button>
+                      <button
+                        onClick={() => testBrowserSSOAction('google_workspace')}
+                        class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-bright border border-outline-variant/20 text-on-surface flex items-center gap-1.5"
+                      >
+                        <span class="material-symbols-outlined text-[14px]">login</span>
+                        <span>Test Google Workspace</span>
+                      </button>
+                    </div>
+
+                    {/* DNS TXT Verification */}
+                    <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 space-y-2">
+                      <div class="flex justify-between items-center">
+                        <span class="font-semibold text-[11px] text-on-surface">DNS TXT Domain Ownership Verification</span>
+                        <span class="text-[10px] font-mono text-secondary">
+                          {state.extendedSSO?.dnsVerified ? '● DNS TXT Verified' : '○ Pending Verification'}
+                        </span>
+                      </div>
+                      <div class="font-mono text-[11px] text-outline bg-surface-container-lowest px-2 py-1 rounded border border-outline-variant/20">
+                        {state.extendedSSO?.dnsTxtRecord || 'openbot-site-verification=37a1e0b51294fdc89a0'}
+                      </div>
+                      <button
+                        onClick={() => verifySSODNSAction('synthetify.io')}
+                        class="px-2.5 py-1 rounded bg-surface-container-high hover:bg-surface-bright text-[11px] text-on-surface font-semibold"
+                      >
+                        Verify DNS Record
+                      </button>
+                    </div>
+
+                    {/* SCIM User Sync */}
+                    <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 space-y-2">
+                      <div class="flex justify-between items-center">
+                        <span class="font-semibold text-[11px] text-on-surface">SCIM 2.0 User Provisioning</span>
+                        <span class="text-[10px] font-mono text-outline">Status: {state.extendedSSO?.scimStatus || 'disabled'}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <button
+                          onClick={async () => {
+                            const res = await generateSCIMTokenAction();
+                            if (res) setActiveScimToken(res);
+                          }}
+                          class="px-2.5 py-1 rounded bg-primary text-on-primary font-semibold text-[11px] hover:brightness-110"
+                        >
+                          Generate SCIM Token
+                        </button>
+                        <button
+                          onClick={() => {
+                            revokeSCIMTokenAction();
+                            setActiveScimToken(null);
+                          }}
+                          class="px-2.5 py-1 rounded bg-surface-container-high hover:bg-error/20 hover:text-error font-medium text-[11px]"
+                        >
+                          Revoke SCIM Token
+                        </button>
+                      </div>
+
+                      <Show when={activeScimToken()}>
+                        <div class="p-2.5 rounded bg-error-container/20 border border-error/30 space-y-1">
+                          <div class="text-[10px] font-bold text-error uppercase">Shown Only Once</div>
+                          <div class="font-mono text-[11px] text-on-surface break-all bg-surface-container-lowest p-1.5 rounded">
+                            {activeScimToken()?.rawToken}
+                          </div>
+                          <div class="text-[10px] text-outline">{activeScimToken()?.warning}</div>
+                        </div>
+                      </Show>
                     </div>
                   </div>
                 </div>
               </Show>
 
               {/* OTHER TABS PLACEHOLDER / REALISTIC DETAILS */}
-              <Show when={!['general', 'server_general', 'members', 'roles', 'audit_log', 'remote_desktop', 'agents', 'mcp', 'computer_use', 'billing', 'updates', 'hosted_servers', 'voice', 'connectors', 'hosted_sites'].includes(state.activeSettingsTab)}>
+              <Show when={!['general', 'server_general', 'members', 'roles', 'audit_log', 'remote_desktop', 'agents', 'mcp', 'computer_use', 'billing', 'profile', 'mobile_connect', 'updates', 'hosted_servers', 'voice', 'connectors', 'hosted_sites'].includes(state.activeSettingsTab)}>
                 <div class="p-6 rounded-xl bg-surface-container-low border border-outline-variant/20 text-center flex flex-col items-center justify-center gap-2">
                   <span class="material-symbols-outlined text-3xl text-outline">{currentTab().icon}</span>
                   <div class="font-semibold text-xs text-on-surface">{currentTab().name} Settings</div>

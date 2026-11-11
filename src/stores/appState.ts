@@ -37,6 +37,13 @@ import {
   VoiceSettingsState,
   HostedSite,
   EnterpriseSSOConfig,
+  AccountSession,
+  UserProfile,
+  ExtendedSSOConfig,
+  MobileConnectState,
+  CommercialLicence,
+  HostedServerSubscription,
+  OfflineGraceState,
 } from '../types';
 import { i18n } from '../shared/i18n';
 
@@ -562,6 +569,21 @@ export const [state, setState] = createStore({
   } as VoiceSettingsState,
   hostedSites: [] as HostedSite[],
   enterpriseSSO: [] as EnterpriseSSOConfig[],
+
+  // Milestone 7 state properties
+  userProfile: null as UserProfile | null,
+  accountSessions: [] as AccountSession[],
+  extendedSSO: null as ExtendedSSOConfig | null,
+  mobileConnect: null as MobileConnectState | null,
+  commercialLicence: null as CommercialLicence | null,
+  hostedServerSubscriptions: [] as HostedServerSubscription[],
+  offlineGrace: {
+    status: 'valid',
+    hoursRemaining: 24,
+    isBlocked: false,
+    lastValidatedAt: new Date().toISOString(),
+    message: 'Licence is valid and verified online.',
+  } as OfflineGraceState,
 });
 
 export function selectPage(page: PageId) {
@@ -1896,5 +1918,254 @@ export async function deleteHostedSiteAction(siteId: string) {
     addToast('error', 'Delete site error', err?.message);
   }
 }
+
+// -------------------------------------------------------------
+// Milestone 7: Auth, Profile, Sessions, SSO, Mobile & Billing Actions
+// -------------------------------------------------------------
+
+export async function loadUserProfile() {
+  try {
+    if ((window as any).openbot?.getUserProfile) {
+      const profile = await (window as any).openbot.getUserProfile();
+      if (profile) setState('userProfile', profile);
+      return profile;
+    }
+  } catch (err: any) {
+    console.error('Failed to load user profile:', err);
+  }
+}
+
+export async function loadAccountSessions() {
+  try {
+    if ((window as any).openbot?.getAccountSessions) {
+      const sessions = await (window as any).openbot.getAccountSessions();
+      setState('accountSessions', sessions || []);
+      return sessions;
+    }
+  } catch (err: any) {
+    console.error('Failed to load account sessions:', err);
+  }
+}
+
+export async function disconnectSessionAction(sessionId: string) {
+  try {
+    if ((window as any).openbot?.disconnectSession) {
+      const res = await (window as any).openbot.disconnectSession(sessionId);
+      if (res.notice) {
+        addToast('warning', 'Session Disconnected', res.notice);
+      } else {
+        addToast('success', 'Session Disconnected', res.message);
+      }
+      await loadAccountSessions();
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Disconnect session error', err?.message);
+  }
+}
+
+export async function loadExtendedSSO() {
+  try {
+    if ((window as any).openbot?.getExtendedSSOConfig) {
+      const sso = await (window as any).openbot.getExtendedSSOConfig();
+      if (sso) setState('extendedSSO', sso);
+      return sso;
+    }
+  } catch (err: any) {
+    console.error('Failed to load extended SSO:', err);
+  }
+}
+
+export async function verifySSODNSAction(domain: string) {
+  try {
+    if ((window as any).openbot?.verifySSODNS) {
+      const res = await (window as any).openbot.verifySSODNS(domain);
+      addToast('success', 'DNS Verified', res.message);
+      await loadExtendedSSO();
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'DNS Verification Failed', err?.message);
+  }
+}
+
+export async function generateSCIMTokenAction() {
+  try {
+    if ((window as any).openbot?.generateSCIMToken) {
+      const res = await (window as any).openbot.generateSCIMToken();
+      addToast('warning', 'SCIM Token Generated', res.warning);
+      await loadExtendedSSO();
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Generate SCIM Token error', err?.message);
+  }
+}
+
+export async function revokeSCIMTokenAction() {
+  try {
+    if ((window as any).openbot?.revokeSCIMToken) {
+      await (window as any).openbot.revokeSCIMToken();
+      addToast('warning', 'SCIM Token Revoked', 'Directory provisioning synchronization halted.');
+      await loadExtendedSSO();
+    }
+  } catch (err: any) {
+    addToast('error', 'Revoke SCIM Token error', err?.message);
+  }
+}
+
+export async function testBrowserSSOAction(provider: string) {
+  try {
+    if ((window as any).openbot?.testBrowserSSO) {
+      const res = await (window as any).openbot.testBrowserSSO(provider);
+      addToast('success', 'SSO Test Sign-in', `Redirecting to identity provider (${provider})…`);
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Browser SSO error', err?.message);
+  }
+}
+
+export async function loadMobileConnect() {
+  try {
+    if ((window as any).openbot?.getMobileConnect) {
+      const data = await (window as any).openbot.getMobileConnect();
+      if (data) setState('mobileConnect', data);
+      return data;
+    }
+  } catch (err: any) {
+    console.error('Failed to load mobile connect:', err);
+  }
+}
+
+export async function generateMobileCodeAction() {
+  try {
+    if ((window as any).openbot?.generateMobileOneTimeCode) {
+      const res = await (window as any).openbot.generateMobileOneTimeCode();
+      setState('mobileConnect', {
+        ...state.mobileConnect,
+        activeCode: res.code,
+        qrPayload: res.qrPayload,
+      } as any);
+      addToast('success', 'Mobile Code Generated', `Code ${res.code} valid for 10 minutes.`);
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Generate mobile code error', err?.message);
+  }
+}
+
+export async function replaceMobileLinkAction() {
+  try {
+    if ((window as any).openbot?.replaceMobilePermanentLink) {
+      const res = await (window as any).openbot.replaceMobilePermanentLink();
+      addToast('warning', 'Permanent Link Replaced', res.warning);
+      await loadMobileConnect();
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Replace link error', err?.message);
+  }
+}
+
+export async function revokeMobileLinkAction() {
+  try {
+    if ((window as any).openbot?.revokeMobilePermanentLink) {
+      const res = await (window as any).openbot.revokeMobilePermanentLink();
+      addToast('warning', 'Permanent Link Revoked', res.message);
+      await loadMobileConnect();
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Revoke link error', err?.message);
+  }
+}
+
+export async function loadBillingState() {
+  try {
+    if ((window as any).openbot?.getCommercialLicence) {
+      const lic = await (window as any).openbot.getCommercialLicence();
+      setState('commercialLicence', lic);
+    }
+    if ((window as any).openbot?.getHostedServerSubscriptions) {
+      const subs = await (window as any).openbot.getHostedServerSubscriptions();
+      setState('hostedServerSubscriptions', subs || []);
+    }
+    if ((window as any).openbot?.checkOfflineGrace) {
+      const grace = await (window as any).openbot.checkOfflineGrace();
+      setState('offlineGrace', grace);
+    }
+  } catch (err: any) {
+    console.error('Failed to load billing state:', err);
+  }
+}
+
+export async function recordLicenceAcceptanceAction(params: any) {
+  try {
+    if ((window as any).openbot?.recordLicenceAcceptance) {
+      const res = await (window as any).openbot.recordLicenceAcceptance(params);
+      addToast('success', 'Licence Activated', res.message);
+      await loadBillingState();
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Licence Acceptance Error', err?.message);
+  }
+}
+
+export async function cancelHostedSubscriptionAction(subId: string) {
+  try {
+    if ((window as any).openbot?.cancelHostedServerSubscription) {
+      const res = await (window as any).openbot.cancelHostedServerSubscription(subId);
+      addToast('warning', 'Subscription Cancelled', res.message);
+      await loadBillingState();
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Cancel subscription error', err?.message);
+  }
+}
+
+export async function openStripePortalAction(subId?: string) {
+  try {
+    if ((window as any).openbot?.openStripeCustomerPortal) {
+      const res = await (window as any).openbot.openStripeCustomerPortal(subId);
+      addToast('success', 'Stripe Customer Portal', `Opening customer portal: ${res.portalUrl}`);
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Portal error', err?.message);
+  }
+}
+
+export async function openStripeCheckoutAction(planType: string, planId: string) {
+  try {
+    if ((window as any).openbot?.openStripeCheckout) {
+      const res = await (window as any).openbot.openStripeCheckout(planType, planId);
+      addToast('success', 'Stripe Checkout', `Opening secure checkout: ${res.checkoutUrl}`);
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Checkout error', err?.message);
+  }
+}
+
+export async function checkOfflineGraceAction() {
+  try {
+    if ((window as any).openbot?.checkOfflineGrace) {
+      const res = await (window as any).openbot.checkOfflineGrace();
+      setState('offlineGrace', res);
+      if (res.isBlocked) {
+        addToast('error', 'Sign-ins Blocked', res.message);
+      } else if (res.status === 'grace_period') {
+        addToast('warning', 'Offline Grace Period', res.message);
+      }
+      return res;
+    }
+  } catch (err: any) {
+    console.error('Offline grace check error:', err);
+  }
+}
+
 
 

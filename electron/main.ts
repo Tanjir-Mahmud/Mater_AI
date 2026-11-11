@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen, Menu, Tray, nativeTheme, shell, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
-import { initDatabase, getAgentWorkspaceDir, deleteAgentWorkspace } from './backend/db';
+import { initDatabase, getDatabase, saveDatabase, getAgentWorkspaceDir, deleteAgentWorkspace } from './backend/db';
 import { providerEngine } from './backend/providerEngine';
 import { generateAgentFromPrompt } from './backend/agentGenerator';
 import { isVersionAtLeast } from './backend/processSupervisor';
@@ -36,6 +36,19 @@ import {
   STATUS_PAGE_URL,
   HOSTED_SITES_DOMAIN,
 } from './backend/integrationsVoiceService';
+import {
+  authBillingService,
+  AUTH_API_ENDPOINT,
+  CODE_EXPIRY_MS,
+  OFFLINE_GRACE_MS,
+  MINIMUM_USER_AGE,
+  MAX_DEVICES_PER_USER,
+  LICENSOR_LEGAL_ENTITY,
+  MOBILE_PERMANENT_LINK_WARNING,
+  HOSTED_SERVER_DISCONNECT_WARNING,
+  COMMERCIAL_LICENCE_PRICING,
+  HOSTED_SERVER_PLANS,
+} from './backend/authBillingService';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -1401,6 +1414,273 @@ function createWindow() {
         console.log('=============================================================');
         console.log('ALL MILESTONE 3, 4, 5 & 6 VERIFICATION CHECKS & EXACT LIMITS PASSED.');
         console.log('=============================================================');
+
+        // -------------------------------------------------------------
+        // MILESTONE 7 VERIFICATION SUITE: AUTH & BILLING
+        // -------------------------------------------------------------
+        console.log('[Test] -------------------------------------------------------------');
+        console.log('[Test] Running Milestone 7 verification suite (Auth & Billing)...');
+        console.log('[Test] -------------------------------------------------------------');
+
+        // M7-1. Auth service (api.openbot.run, 8-character codes, 10-minute expiry, hash-only storage)
+        console.log('[Test] M7-1. Auth service (8-character codes, 10-minute expiry, hash-only storage)...');
+        const reqCodeRes = await authBillingService.requestEmailCode('tanjir@synthetify.io');
+        if (!reqCodeRes.success || !reqCodeRes.rawCodeForTestOnly || reqCodeRes.rawCodeForTestOnly.length !== 8) {
+          throw new Error(`Expected 8-character code, got: ${reqCodeRes.rawCodeForTestOnly}`);
+        }
+        // Verify 10-minute expiry
+        const codeCreatedMs = Date.now();
+        const codeExpMs = new Date(reqCodeRes.expiresAt).getTime();
+        const expiryDiffMinutes = Math.round((codeExpMs - codeCreatedMs) / (60 * 1000));
+        if (expiryDiffMinutes !== 10) {
+          throw new Error(`Expected 10-minute code expiry, got ${expiryDiffMinutes} minutes`);
+        }
+        // Verify hash-only storage in SQLite database (raw code must NEVER be stored in DB!)
+        const rawCodeInDb = getDatabase().exec(`SELECT * FROM auth_codes WHERE code_hash LIKE '%${reqCodeRes.rawCodeForTestOnly}%';`);
+        if (rawCodeInDb.length && rawCodeInDb[0].values.length) {
+          throw new Error('SECURITY VIOLATION: Raw authentication code was stored directly in database!');
+        }
+        console.log(`[Test]    - 8-char code generated (${reqCodeRes.rawCodeForTestOnly}) with 10-min expiry (${reqCodeRes.expiresAt}).`);
+        console.log(`[Test]    - Hash-only storage verified: database stores only SHA-256 hash + salt.`);
+
+        // Verify successful code sign-in and encrypted session token
+        const verifyCodeRes = await authBillingService.verifyEmailCode('tanjir@synthetify.io', reqCodeRes.rawCodeForTestOnly);
+        if (!verifyCodeRes.success || !verifyCodeRes.sessionToken || !verifyCodeRes.encryptedSessionToken) {
+          throw new Error(`Code verification failed: ${JSON.stringify(verifyCodeRes)}`);
+        }
+        // Verify AES-256-GCM encryption / decryption roundtrip
+        const decryptedToken = authBillingService.decryptSessionToken(verifyCodeRes.encryptedSessionToken);
+        if (decryptedToken !== verifyCodeRes.sessionToken) {
+          throw new Error('Encrypted session token decryption roundtrip mismatch');
+        }
+        console.log(`[Test]    - Code verified. Client stores encrypted AES-256-GCM session token.`);
+
+        // Verify one-time use (second use rejected)
+        const secondVerifyRes = await authBillingService.verifyEmailCode('tanjir@synthetify.io', reqCodeRes.rawCodeForTestOnly);
+        if (secondVerifyRes.success) {
+          throw new Error('One-time code was reused after consumption!');
+        }
+        console.log(`[Test]    - One-time code invariant verified: second attempt rejected.`);
+
+        // M7-2. Daily maintenance task
+        console.log('[Test] M7-2. Daily maintenance task (purges expired/consumed codes)...');
+        const maintRes = await authBillingService.runDailyMaintenanceTask();
+        if (maintRes.purgedCount < 1) {
+          throw new Error('Expected daily maintenance task to purge consumed/expired auth code');
+        }
+        console.log(`[Test]    - Daily maintenance purged ${maintRes.purgedCount} record(s).`);
+
+        // M7-3. Accounts (16+ minimum age and legal capacity)
+        console.log('[Test] M7-3. Accounts (minimum age 16+ and legal capacity check)...');
+        const underageRes = authBillingService.verifyAgeAndCapacity('2015-01-01', true);
+        if (underageRes.eligible) {
+          throw new Error('Underage account (age < 16) was incorrectly accepted');
+        }
+        const noCapacityRes = authBillingService.verifyAgeAndCapacity('1990-01-01', false);
+        if (noCapacityRes.eligible) {
+          throw new Error('Account lacking legal capacity was incorrectly accepted');
+        }
+        const validAgeRes = authBillingService.verifyAgeAndCapacity('2000-05-15', true);
+        if (!validAgeRes.eligible || validAgeRes.age < 16) {
+          throw new Error('Valid adult account was rejected');
+        }
+        console.log(`[Test]    - Age policy verified: < 16 rejected, legal capacity enforced.`);
+
+        // M7-4. Account Sessions & Hosted Server Disconnect Notice
+        console.log('[Test] M7-4. Account sessions & hosted server disconnect notice...');
+        const sessions = await authBillingService.getSessions();
+        const thisDevice = sessions.find((s) => s.isThisDevice);
+        if (!thisDevice || thisDevice.kind !== 'Desktop') {
+          throw new Error('Expected active Desktop session marked "This device"');
+        }
+        // Insert and disconnect a hosted server session
+        const dbRef = getDatabase();
+        dbRef.run(`INSERT INTO account_sessions (id, user_id, session_token_hash, kind, device_name, is_this_device, signed_in_at, last_active_at, status)
+                   VALUES ('sess-srv-test', 'user-owner-default', 'hash-srv', 'Hosted server', 'Cloud Node Alpha', 0, '${new Date().toISOString()}', '${new Date().toISOString()}', 'active');`);
+        saveDatabase(dbRef);
+
+        const disconnectRes = await authBillingService.disconnectSession('sess-srv-test');
+        if (!disconnectRes.success || !disconnectRes.notice || !disconnectRes.notice.includes('restart the server to sign it in again')) {
+          throw new Error(`Expected hosted server disconnect notice, got: ${JSON.stringify(disconnectRes)}`);
+        }
+        console.log(`[Test]    - Disconnecting hosted-server session verified: "${disconnectRes.notice}".`);
+
+        // M7-5. Company SSO & DNS TXT verification & SCIM Token
+        console.log('[Test] M7-5. Company SSO & DNS TXT record verification & SCIM token...');
+        const dnsRes = await authBillingService.verifyDNSTXTRecord('synthetify.io');
+        if (!dnsRes.verified || !dnsRes.recordFound.includes('openbot-site-verification=')) {
+          throw new Error('DNS TXT verification failed');
+        }
+        const scimRes = await authBillingService.generateSCIMToken();
+        if (!scimRes.rawToken.startsWith('scim_live_') || !scimRes.warning.includes('shown ONLY once')) {
+          throw new Error(`Expected SCIM token with "shown ONLY once" notice, got: ${JSON.stringify(scimRes)}`);
+        }
+        await authBillingService.revokeSCIMToken();
+        console.log(`[Test]    - SSO DNS TXT record verified and SCIM token single-view + revocation verified.`);
+
+        // M7-6. Mobile Connect (One-time code, QR, Permanent Link & Warning)
+        console.log('[Test] M7-6. Mobile Connect (one-time code, QR, permanent link & warning)...');
+        const mobCode = await authBillingService.generateMobileOneTimeCode();
+        if (mobCode.code.length !== 8 || !mobCode.qrPayload.includes('openbot://mobile-connect')) {
+          throw new Error('Mobile one-time code or QR payload invalid');
+        }
+        const mobLink = await authBillingService.getMobileConnect();
+        if (mobLink.warning !== 'Anyone with this link can sign in to your OpenBot account.') {
+          throw new Error(`Expected mobile permanent link warning, got: "${mobLink.warning}"`);
+        }
+        console.log(`[Test]    - Mobile Connect verified with exact warning: "${mobLink.warning}".`);
+
+        // M7-7. Commercial Licence Exact Pricing, Discounts & Acceptance
+        console.log('[Test] M7-7. Commercial Licence Pricing (Starter/Team in EUR, USD, PLN, discounts)...');
+        // Starter monthly checks
+        const pStarterEUR = authBillingService.calculateLicencePrice({ tier: 'Starter', seats: 1, cycle: 'monthly', currency: 'EUR' });
+        const pStarterUSD = authBillingService.calculateLicencePrice({ tier: 'Starter', seats: 1, cycle: 'monthly', currency: 'USD' });
+        const pStarterPLN = authBillingService.calculateLicencePrice({ tier: 'Starter', seats: 1, cycle: 'monthly', currency: 'PLN' });
+        if (pStarterEUR.finalCycleAmount !== 10 || pStarterUSD.finalCycleAmount !== 12 || pStarterPLN.finalCycleAmount !== 40) {
+          throw new Error(`Starter monthly pricing mismatch: EUR ${pStarterEUR.finalCycleAmount}, USD ${pStarterUSD.finalCycleAmount}, PLN ${pStarterPLN.finalCycleAmount}`);
+        }
+        // Starter yearly (-20%)
+        const pStarterYearly = authBillingService.calculateLicencePrice({ tier: 'Starter', seats: 1, cycle: 'yearly', currency: 'EUR' });
+        if (pStarterYearly.finalCycleAmount !== 96 || pStarterYearly.devicesAllowed !== 3) {
+          throw new Error(`Starter yearly pricing mismatch: got ${pStarterYearly.finalCycleAmount}, expected 96 (devices: ${pStarterYearly.devicesAllowed})`);
+        }
+        // Team monthly (2 users base: €25 / $30 / 100 PLN; 5 users: 25 + 3*15 = 70 EUR)
+        const pTeam5EUR = authBillingService.calculateLicencePrice({ tier: 'Team', seats: 5, cycle: 'monthly', currency: 'EUR' });
+        const pTeam5USD = authBillingService.calculateLicencePrice({ tier: 'Team', seats: 5, cycle: 'monthly', currency: 'USD' });
+        const pTeam5PLN = authBillingService.calculateLicencePrice({ tier: 'Team', seats: 5, cycle: 'monthly', currency: 'PLN' });
+        if (pTeam5EUR.finalCycleAmount !== 70 || pTeam5USD.finalCycleAmount !== 84 || pTeam5PLN.finalCycleAmount !== 280) {
+          throw new Error(`Team 5-user monthly pricing mismatch: EUR ${pTeam5EUR.finalCycleAmount}, USD ${pTeam5USD.finalCycleAmount}, PLN ${pTeam5PLN.finalCycleAmount}`);
+        }
+        // Team yearly (-20%) + hosted server bundle (-10%)
+        const pTeamBundleYearly = authBillingService.calculateLicencePrice({
+          tier: 'Team',
+          seats: 5,
+          cycle: 'yearly',
+          currency: 'EUR',
+          hasHostedServerBundle: true,
+        });
+        // 70 * 12 = 840. 840 * 0.8 * 0.9 = 604.80
+        if (pTeamBundleYearly.finalCycleAmount !== 604.80 || pTeamBundleYearly.devicesAllowed !== 15) {
+          throw new Error(`Team compound yearly/bundle discount mismatch: got ${pTeamBundleYearly.finalCycleAmount}, expected 604.80 (devices: ${pTeamBundleYearly.devicesAllowed})`);
+        }
+        // Record Licence Acceptance with Polish legal entity
+        const licAcceptRes = await authBillingService.recordLicenceAcceptance({
+          tier: 'Team',
+          seats: 5,
+          cycle: 'yearly',
+          currency: 'EUR',
+          hasHostedServerBundle: true,
+          companyName: 'Synthetify Tech Sp. z o.o.',
+          taxId: 'PL9452248912',
+          buyerAuthorized: true,
+        });
+        if (!licAcceptRes.success || !licAcceptRes.licence.licensor.includes('Synthetify Labs, Trzebunia 513, 32-438 Trzebunia, Poland, KRS 0000895882')) {
+          throw new Error(`Licence acceptance failed or licensor mismatch: ${JSON.stringify(licAcceptRes)}`);
+        }
+        console.log(`[Test]    - Commercial licence pricing verified across EUR, USD, PLN, -20% yearly, -10% bundle, 3 devices/user.`);
+        console.log(`[Test]    - Licence acceptance recorded under Polish law (KRS 0000895882).`);
+
+        // M7-8. Hosted-Server Plans (Starter, Standard, Pro specs & legacy limits)
+        console.log('[Test] M7-8. Hosted-server plans specs & self-hosted 1-site limit...');
+        const plans = authBillingService.getHostedServerPlanCatalog();
+        if (plans.Starter.storageGB !== 12 || plans.Starter.members !== 1 || plans.Starter.sites !== 3 || plans.Starter.speedMultiplier !== 1.0) {
+          throw new Error(`Starter hosted plan mismatch: ${JSON.stringify(plans.Starter)}`);
+        }
+        if (plans.Standard.storageGB !== 50 || plans.Standard.members !== 5 || plans.Standard.legacyMembers !== 10 || plans.Standard.sites !== 10 || plans.Standard.speedMultiplier !== 2.0) {
+          throw new Error(`Standard hosted plan mismatch: ${JSON.stringify(plans.Standard)}`);
+        }
+        if (plans.Pro.storageGB !== 100 || plans.Pro.members !== 10 || plans.Pro.legacyMembers !== 25 || plans.Pro.sites !== 50 || plans.Pro.speedMultiplier !== 4.0) {
+          throw new Error(`Pro hosted plan mismatch: ${JSON.stringify(plans.Pro)}`);
+        }
+        if (plans.SelfHosted.sites !== 1) {
+          throw new Error(`Self-hosted server must have 1 hosted site, got ${plans.SelfHosted.sites}`);
+        }
+        console.log(`[Test]    - Hosted plan specs verified (Starter 12GB/1m/3s, Standard 50GB/5m/10s, Pro 100GB/10m/50s, SelfHosted 1 site, legacy 1/10/25).`);
+
+        // M7-9. Stripe Source of Truth & Subscription Cancellation
+        console.log('[Test] M7-9. Stripe source-of-truth webhook sync & cancellation...');
+        await authBillingService.createHostedServerSubscription({
+          serverId: 'srv-prod-node-1',
+          serverName: 'Production Cloud Node 1',
+          planTier: 'Standard',
+          cycle: 'monthly',
+          currency: 'EUR',
+        });
+        const subsBefore = await authBillingService.getHostedServerSubscriptions();
+        const testSub = subsBefore[0];
+        // Webhook updates status to 'past_due'
+        await authBillingService.handleStripeWebhook({
+          type: 'customer.subscription.updated',
+          subscriptionId: testSub.stripeSubscriptionId,
+          status: 'past_due',
+        });
+        const subsAfterHook = await authBillingService.getHostedServerSubscriptions();
+        if (subsAfterHook[0].stripeStatus !== 'past_due') {
+          throw new Error('Stripe webhook sync failed to update database subscription status');
+        }
+        // Cancel subscription: retains access until currentPeriodEnd
+        const cancelRes = await authBillingService.cancelHostedServerSubscription(testSub.stripeSubscriptionId);
+        if (!cancelRes.success || !cancelRes.message.includes('maintained until')) {
+          throw new Error(`Cancel subscription failed: ${JSON.stringify(cancelRes)}`);
+        }
+        console.log(`[Test]    - Stripe webhook state sync and cancellation period retention verified.`);
+
+        // M7-10. Offline Grace Period (24 hours)
+        console.log('[Test] M7-10. Offline grace period (24 hours, then sign-ins blocked)...');
+        // Within 12 hours: status grace_period, not blocked
+        const grace12 = await authBillingService.simulateServerValidation('server_unreachable', 12);
+        if (grace12.isBlocked || grace12.status !== 'grace_period' || grace12.hoursRemaining !== 12.0) {
+          throw new Error(`Expected 12-hour grace period, got: ${JSON.stringify(grace12)}`);
+        }
+        // After 25 hours: blocked
+        const grace25 = await authBillingService.simulateServerValidation('server_unreachable', 25);
+        if (!grace25.isBlocked || grace25.status !== 'blocked' || !grace25.message.includes('Sign-ins are blocked')) {
+          throw new Error(`Expected sign-ins blocked after 24 hours, got: ${JSON.stringify(grace25)}`);
+        }
+        // Restore online
+        const graceOnline = await authBillingService.simulateServerValidation('online_success', 0);
+        if (graceOnline.isBlocked || graceOnline.status !== 'valid') {
+          throw new Error(`Expected online validation restoration, got: ${JSON.stringify(graceOnline)}`);
+        }
+        console.log(`[Test]    - 24-hour offline grace period verified: 12h allowed, 25h blocked.`);
+
+        // M7-11. Capture Shell Screenshot for Milestone 7 (Settled UI)
+        console.log('[Test] Waiting for loading animation to dismiss and shell UI to fully settle for Milestone 7...');
+        await mainWindow!.webContents.executeJavaScript(`
+          new Promise((resolve) => {
+            const startTime = Date.now();
+            const check = () => {
+              const bounceEl = document.querySelector('.animate-bounce');
+              if (!bounceEl || Date.now() - startTime > 4000) {
+                resolve(true);
+              } else {
+                setTimeout(check, 100);
+              }
+            };
+            check();
+          });
+        `);
+        await new Promise((r) => setTimeout(r, 600));
+
+        const img7 = await mainWindow!.webContents.capturePage();
+        const distScreenshot7 = path.resolve('dist/milestone-7-shell.png');
+        const repoScreenshot7 = path.join(screenshotsDir, 'milestone-7-shell.png');
+        const artifactScreenshot7 = path.join(artifactDir, 'milestone-7-shell.png');
+
+        fs.writeFileSync(distScreenshot7, img7.toPNG());
+        fs.writeFileSync(repoScreenshot7, img7.toPNG());
+        console.log(`[Test] M7-11. Shell screenshot captured and saved to: ${distScreenshot7} and ${repoScreenshot7}`);
+        try {
+          if (!fs.existsSync(artifactDir)) fs.mkdirSync(artifactDir, { recursive: true });
+          fs.writeFileSync(artifactScreenshot7, img7.toPNG());
+          console.log(`[Test] Screenshot also mirrored to artifact directory: ${artifactScreenshot7}`);
+        } catch (e) {
+          console.log(`[Test] Mirroring to artifact dir skipped:`, e);
+        }
+
+        console.log('=============================================================');
+        console.log('ALL MILESTONE 3, 4, 5, 6 & 7 VERIFICATION CHECKS & EXACT LIMITS PASSED.');
+        console.log('=============================================================');
         setTimeout(() => app.quit(), 500);
       } catch (err) {
         console.error('[Test] Suite error:', err);
@@ -2141,12 +2421,118 @@ ipcMain.handle('sso:configure', async (_event, params) => {
   return await integrationsVoiceService.configureEnterpriseSSO(params);
 });
 
+// Milestone 7: Auth and Billing IPC Handlers
+ipcMain.handle('auth:request-email-code', async (_event, email: string) => {
+  return await authBillingService.requestEmailCode(email);
+});
+
+ipcMain.handle('auth:verify-email-code', async (_event, { email, code }) => {
+  return await authBillingService.verifyEmailCode(email, code);
+});
+
+ipcMain.handle('auth:run-daily-maintenance', async () => {
+  return await authBillingService.runDailyMaintenanceTask();
+});
+
+ipcMain.handle('account:get-profile', async () => {
+  return await authBillingService.getUserProfile();
+});
+
+ipcMain.handle('account:get-sessions', async () => {
+  return await authBillingService.getSessions();
+});
+
+ipcMain.handle('account:disconnect-session', async (_event, sessionId: string) => {
+  return await authBillingService.disconnectSession(sessionId);
+});
+
+ipcMain.handle('sso:get-extended-config', async () => {
+  return await authBillingService.getExtendedSSOConfig();
+});
+
+ipcMain.handle('sso:verify-dns', async (_event, domain: string) => {
+  return await authBillingService.verifyDNSTXTRecord(domain);
+});
+
+ipcMain.handle('sso:generate-scim-token', async () => {
+  return await authBillingService.generateSCIMToken();
+});
+
+ipcMain.handle('sso:revoke-scim-token', async () => {
+  return await authBillingService.revokeSCIMToken();
+});
+
+ipcMain.handle('sso:test-browser', (_event, provider: string) => {
+  return authBillingService.testBrowserSSOSignIn(provider);
+});
+
+ipcMain.handle('mobile:get-connect', async () => {
+  return await authBillingService.getMobileConnect();
+});
+
+ipcMain.handle('mobile:generate-code', async () => {
+  return await authBillingService.generateMobileOneTimeCode();
+});
+
+ipcMain.handle('mobile:replace-link', async () => {
+  return await authBillingService.replaceMobilePermanentLink();
+});
+
+ipcMain.handle('mobile:revoke-link', async () => {
+  return await authBillingService.revokeMobilePermanentLink();
+});
+
+ipcMain.handle('billing:calc-licence-price', (_event, params) => {
+  return authBillingService.calculateLicencePrice(params);
+});
+
+ipcMain.handle('billing:get-licence', async () => {
+  return await authBillingService.getCommercialLicence();
+});
+
+ipcMain.handle('billing:accept-licence', async (_event, params) => {
+  return await authBillingService.recordLicenceAcceptance(params);
+});
+
+ipcMain.handle('billing:get-hosted-plans', () => {
+  return authBillingService.getHostedServerPlanCatalog();
+});
+
+ipcMain.handle('billing:get-hosted-subscriptions', async () => {
+  return await authBillingService.getHostedServerSubscriptions();
+});
+
+ipcMain.handle('billing:create-hosted-subscription', async (_event, params) => {
+  return await authBillingService.createHostedServerSubscription(params);
+});
+
+ipcMain.handle('billing:cancel-hosted-subscription', async (_event, subId: string) => {
+  return await authBillingService.cancelHostedServerSubscription(subId);
+});
+
+ipcMain.handle('billing:open-portal', (_event, subId?: string) => {
+  return authBillingService.openStripeCustomerPortal(subId);
+});
+
+ipcMain.handle('billing:open-checkout', (_event, { planType, planId }) => {
+  return authBillingService.openStripeCheckout(planType, planId);
+});
+
+ipcMain.handle('billing:check-offline-grace', async () => {
+  return await authBillingService.checkOfflineGrace();
+});
+
+ipcMain.handle('billing:simulate-server-validation', async (_event, { outcome, elapsedHours }) => {
+  return await authBillingService.simulateServerValidation(outcome, elapsedHours);
+});
+
 app.whenReady().then(async () => {
   await initDatabase();
   await chatSessionService.init();
   await agentRuntimeService.init();
   await teamCollabService.init();
   await integrationsVoiceService.init();
+  await authBillingService.init();
   createWindow();
   setupThemeWatcher();
 

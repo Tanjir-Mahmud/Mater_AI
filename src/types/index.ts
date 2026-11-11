@@ -485,4 +485,110 @@ export interface EnterpriseSSOConfig {
   createdAt: string;
 }
 
+// Milestone 7: Auth and Billing Types
+export interface AccountSession {
+  id: string;
+  userId: string;
+  kind: 'Desktop' | 'Mobile' | 'Hosted server';
+  deviceName: string;
+  ipAddress?: string;
+  isThisDevice: boolean;
+  signedInAt: string;
+  lastActiveAt: string;
+  status: 'active' | 'revoked';
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl: string;
+  birthDate: string;
+  hasLegalCapacity: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExtendedSSOConfig {
+  id: string;
+  provider: 'entra' | 'okta' | 'google_workspace';
+  issuerUrl: string;
+  clientId: string;
+  emailDomains: string[];
+  dnsTxtRecord: string;
+  dnsVerified: boolean;
+  scimStatus: string;
+  isActive: boolean;
+  isDesktopOnly: boolean;
+}
+
+export interface MobileConnectState {
+  id: string;
+  permanentLink?: string;
+  warning: string;
+  status: string;
+  activeCode?: string;
+  qrPayload?: string;
+}
+
+export interface CommercialLicence {
+  id: string;
+  userId: string;
+  planTier: 'Starter' | 'Team';
+  seats: number;
+  billingCycle: 'monthly' | 'yearly';
+  currency: 'EUR' | 'USD' | 'PLN';
+  hasHostedServerBundle: boolean;
+  amountPerCycle: number;
+  stripeSubscriptionId: string;
+  status: 'active' | 'cancelled' | 'past_due';
+  companyName: string;
+  taxId: string;
+  buyerAuthorized: boolean;
+  acceptedAt: string;
+  termsVersion: string;
+  orderRef: string;
+  licensor: string;
+  maxDevicesPerUser: number;
+}
+
+export interface HostedServerSubscription {
+  id: string;
+  serverId: string;
+  serverName: string;
+  planTier: 'Starter' | 'Standard' | 'Pro' | 'self-hosted';
+  storageGB: number;
+  membersLimit: number;
+  sitesLimit: number;
+  speedMultiplier: number;
+  billingCycle: 'monthly' | 'yearly';
+  currency: 'EUR' | 'USD' | 'PLN';
+  monthlyPrice: number;
+  stripeSubscriptionId: string;
+  stripeStatus: 'active' | 'cancelled' | 'past_due';
+  serverRemoved: boolean;
+  currentPeriodEnd: string;
+}
+
+export interface OfflineGraceState {
+  status: 'valid' | 'grace_period' | 'blocked';
+  hoursRemaining: number;
+  isBlocked: boolean;
+  lastValidatedAt: string;
+  message: string;
+}
+
+export interface LicencePriceCalculation {
+  tier: 'Starter' | 'Team';
+  seats: number;
+  cycle: 'monthly' | 'yearly';
+  currency: 'EUR' | 'USD' | 'PLN';
+  baseMonthlyAmount: number;
+  yearlyDiscountAmount: number;
+  bundleDiscountAmount: number;
+  finalCycleAmount: number;
+  effectiveMonthlyEquivalent: number;
+  devicesAllowed: number;
+}
+
 

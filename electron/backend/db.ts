@@ -313,6 +313,120 @@ export interface DBEnterpriseSSO {
   created_at: string;
 }
 
+// Milestone 7: Auth and Billing Interfaces
+export interface DBAuthCode {
+  id: string;
+  email: string;
+  code_hash: string;
+  salt: string;
+  expires_at: string;
+  consumed: number;
+  created_at: string;
+}
+
+export interface DBAccountSession {
+  id: string;
+  user_id: string;
+  session_token_hash: string;
+  kind: 'Desktop' | 'Mobile' | 'Hosted server';
+  device_name: string;
+  ip_address?: string;
+  is_this_device: number;
+  signed_in_at: string;
+  last_active_at: string;
+  status: 'active' | 'revoked';
+}
+
+export interface DBUserProfile {
+  id: string;
+  email: string;
+  name: string;
+  avatar_url: string;
+  birth_date: string;
+  has_legal_capacity: number;
+  encrypted_session_token: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBExtendedSSOConfig {
+  id: string;
+  provider: 'entra' | 'okta' | 'google_workspace';
+  issuer_url: string;
+  client_id: string;
+  client_secret?: string;
+  email_domains: string; // JSON array of strings
+  dns_txt_record: string;
+  dns_verified: number;
+  scim_token_hash?: string;
+  scim_status: string;
+  is_active: number;
+  is_desktop_only: number;
+  created_at: string;
+}
+
+export interface DBMobileConnect {
+  id: string;
+  user_id: string;
+  one_time_code_hash?: string;
+  one_time_code_expires_at?: string;
+  permanent_link_token?: string;
+  permanent_link_warning: string;
+  status: string;
+  created_at: string;
+}
+
+export interface DBCommercialLicence {
+  id: string;
+  user_id: string;
+  plan_tier: 'Starter' | 'Team';
+  seats: number;
+  billing_cycle: 'monthly' | 'yearly';
+  currency: 'EUR' | 'USD' | 'PLN';
+  has_hosted_server_bundle: number;
+  amount_per_cycle: number;
+  stripe_subscription_id: string;
+  status: 'active' | 'cancelled' | 'past_due';
+  company_name: string;
+  tax_id: string;
+  buyer_authorized: number;
+  accepted_at: string;
+  terms_version: string;
+  order_ref: string;
+  licensor: string;
+  max_devices_per_user: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBHostedServerSubscription {
+  id: string;
+  server_id: string;
+  server_name: string;
+  plan_tier: 'Starter' | 'Standard' | 'Pro' | 'self-hosted';
+  storage_gb: number;
+  members_limit: number;
+  sites_limit: number;
+  speed_multiplier: number;
+  billing_cycle: 'monthly' | 'yearly';
+  currency: 'EUR' | 'USD' | 'PLN';
+  monthly_price: number;
+  stripe_subscription_id: string;
+  stripe_status: 'active' | 'cancelled' | 'past_due';
+  server_removed: number;
+  current_period_end: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBLicenceOfflineState {
+  id: string;
+  last_validated_at: string;
+  offline_grace_hours: number;
+  is_blocked: number;
+  last_validation_error?: string;
+}
+
 let SQL: SqlJsStatic | null = null;
 let dbInstance: Database | null = null;
 
@@ -376,6 +490,13 @@ export function deleteAgentWorkspace(agentId: string): boolean {
     console.error(`Failed to delete workspace for agent ${agentId}:`, err);
   }
   return false;
+}
+
+export function getDatabase(): Database {
+  if (!dbInstance) {
+    throw new Error('Database not initialised yet. Call initDatabase() first.');
+  }
+  return dbInstance;
 }
 
 export function saveDatabase(db?: Database) {
@@ -781,6 +902,119 @@ export async function initDatabase(): Promise<Database> {
       scim_enabled INTEGER NOT NULL DEFAULT 1,
       scim_status TEXT NOT NULL DEFAULT 'synced',
       created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS auth_codes (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS account_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      session_token_hash TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      device_name TEXT NOT NULL,
+      ip_address TEXT,
+      is_this_device INTEGER NOT NULL DEFAULT 0,
+      signed_in_at TEXT NOT NULL,
+      last_active_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active'
+    );
+
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      avatar_url TEXT NOT NULL,
+      birth_date TEXT NOT NULL,
+      has_legal_capacity INTEGER NOT NULL DEFAULT 1,
+      encrypted_session_token TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS sso_configs (
+      id TEXT PRIMARY KEY,
+      provider TEXT NOT NULL,
+      issuer_url TEXT NOT NULL,
+      client_id TEXT NOT NULL,
+      client_secret TEXT,
+      email_domains TEXT NOT NULL DEFAULT '[]',
+      dns_txt_record TEXT NOT NULL,
+      dns_verified INTEGER NOT NULL DEFAULT 0,
+      scim_token_hash TEXT,
+      scim_status TEXT NOT NULL DEFAULT 'disabled',
+      is_active INTEGER NOT NULL DEFAULT 0,
+      is_desktop_only INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS mobile_connect_links (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      one_time_code_hash TEXT,
+      one_time_code_expires_at TEXT,
+      permanent_link_token TEXT,
+      permanent_link_warning TEXT NOT NULL DEFAULT 'Anyone with this link can sign in to your OpenBot account.',
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS commercial_licences (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      plan_tier TEXT NOT NULL,
+      seats INTEGER NOT NULL,
+      billing_cycle TEXT NOT NULL,
+      currency TEXT NOT NULL,
+      has_hosted_server_bundle INTEGER NOT NULL DEFAULT 0,
+      amount_per_cycle REAL NOT NULL,
+      stripe_subscription_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      company_name TEXT NOT NULL,
+      tax_id TEXT NOT NULL,
+      buyer_authorized INTEGER NOT NULL DEFAULT 1,
+      accepted_at TEXT NOT NULL,
+      terms_version TEXT NOT NULL DEFAULT 'v1.0',
+      order_ref TEXT NOT NULL,
+      licensor TEXT NOT NULL DEFAULT 'Synthetify Labs, Trzebunia 513, 32-438 Trzebunia, Poland, KRS 0000895882; Polish law governs.',
+      max_devices_per_user INTEGER NOT NULL DEFAULT 3,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS hosted_server_subscriptions (
+      id TEXT PRIMARY KEY,
+      server_id TEXT NOT NULL,
+      server_name TEXT NOT NULL,
+      plan_tier TEXT NOT NULL,
+      storage_gb INTEGER NOT NULL,
+      members_limit INTEGER NOT NULL,
+      sites_limit INTEGER NOT NULL,
+      speed_multiplier REAL NOT NULL,
+      billing_cycle TEXT NOT NULL,
+      currency TEXT NOT NULL,
+      monthly_price REAL NOT NULL,
+      stripe_subscription_id TEXT NOT NULL,
+      stripe_status TEXT NOT NULL DEFAULT 'active',
+      server_removed INTEGER NOT NULL DEFAULT 0,
+      current_period_end TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS licence_offline_state (
+      id TEXT PRIMARY KEY,
+      last_validated_at TEXT NOT NULL,
+      offline_grace_hours INTEGER NOT NULL DEFAULT 24,
+      is_blocked INTEGER NOT NULL DEFAULT 0,
+      last_validation_error TEXT
     );
   `);
 
