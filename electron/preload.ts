@@ -396,4 +396,7 @@ const bridge: OpenBotBridge = {
   getOptOutInitialCheck: (countryCode: string) => ipcRenderer.invoke('telemetry:get-optout-check', countryCode),
 };
 
+export type BissBotBridge = OpenBotBridge;
+
+contextBridge.exposeInMainWorld('bissbot', bridge);
 contextBridge.exposeInMainWorld('openbot', bridge);

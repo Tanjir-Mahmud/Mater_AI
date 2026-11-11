@@ -218,7 +218,7 @@ export class DataTransferService {
 
     // Insert a new backup entry
     const newId = `backup-${Date.now()}`;
-    const newFileName = `openbot-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.tar.gz`;
+    const newFileName = `bissbot-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.tar.gz`;
     db.run(
       `INSERT INTO docker_backups (id, filename, file_size, backup_time, status, created_at)
        VALUES (?, ?, 104857600, ?, 'completed', ?);`,

@@ -20,28 +20,30 @@ import { MobileCompanionModal } from '../mobile/MobileCompanionModal';
 import { WebClientModal } from '../web/WebClientModal';
 
 export const Shell: Component = () => {
-  const isMac = () => (window as any).openbot?.platform === 'darwin';
+  const getApi = () => (window as any).bissbot || (window as any).openbot;
+  const isMac = () => getApi()?.platform === 'darwin';
 
   onMount(() => {
     // Load detected live provider statuses on start
     loadProviderLiveStatusesAction();
 
     // Listen to IPC events from main process
-    if ((window as any).openbot?.onQuitRequest) {
-      const unsub = (window as any).openbot.onQuitRequest(() => {
+    const api = getApi();
+    if (api?.onQuitRequest) {
+      const unsub = api.onQuitRequest(() => {
         setState('isQuitDialogOpen', true);
       });
       onCleanup(unsub);
     }
 
-    if ((window as any).openbot?.onMenuEvent) {
-      const unsubSettings = (window as any).openbot.onMenuEvent(
+    if (api?.onMenuEvent) {
+      const unsubSettings = api.onMenuEvent(
         'menu:open-settings',
         () => {
           setState('isSettingsOpen', true);
         }
       );
-      const unsubNewAgent = (window as any).openbot.onMenuEvent(
+      const unsubNewAgent = api.onMenuEvent(
         'menu:new-agent',
         () => {
           openCreateAgentModal();
@@ -73,7 +75,7 @@ export const Shell: Component = () => {
 
           <div class="flex items-center gap-1.5 font-label-sm text-xs text-on-surface">
             <span class="material-symbols-outlined text-[16px] text-primary">terminal</span>
-            <span class="font-bold tracking-tight">OpenBot</span>
+            <span class="font-bold tracking-tight">BissBot</span>
             <span class="text-[10px] text-outline font-mono px-1 rounded bg-surface-container-high ml-1">
               v0.1.0-alpha
             </span>

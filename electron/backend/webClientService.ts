@@ -67,7 +67,7 @@ export class WebClientService {
     return {
       ticket,
       expiresAt,
-      handshakeEndpoint: `wss://signal.openbot.run/v1/peer?ticket=${ticket}&host=${hostId}&acc=${accountId}`,
+      handshakeEndpoint: `wss://signal.tiyandegital.com/v1/peer?ticket=${ticket}&host=${hostId}&acc=${accountId}`,
     };
   }
 
@@ -285,7 +285,7 @@ export class WebClientService {
     requiresUserConfirmation: boolean;
   } {
     try {
-      const url = new URL(rawUrl, 'https://openbot.run');
+      const url = new URL(rawUrl, 'https://tiyandegital.com');
       const params = url.searchParams;
 
       let linkType: 'agent' | 'invitation' | 'plugin' | 'billing_return' | 'none' = 'none';

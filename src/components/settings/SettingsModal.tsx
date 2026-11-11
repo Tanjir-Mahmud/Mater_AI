@@ -67,7 +67,7 @@ interface SettingsTabItem {
 }
 
 const SETTINGS_TABS: SettingsTabItem[] = [
-  { id: 'general', name: 'General', icon: 'tune', description: 'Control how OpenBot behaves on this computer.' },
+  { id: 'general', name: 'General', icon: 'tune', description: 'Control how BissBot behaves on this computer.' },
   { id: 'providers', name: 'Providers & Models', icon: 'psychology', description: 'Connect AI execution runtimes (OpenCode, Claude, Codex, Gemini) with honest live detection.' },
   { id: 'server_general', name: 'Server General', icon: 'dns', description: 'Server identity, logo, timezone and key rotation.' },
   { id: 'members', name: 'Members', icon: 'group', description: 'Publish server, invite teammates, and manage server roles.' },
@@ -76,24 +76,25 @@ const SETTINGS_TABS: SettingsTabItem[] = [
   { id: 'remote_desktop', name: 'Remote Desktop', icon: 'desktop_access_disabled', description: 'Connect or test remote desktop with temporary 4-digit code.' },
   { id: 'agents', name: 'Agents', icon: 'smart_toy', description: 'Choose what the agents on this computer can do when you do not set it for an agent.' },
   { id: 'mcp', name: 'MCP Servers', icon: 'hub', description: 'Model Context Protocol servers that give agents tools on this computer.' },
-  { id: 'profile', name: 'Profile', icon: 'account_circle', description: 'Manage how you appear in OpenBot.' },
-  { id: 'notifications', name: 'Notifications', icon: 'notifications', description: 'Choose how OpenBot alerts you.' },
+  { id: 'profile', name: 'Profile', icon: 'account_circle', description: 'Manage how you appear in BissBot.' },
+  { id: 'notifications', name: 'Notifications', icon: 'notifications', description: 'Choose how BissBot alerts you.' },
   { id: 'voice', name: 'Voice & Dictation', icon: 'mic', description: 'Dictation in the message box (Parakeet, Bark, Whisper, Cohere, ElevenLabs, Groq) and OpenAI-compatible voice server.' },
   { id: 'connectors', name: 'Connectors & Messaging', icon: 'cable', description: 'Built-in sign-ins to outside services (GitHub, Slack Orchestrator, Discord, Telegram, WhatsApp Baileys).' },
-  { id: 'hosted_sites', name: 'Hosted Sites & SSO', icon: 'public', description: 'Websites published to openbot.site (30-day expiry) and company OpenID Connect / SCIM sign-in.' },
+  { id: 'hosted_sites', name: 'Hosted Sites & SSO', icon: 'public', description: 'Websites published to hosted.tiyandegital.com (30-day expiry) and company OpenID Connect / SCIM sign-in.' },
   { id: 'dynamic_island', name: 'Dynamic Island', icon: 'dock_to_bottom', description: 'Show agent activity in the MacBook notch.', macOnly: true },
   { id: 'agent_dock', name: 'Agent Dock', icon: 'dock', description: 'Show agents at the screen edge, ready for a quick chat.', macOnly: true },
-  { id: 'computer_use', name: 'Computer Use', icon: 'desktop_windows', description: "Let agents on this computer's OpenBot see and use its apps." },
+  { id: 'computer_use', name: 'Computer Use', icon: 'desktop_windows', description: "Let agents on this computer's BissBot see and use its apps." },
   { id: 'billing', name: 'Billing', icon: 'credit_card', description: 'License, server plans, payment method and invoices.' },
   { id: 'mobile_connect', name: 'Mobile Connect', icon: 'smartphone', description: 'Sign in securely on your phone.' },
-  { id: 'updates', name: 'Updates', icon: 'system_update_alt', description: 'Keep OpenBot current on this computer.' },
-  { id: 'hosted_servers', name: 'Hosted servers', icon: 'cloud', description: 'Create OpenBot servers that run when this computer is off (15-min idle stop, 14-day disk retention).' },
+  { id: 'updates', name: 'Updates', icon: 'system_update_alt', description: 'Keep BissBot current on this computer.' },
+  { id: 'hosted_servers', name: 'Hosted servers', icon: 'cloud', description: 'Create BissBot servers that run when this computer is off (15-min idle stop, 14-day disk retention).' },
   { id: 'storage', name: 'Storage & Telemetry', icon: 'hard_drive', description: 'Disk partitions, retention policies, and real-time hardware consumption on host node.' },
 ];
 
 export const SettingsModal: Component = () => {
   const [searchQuery, setSearchQuery] = createSignal('');
-  const isMac = () => (window as any).openbot?.platform === 'darwin';
+  const getApi = () => (window as any).bissbot || (window as any).openbot;
+  const isMac = () => getApi()?.platform === 'darwin';
 
   const visibleTabs = () => {
     return SETTINGS_TABS.filter((t) => !t.macOnly || isMac());
@@ -108,8 +109,9 @@ export const SettingsModal: Component = () => {
     value: typeof state.settings[K]
   ) => {
     setState('settings', key, value);
-    if ((window as any).openbot?.saveSettings) {
-      (window as any).openbot.saveSettings(state.settings);
+    const api = getApi();
+    if (api?.saveSettings) {
+      api.saveSettings(state.settings);
     }
   };
 
@@ -119,8 +121,8 @@ export const SettingsModal: Component = () => {
   const [licenceCycle, setLicenceCycle] = createSignal<'monthly' | 'yearly'>('yearly');
   const [licenceCurrency, setLicenceCurrency] = createSignal<'EUR' | 'USD' | 'PLN'>('EUR');
   const [licenceBundle, setLicenceBundle] = createSignal(true);
-  const [companyName, setCompanyName] = createSignal('Synthetify Tech Sp. z o.o.');
-  const [taxId, setTaxId] = createSignal('PL9452248912');
+  const [companyName, setCompanyName] = createSignal('Tiyan Digital');
+  const [taxId, setTaxId] = createSignal('US123456789');
   const [buyerAuthorized, setBuyerAuthorized] = createSignal(true);
   const [activeScimToken, setActiveScimToken] = createSignal<{ rawToken: string; warning: string } | null>(null);
 
@@ -260,7 +262,7 @@ export const SettingsModal: Component = () => {
                 <div class="flex items-center justify-between pb-4 border-b border-outline-variant/20">
                   <div>
                     <div class="font-medium text-xs text-on-surface">Language</div>
-                    <div class="text-[11px] text-outline">OpenBot shows menus, buttons and messages in this language.</div>
+                    <div class="text-[11px] text-outline">BissBot shows menus, buttons and messages in this language.</div>
                   </div>
                   <select
                     value={state.settings.language}
@@ -428,7 +430,7 @@ export const SettingsModal: Component = () => {
                         <h3 class="font-headline-sm text-sm font-bold text-on-surface">AI Providers & Execution Runtimes</h3>
                       </div>
                       <p class="text-[11px] text-outline mt-1 max-w-xl">
-                        OpenBot executes tasks directly against live CLI runtimes and verified account credentials.
+                        BissBot executes tasks directly against live CLI runtimes and verified account credentials.
                         Never simulated or fabricated. Live status is detected on the spot.
                       </p>
                     </div>
@@ -642,7 +644,7 @@ export const SettingsModal: Component = () => {
                       <span class="text-[10px] font-mono text-outline">{state.backgroundProcesses.length} running</span>
                     </div>
                     <p class="text-[11px] text-outline mb-3">
-                      Programs agents started and left running, such as dev servers. They keep running after chat ends and after quitting OpenBot.
+                      Programs agents started and left running, such as dev servers. They keep running after chat ends and after quitting BissBot.
                     </p>
 
                     <Show
@@ -1313,8 +1315,9 @@ export const SettingsModal: Component = () => {
                         <button
                           onClick={async () => {
                             try {
-                              if ((window as any).openbot?.exportServerTransfer) {
-                                await (window as any).openbot.exportServerTransfer();
+                              const api = getApi();
+                              if (api?.exportServerTransfer) {
+                                await api.exportServerTransfer();
                                 addToast('success', 'Transfer Package Ready', 'Server archive generated (secrets excluded).');
                               }
                             } catch (e: any) {
@@ -1338,8 +1341,9 @@ export const SettingsModal: Component = () => {
                         <button
                           onClick={async () => {
                             try {
-                              if ((window as any).openbot?.rotateDockerBackups) {
-                                await (window as any).openbot.rotateDockerBackups();
+                              const api = getApi();
+                              if (api?.rotateDockerBackups) {
+                                await api.rotateDockerBackups();
                                 addToast('success', 'Backup Rotated', 'Created backup, keeping newest 7.');
                               }
                             } catch (e: any) {
@@ -1377,8 +1381,8 @@ export const SettingsModal: Component = () => {
                             16+ Verified Adult
                           </span>
                         </div>
-                        <div class="text-[11px] text-outline font-mono mt-0.5">{state.userProfile?.email || 'owner@synthetify.io'}</div>
-                        <div class="text-[10px] text-outline mt-0.5">Avatars held securely in object storage (cdn.openbot.run) · Legal capacity confirmed</div>
+                        <div class="text-[11px] text-outline font-mono mt-0.5">{state.userProfile?.email || 'owner@tiyandegital.com'}</div>
+                        <div class="text-[10px] text-outline mt-0.5">Avatars held securely in object storage (cdn.tiyandegital.com) · Legal capacity confirmed</div>
                       </div>
                     </div>
                     <button
@@ -1497,7 +1501,7 @@ export const SettingsModal: Component = () => {
                     </div>
 
                     <p class="text-[11px] text-outline">
-                      Scan the QR code with the OpenBot companion app or enter the 8-character single-use code.
+                      Scan the QR code with the BissBot companion app or enter the 8-character single-use code.
                     </p>
 
                     <div class="flex flex-col sm:flex-row items-center gap-4 p-3 rounded-lg bg-surface-container border border-outline-variant/20">
@@ -1517,7 +1521,7 @@ export const SettingsModal: Component = () => {
                           <div class="w-5 h-5 bg-transparent"></div>
                           <div class="w-5 h-5 bg-black rounded-xs"></div>
                         </div>
-                        <span class="text-[9px] font-mono text-outline">openbot://mobile-connect</span>
+                        <span class="text-[9px] font-mono text-outline">bissbot://mobile-connect</span>
                       </div>
 
                       <div class="space-y-2 flex-1 w-full">
@@ -1552,7 +1556,7 @@ export const SettingsModal: Component = () => {
 
                     <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 flex items-center justify-between gap-2">
                       <div class="font-mono text-xs text-on-surface truncate flex-1">
-                        {state.mobileConnect?.permanentLink || 'openbot://auth-link/7f4b8291a0c4e12d88f6'}
+                        {state.mobileConnect?.permanentLink || 'bissbot://auth-link/7f4b8291a0c4e12d88f6'}
                       </div>
                       <div class="flex items-center gap-1.5 shrink-0">
                         <button
@@ -1574,7 +1578,7 @@ export const SettingsModal: Component = () => {
                     <div class="p-3 rounded-lg bg-error-container/20 border border-error/30 flex items-start gap-2">
                       <span class="material-symbols-outlined text-error text-[18px] shrink-0 mt-0.5">warning</span>
                       <div class="text-xs text-on-surface font-semibold">
-                        Anyone with this link can sign in to your OpenBot account.
+                        Anyone with this link can sign in to your BissBot account.
                       </div>
                     </div>
                   </div>
@@ -1625,7 +1629,7 @@ export const SettingsModal: Component = () => {
                           <span class="material-symbols-outlined text-primary text-[20px]">workspace_premium</span>
                           <h4 class="font-semibold text-sm text-on-surface">Commercial Licence</h4>
                           <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-primary/20 text-primary uppercase">
-                            {state.commercialLicence ? `${state.commercialLicence.planTier} Active` : 'OpenBot Commercial'}
+                            {state.commercialLicence ? `${state.commercialLicence.planTier} Active` : 'BissBot Commercial'}
                           </span>
                         </div>
                         <p class="text-[11px] text-outline mt-0.5">
@@ -1821,7 +1825,7 @@ export const SettingsModal: Component = () => {
                             class="rounded accent-primary mt-0.5"
                           />
                           <span class="text-[11px] text-outline">
-                            I confirm that I am authorised to bind the Licensee to these terms. Licensor: Synthetify Labs, Trzebunia 513, 32-438 Trzebunia, Poland, KRS 0000895882.
+                            I confirm that I am authorised to bind the Licensee to these terms. Licensor: Tiyan Digital.
                           </span>
                         </label>
 
@@ -2009,7 +2013,7 @@ export const SettingsModal: Component = () => {
                   <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex items-center justify-between">
                     <div>
                       <div class="font-semibold text-xs text-on-surface">Update track: Stable</div>
-                      <div class="text-[11px] text-outline mt-0.5">Version 0.1.0-alpha · OpenBot is up to date on the Stable track.</div>
+                      <div class="text-[11px] text-outline mt-0.5">Version 0.1.0-alpha · BissBot is up to date on the Stable track.</div>
                     </div>
                     <button
                       onClick={() => addToast('success', 'Checking Stable track for updates…')}
@@ -2286,7 +2290,7 @@ export const SettingsModal: Component = () => {
                           checked={state.voiceSettings.voiceServerUseForDictation}
                           onChange={(e) =>
                             configureVoiceServerAction({
-                              address: state.voiceSettings.voiceServerAddress || 'https://voice.openbot.local/v1/audio',
+                              address: state.voiceSettings.voiceServerAddress || 'https://voice.bissbot.local/v1/audio',
                               useForDictation: e.currentTarget.checked,
                               useForTTS: state.voiceSettings.voiceServerUseForTTS,
                             })
@@ -2301,7 +2305,7 @@ export const SettingsModal: Component = () => {
                           checked={state.voiceSettings.voiceServerUseForTTS}
                           onChange={(e) =>
                             configureVoiceServerAction({
-                              address: state.voiceSettings.voiceServerAddress || 'https://voice.openbot.local/v1/audio',
+                              address: state.voiceSettings.voiceServerAddress || 'https://voice.bissbot.local/v1/audio',
                               useForDictation: state.voiceSettings.voiceServerUseForDictation,
                               useForTTS: e.currentTarget.checked,
                             })
@@ -2334,7 +2338,7 @@ export const SettingsModal: Component = () => {
                     <div>
                       <span class="font-semibold text-xs text-on-surface">Built-in Outside Service Connectors</span>
                       <p class="text-[11px] text-outline mt-0.5">
-                        A connector is a built-in sign-in to an outside service that OpenBot turns into agent tools, one per OpenBot computer. A user-added MCP server or marketplace plugin is NOT a connector.
+                        A connector is a built-in sign-in to an outside service that BissBot turns into agent tools, one per BissBot computer. A user-added MCP server or marketplace plugin is NOT a connector.
                       </p>
                     </div>
 
@@ -2432,13 +2436,13 @@ export const SettingsModal: Component = () => {
               {/* TAB: HOSTED SITES & SSO */}
               <Show when={state.activeSettingsTab === 'hosted_sites'}>
                 <div class="space-y-4">
-                  {/* Hosted Sites on openbot.site */}
+                  {/* Hosted Sites on hosted.tiyandegital.com */}
                   <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-3">
                     <div class="flex items-center justify-between">
                       <div>
-                        <span class="font-semibold text-xs text-on-surface">Hosted Sites (openbot.site)</span>
+                        <span class="font-semibold text-xs text-on-surface">Hosted Sites (hosted.tiyandegital.com)</span>
                         <p class="text-[11px] text-outline mt-0.5">
-                          Sites published to openbot.site have a strict 30-day expiry. Deleting a site returns HTTP 410 Gone.
+                          Sites published to hosted.tiyandegital.com have a strict 30-day expiry. Deleting a site returns HTTP 410 Gone.
                         </p>
                       </div>
                       <button
@@ -2457,7 +2461,7 @@ export const SettingsModal: Component = () => {
                     <div class="space-y-2 text-xs">
                       <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 flex items-center justify-between">
                         <div>
-                          <div class="font-semibold text-on-surface">demo.openbot.site</div>
+                          <div class="font-semibold text-on-surface">demo.hosted.tiyandegital.com</div>
                           <div class="text-[11px] text-outline">Clean Room Workstation Artifacts · Expires in 30 days</div>
                         </div>
                         <button
@@ -2477,11 +2481,11 @@ export const SettingsModal: Component = () => {
                       <div class="text-[11px] text-outline">Global service reachability and Signal relay uptime.</div>
                     </div>
                     <a
-                      href="https://status.openbot.run"
+                      href="https://status.tiyandegital.com"
                       target="_blank"
                       class="px-3 py-1.5 bg-surface-container hover:bg-surface-container-high rounded text-primary font-mono text-[11px] border border-outline-variant/30 flex items-center gap-1"
                     >
-                      <span>status.openbot.run</span>
+                      <span>status.tiyandegital.com</span>
                       <span class="material-symbols-outlined text-[14px]">open_in_new</span>
                     </a>
                   </div>
@@ -2531,10 +2535,10 @@ export const SettingsModal: Component = () => {
                         </span>
                       </div>
                       <div class="font-mono text-[11px] text-outline bg-surface-container-lowest px-2 py-1 rounded border border-outline-variant/20">
-                        {state.extendedSSO?.dnsTxtRecord || 'openbot-site-verification=37a1e0b51294fdc89a0'}
+                        {state.extendedSSO?.dnsTxtRecord || 'bissbot-site-verification=37a1e0b51294fdc89a0'}
                       </div>
                       <button
-                        onClick={() => verifySSODNSAction('synthetify.io')}
+                        onClick={() => verifySSODNSAction('tiyandegital.com')}
                         class="px-2.5 py-1 rounded bg-surface-container-high hover:bg-surface-bright text-[11px] text-on-surface font-semibold"
                       >
                         Verify DNS Record

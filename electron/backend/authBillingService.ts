@@ -2,18 +2,17 @@ import crypto from 'crypto';
 import { getDatabase, saveDatabase } from './db';
 
 // Milestone 7 Exact Constants & Invariants
-export const AUTH_API_ENDPOINT = 'https://api.openbot.run';
-export const AVATAR_CDN_BASE = 'https://cdn.openbot.run/avatars';
+export const AUTH_API_ENDPOINT = 'https://api.tiyandegital.com';
+export const AVATAR_CDN_BASE = 'https://cdn.tiyandegital.com/avatars';
 export const CODE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 export const OFFLINE_GRACE_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const MINIMUM_USER_AGE = 16;
 export const MAX_DEVICES_PER_USER = 3;
 
-export const LICENSOR_LEGAL_ENTITY =
-  'Synthetify Labs, Trzebunia 513, 32-438 Trzebunia, Poland, KRS 0000895882; Polish law governs.';
+export const LICENSOR_LEGAL_ENTITY = 'Tiyan Digital';
 
 export const MOBILE_PERMANENT_LINK_WARNING =
-  'Anyone with this link can sign in to your OpenBot account.';
+  'Anyone with this link can sign in to your BissBot account.';
 
 export const HOSTED_SERVER_DISCONNECT_WARNING =
   'Disconnecting a hosted-server session signs the server out (restart the server to sign it in again).';
@@ -78,7 +77,7 @@ export const HOSTED_SERVER_PLANS = {
 };
 
 // Secret key for client-side session token encryption (stored encrypted on disk)
-const ENCRYPTION_SECRET = crypto.createHash('sha256').update('openbot-client-session-key-v1').digest();
+const ENCRYPTION_SECRET = crypto.createHash('sha256').update('bissbot-client-session-key-v1').digest();
 
 export class AuthBillingService {
   private initialised = false;
@@ -98,7 +97,7 @@ export class AuthBillingService {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           userId,
-          'owner@synthetify.io',
+          'owner@tiyandegital.com',
           'Workspace Owner',
           `${AVATAR_CDN_BASE}/${userId}.png`,
           '1995-04-12',
@@ -248,7 +247,7 @@ export class AuthBillingService {
     db.run(`UPDATE auth_codes SET consumed = 1 WHERE id = ?;`, [matchedId]);
 
     // Issue encrypted session token
-    const rawSession = `openbot-sess-${crypto.randomUUID()}-${Date.now()}`;
+    const rawSession = `bissbot-sess-${crypto.randomUUID()}-${Date.now()}`;
     const encryptedToken = this.encryptSessionToken(rawSession);
 
     // Update profile
@@ -331,7 +330,7 @@ export class AuthBillingService {
       return {
         eligible: false,
         age: 0,
-        error: 'Legal capacity is required to sign in or hold an OpenBot account and licence.',
+        error: 'Legal capacity is required to sign in or hold a BissBot account and licence.',
       };
     }
 
@@ -348,7 +347,7 @@ export class AuthBillingService {
       return {
         eligible: false,
         age,
-        error: `User must be at least ${MINIMUM_USER_AGE} years old to use OpenBot. Current age: ${age}.`,
+        error: `User must be at least ${MINIMUM_USER_AGE} years old to use BissBot. Current age: ${age}.`,
       };
     }
 
@@ -427,8 +426,8 @@ export class AuthBillingService {
     const res = db.exec('SELECT * FROM sso_configs LIMIT 1;');
     if (!res.length || !res[0].values.length) {
       // Seed default
-      const defaultDomain = 'synthetify.io';
-      const verificationRecord = `openbot-site-verification=${crypto.createHash('sha256').update(defaultDomain).digest('hex').slice(0, 32)}`;
+      const defaultDomain = 'tiyandegital.com';
+      const verificationRecord = `bissbot-site-verification=${crypto.createHash('sha256').update(defaultDomain).digest('hex').slice(0, 32)}`;
       db.run(
         `INSERT INTO sso_configs (id, provider, issuer_url, client_id, client_secret, email_domains, dns_txt_record, dns_verified, scim_token_hash, scim_status, is_active, is_desktop_only, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
@@ -477,7 +476,7 @@ export class AuthBillingService {
   }> {
     const db = getDatabase();
     const cleanDomain = domain.trim().toLowerCase();
-    const expectedRecord = `openbot-site-verification=${crypto.createHash('sha256').update(cleanDomain).digest('hex').slice(0, 32)}`;
+    const expectedRecord = `bissbot-site-verification=${crypto.createHash('sha256').update(cleanDomain).digest('hex').slice(0, 32)}`;
 
     // Update DB
     db.run(`UPDATE sso_configs SET dns_verified = 1 WHERE id = 'sso-cfg-1';`);
@@ -525,7 +524,7 @@ export class AuthBillingService {
 
   public testBrowserSSOSignIn(provider: string): { redirectUrl: string; status: string } {
     return {
-      redirectUrl: `https://${provider}.example.com/oauth2/v1/authorize?client_id=openbot-app&response_type=code&scope=openid%20profile%20email`,
+      redirectUrl: `https://${provider}.example.com/oauth2/v1/authorize?client_id=bissbot-app&response_type=code&scope=openid%20profile%20email`,
       status: 'Ready for browser authentication test',
     };
   }
@@ -539,7 +538,7 @@ export class AuthBillingService {
     const res = db.exec('SELECT * FROM mobile_connect_links LIMIT 1;');
     if (!res.length || !res[0].values.length) {
       const now = new Date().toISOString();
-      const rawLink = `openbot://auth-link/${crypto.randomBytes(16).toString('hex')}`;
+      const rawLink = `bissbot://auth-link/${crypto.randomBytes(16).toString('hex')}`;
       db.run(
         `INSERT INTO mobile_connect_links (id, user_id, permanent_link_token, permanent_link_warning, status, created_at)
          VALUES (?, ?, ?, ?, ?, ?);`,
@@ -567,7 +566,7 @@ export class AuthBillingService {
   }> {
     const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 characters
     const expiresAt = new Date(Date.now() + CODE_EXPIRY_MS).toISOString();
-    const qrPayload = `openbot://mobile-connect?code=${code}&expires=${encodeURIComponent(expiresAt)}`;
+    const qrPayload = `bissbot://mobile-connect?code=${code}&expires=${encodeURIComponent(expiresAt)}`;
     return { code, qrPayload, expiresAt };
   }
 
@@ -576,7 +575,7 @@ export class AuthBillingService {
     warning: string;
   }> {
     const db = getDatabase();
-    const newLink = `openbot://auth-link/${crypto.randomBytes(16).toString('hex')}`;
+    const newLink = `bissbot://auth-link/${crypto.randomBytes(16).toString('hex')}`;
     db.run(
       `UPDATE mobile_connect_links SET permanent_link_token = ?, status = 'active' WHERE id = 'mob-link-1';`,
       [newLink]
@@ -1025,7 +1024,7 @@ export class AuthBillingService {
     const db = getDatabase();
     const simulatedLastValidated = new Date(Date.now() - elapsedHours * 3600 * 1000).toISOString();
     const isBlocked = elapsedHours >= 24 ? 1 : 0;
-    const err = outcome === 'server_unreachable' ? 'Connection to api.openbot.run timed out' : null;
+    const err = outcome === 'server_unreachable' ? 'Connection to api.tiyandegital.com timed out' : null;
 
     db.run(
       `UPDATE licence_offline_state SET last_validated_at = ?, is_blocked = ?, last_validation_error = ? WHERE id = 'state-local';`,

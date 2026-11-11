@@ -66,7 +66,7 @@ export const LoadingScreen: Component = () => {
                 sync
               </span>
               <h2 class="font-headline-sm text-headline-sm text-on-surface tracking-wide">
-                Loading OpenBot
+                Loading BissBot
               </h2>
             </div>
             <p class="font-label-sm text-xs text-outline">

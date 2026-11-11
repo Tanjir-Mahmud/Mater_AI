@@ -92,8 +92,9 @@ export const AgentSetupModal: Component = () => {
 
     try {
       let draft: any = null;
-      if ((window as any).openbot?.generateAgentDraft) {
-        draft = await (window as any).openbot.generateAgentDraft(prompt);
+      const api = (window as any).bissbot || (window as any).openbot;
+      if (api?.generateAgentDraft) {
+        draft = await api.generateAgentDraft(prompt);
       }
 
       if (draft) {
@@ -154,7 +155,7 @@ export const AgentSetupModal: Component = () => {
     if (isEdit() && state.editingAgentId) {
       await exportAgentTemplate(state.editingAgentId);
     } else {
-      addToast('success', 'Draft template exported', 'https://openbot.run/template/draft-sentinel');
+      addToast('success', 'Draft template exported', 'https://tiyandegital.com/template/draft-sentinel');
     }
   };
 

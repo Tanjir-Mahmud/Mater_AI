@@ -11,8 +11,8 @@ import crypto from 'crypto';
 
 // Exact spec limits & constants
 export const HOSTED_SITE_EXPIRY_DAYS = 30;
-export const STATUS_PAGE_URL = 'https://status.openbot.run';
-export const HOSTED_SITES_DOMAIN = 'openbot.site';
+export const STATUS_PAGE_URL = 'https://status.tiyandegital.com';
+export const HOSTED_SITES_DOMAIN = 'hosted.tiyandegital.com';
 
 export interface DictationModelInfo {
   id: string;
@@ -533,7 +533,7 @@ export class IntegrationsVoiceService {
   // =============================================================
 
   public formatWebhookPayload(
-    format: 'openbot' | 'standard',
+    format: 'bissbot' | 'standard' | 'openbot',
     eventType: string,
     data: any,
     secretKey?: string
@@ -564,7 +564,7 @@ export class IntegrationsVoiceService {
         },
       };
     } else {
-      // OpenBot format
+      // BissBot format
       const payload = {
         event: eventType,
         timestamp: new Date().toISOString(),
@@ -578,6 +578,8 @@ export class IntegrationsVoiceService {
       return {
         payload,
         headers: {
+          'x-bissbot-event': eventType,
+          'x-bissbot-signature': signature,
           'x-openbot-event': eventType,
           'x-openbot-signature': signature,
           'content-type': 'application/json',
@@ -635,7 +637,7 @@ export class IntegrationsVoiceService {
   }
 
   // =============================================================
-  // 9. HOSTED SITES (openbot.site, 30-day expiry, 410 Gone)
+  // 9. HOSTED SITES (hosted.tiyandegital.com, 30-day expiry, 410 Gone)
   // =============================================================
 
   public async getHostedSites(): Promise<DBHostedSite[]> {
@@ -714,7 +716,7 @@ export class IntegrationsVoiceService {
   public getStatusPageEndpoint(): { url: string; service: string } {
     return {
       url: STATUS_PAGE_URL,
-      service: 'OpenBot Operations & Infrastructure Telemetry',
+      service: 'BissBot Operations & Infrastructure Telemetry',
     };
   }
 

@@ -47,7 +47,7 @@ export const MarketplaceView: Component = () => {
         <div class="flex flex-col gap-1">
           <div class="flex items-center gap-2 text-primary font-mono text-[11px] tracking-widest uppercase font-semibold">
             <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-            <span>OpenBot Registry · v2.4.9 Engine</span>
+            <span>BissBot Registry · v2.4.9 Engine</span>
           </div>
           <h1 class="font-headline-lg text-2xl font-bold tracking-tight text-on-surface">
             Marketplace & Extensions

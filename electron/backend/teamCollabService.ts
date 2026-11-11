@@ -789,7 +789,7 @@ export class TeamCollabService {
     return {
       templateId: tplId,
       sourceAgentId: agentId,
-      publicUrl: `https://openbot.run/template/${tplId}`,
+      publicUrl: `https://tiyandegital.com/template/${tplId}`,
       instructions: `Synthesized template instructions for ${agentName}. Contains skills and routines; holds zero workspace files or memory facts.`,
       skills: ['GitHub PR Reviewer', 'Docker Compose Orchestrator'],
       routines: ['Daily Dependency Audit'],

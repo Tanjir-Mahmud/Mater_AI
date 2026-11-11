@@ -206,7 +206,7 @@ function createWindow() {
     height: clamped.height,
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
-    title: 'OpenBot',
+    title: 'BissBot',
     backgroundColor: '#0E1116',
     frame: process.platform !== 'darwin',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
@@ -703,7 +703,7 @@ function createWindow() {
           await agentRuntimeService.createRoutine({
             instruction: `Webhook Route Routine ${i + 1}`,
             trigger_type: 'webhook',
-            trigger_value: `https://openbot.local/webhook/route-slot-${i + 1}`,
+            trigger_value: `https://bissbot.local/webhook/route-slot-${i + 1}`,
             webhook_route_id: `route-slot-${i + 1}`,
           });
         }
@@ -715,7 +715,7 @@ function createWindow() {
           await agentRuntimeService.createRoutine({
             instruction: 'Webhook Route 65 Over Limit',
             trigger_type: 'webhook',
-            trigger_value: 'https://openbot.local/webhook/route-slot-65',
+            trigger_value: 'https://bissbot.local/webhook/route-slot-65',
             webhook_route_id: 'route-slot-65',
           });
         } catch (err: any) {
@@ -729,7 +729,7 @@ function createWindow() {
 
         // (c) 30-day ICS Calendar Feed
         const icsFeed = await agentRuntimeService.getCalendarFeed(30);
-        if (!icsFeed.includes('BEGIN:VCALENDAR') || !icsFeed.includes('X-WR-CALNAME:OpenBot Routines (Next 30 Days)') || !icsFeed.includes('END:VCALENDAR')) {
+        if (!icsFeed.includes('BEGIN:VCALENDAR') || !icsFeed.includes('X-WR-CALNAME:BissBot Routines (Next 30 Days)') || !icsFeed.includes('END:VCALENDAR')) {
           throw new Error('Calendar feed does not generate valid 30-day iCalendar specification');
         }
         console.log(`[Test]    - 30-day private .ics calendar feed generated (${icsFeed.split('\r\n').length} lines).`);
@@ -821,7 +821,7 @@ function createWindow() {
         console.log('[Test] M4-7. Embedded Browser profiles & Computer Use readiness...');
         const sharedPartition = agentRuntimeService.getBrowserPartition('shared');
         const isolatedPartition = agentRuntimeService.getBrowserPartition('only_this_agent', 'agent-isolated');
-        if (sharedPartition !== 'persist:openbot-browser-shared' || !isolatedPartition.includes('agent-isolated')) {
+        if (sharedPartition !== 'persist:bissbot-browser-shared' || !isolatedPartition.includes('agent-isolated')) {
           throw new Error('Browser partition profiles invalid');
         }
         const computerUse = agentRuntimeService.getComputerUseStatus();
@@ -936,7 +936,7 @@ function createWindow() {
 
         // 2. Members, Roles & Per-Agent Access Levels
         console.log('[Test] M5-2. Members, roles (owner/admin/member) & per-agent access...');
-        const testMemberEmail = `dev-${Date.now()}@openbot.team`;
+        const testMemberEmail = `dev-${Date.now()}@tiyandegital.com`;
         const invitedMember = await teamCollabService.inviteMember(
           localServer.id,
           testMemberEmail,
@@ -1062,7 +1062,7 @@ function createWindow() {
         // 5. Agent Template Export
         console.log('[Test] M5-5. Agent template export (public link-only copy, zero workspace files/memories)...');
         const tpl = await teamCollabService.exportAgentTemplate('agent-kestrel');
-        if (!tpl.publicUrl.includes('openbot.run/template') || !tpl.instructions) {
+        if (!tpl.publicUrl.includes('tiyandegital.com/template') || !tpl.instructions) {
           throw new Error('Agent template export missing required metadata');
         }
         console.log(`[Test]    - Agent template exported: ${tpl.publicUrl}. Verified zero workspace files or memories included.`);
@@ -1354,7 +1354,7 @@ function createWindow() {
 
         // Not in use
         const notInUse = await integrationsVoiceService.configureVoiceServer({
-          address: 'https://voice.openbot.local/v1/audio',
+          address: 'https://voice.bissbot.local/v1/audio',
           useForDictation: false,
           useForTTS: false,
         });
@@ -1362,7 +1362,7 @@ function createWindow() {
 
         // Set up with notices
         const setUp = await integrationsVoiceService.configureVoiceServer({
-          address: 'https://voice.openbot.local/v1/audio',
+          address: 'https://voice.bissbot.local/v1/audio',
           apiKey: 'sk-voice-9921',
           useForDictation: true,
           useForTTS: true,
@@ -1376,18 +1376,18 @@ function createWindow() {
         }
         console.log(`[Test]    - Voice server states verified (Not set up / Not in use / Set up) with notices.`);
 
-        // 8. Webhook Formats (OpenBot + Standard Webhooks)
-        console.log('[Test] M6-8. Webhooks formats (OpenBot format & Standard Webhooks format)...');
+        // 8. Webhook Formats (BissBot + Standard Webhooks)
+        console.log('[Test] M6-8. Webhooks formats (BissBot format & Standard Webhooks format)...');
         const testPayload = { task: 'dependency-scan', status: 'completed' };
-        const openbotHook = integrationsVoiceService.formatWebhookPayload('openbot', 'task.completed', testPayload, 'secret-key');
-        if (!openbotHook.payload.event || !openbotHook.headers['x-openbot-signature']) {
-          throw new Error('OpenBot webhook format invalid');
+        const bissbotHook = integrationsVoiceService.formatWebhookPayload('bissbot', 'task.completed', testPayload, 'secret-key');
+        if (!bissbotHook.payload.event || !bissbotHook.headers['x-bissbot-signature']) {
+          throw new Error('BissBot webhook format invalid');
         }
         const standardHook = integrationsVoiceService.formatWebhookPayload('standard', 'task.completed', testPayload, 'secret-key');
         if (!standardHook.payload.id || !standardHook.payload.type || !standardHook.headers['webhook-signature']) {
           throw new Error('Standard Webhooks format invalid');
         }
-        console.log(`[Test]    - Both OpenBot and Standard Webhooks formats generated with valid signatures.`);
+        console.log(`[Test]    - Both BissBot and Standard Webhooks formats generated with valid signatures.`);
 
         // 9. Enterprise SSO & SCIM
         console.log('[Test] M6-9. Company SSO (Entra ID, Okta, Google Workspace) & SCIM user sync...');
@@ -1402,14 +1402,14 @@ function createWindow() {
         }
         console.log(`[Test]    - Enterprise SSO verified with SCIM sync: ${ssoRes.provider} (${ssoRes.issuer_url}).`);
 
-        // 10. Hosted Sites (openbot.site, 30-day expiry, 410 Gone on delete)
-        console.log('[Test] M6-10. Hosted Sites (openbot.site, 30-day expiry, 410 Gone on delete)...');
+        // 10. Hosted Sites (hosted.tiyandegital.com, 30-day expiry, 410 Gone on delete)
+        console.log('[Test] M6-10. Hosted Sites (hosted.tiyandegital.com, 30-day expiry, 410 Gone on delete)...');
         if (HOSTED_SITE_EXPIRY_DAYS !== 30) {
           throw new Error(`Expected HOSTED_SITE_EXPIRY_DAYS === 30, got ${HOSTED_SITE_EXPIRY_DAYS}`);
         }
         const site = await integrationsVoiceService.publishHostedSite({
           subdomain: `demo-site-${Date.now()}`,
-          siteTitle: 'Synthetify Cloud Status & Metrics',
+          siteTitle: 'BissBot Cloud Status & Metrics',
           authorAgentId: 'agent-kestrel',
         });
         if (!site.domain.includes(HOSTED_SITES_DOMAIN) || site.status !== 'published') {
@@ -1433,8 +1433,8 @@ function createWindow() {
 
         // Status page endpoint verification
         const statusPage = integrationsVoiceService.getStatusPageEndpoint();
-        if (statusPage.url !== 'https://status.openbot.run') {
-          throw new Error(`Expected status page "https://status.openbot.run", got "${statusPage.url}"`);
+        if (statusPage.url !== 'https://status.tiyandegital.com') {
+          throw new Error(`Expected status page "https://status.tiyandegital.com", got "${statusPage.url}"`);
         }
         console.log(`[Test]    - Operations status endpoint verified: ${statusPage.url}.`);
 
@@ -1483,9 +1483,9 @@ function createWindow() {
         console.log('[Test] Running Milestone 7 verification suite (Auth & Billing)...');
         console.log('[Test] -------------------------------------------------------------');
 
-        // M7-1. Auth service (api.openbot.run, 8-character codes, 10-minute expiry, hash-only storage)
+        // M7-1. Auth service (api.tiyandegital.com, 8-character codes, 10-minute expiry, hash-only storage)
         console.log('[Test] M7-1. Auth service (8-character codes, 10-minute expiry, hash-only storage)...');
-        const reqCodeRes = await authBillingService.requestEmailCode('tanjir@synthetify.io');
+        const reqCodeRes = await authBillingService.requestEmailCode('tanjir@tiyandegital.com');
         if (!reqCodeRes.success || !reqCodeRes.rawCodeForTestOnly || reqCodeRes.rawCodeForTestOnly.length !== 8) {
           throw new Error(`Expected 8-character code, got: ${reqCodeRes.rawCodeForTestOnly}`);
         }
@@ -1505,7 +1505,7 @@ function createWindow() {
         console.log(`[Test]    - Hash-only storage verified: database stores only SHA-256 hash + salt.`);
 
         // Verify successful code sign-in and encrypted session token
-        const verifyCodeRes = await authBillingService.verifyEmailCode('tanjir@synthetify.io', reqCodeRes.rawCodeForTestOnly);
+        const verifyCodeRes = await authBillingService.verifyEmailCode('tanjir@tiyandegital.com', reqCodeRes.rawCodeForTestOnly);
         if (!verifyCodeRes.success || !verifyCodeRes.sessionToken || !verifyCodeRes.encryptedSessionToken) {
           throw new Error(`Code verification failed: ${JSON.stringify(verifyCodeRes)}`);
         }
@@ -1517,7 +1517,7 @@ function createWindow() {
         console.log(`[Test]    - Code verified. Client stores encrypted AES-256-GCM session token.`);
 
         // Verify one-time use (second use rejected)
-        const secondVerifyRes = await authBillingService.verifyEmailCode('tanjir@synthetify.io', reqCodeRes.rawCodeForTestOnly);
+        const secondVerifyRes = await authBillingService.verifyEmailCode('tanjir@tiyandegital.com', reqCodeRes.rawCodeForTestOnly);
         if (secondVerifyRes.success) {
           throw new Error('One-time code was reused after consumption!');
         }
@@ -1568,8 +1568,8 @@ function createWindow() {
 
         // M7-5. Company SSO & DNS TXT verification & SCIM Token
         console.log('[Test] M7-5. Company SSO & DNS TXT record verification & SCIM token...');
-        const dnsRes = await authBillingService.verifyDNSTXTRecord('synthetify.io');
-        if (!dnsRes.verified || !dnsRes.recordFound.includes('openbot-site-verification=')) {
+        const dnsRes = await authBillingService.verifyDNSTXTRecord('tiyandegital.com');
+        if (!dnsRes.verified || !dnsRes.recordFound.includes('bissbot-site-verification=')) {
           throw new Error('DNS TXT verification failed');
         }
         const scimRes = await authBillingService.generateSCIMToken();
@@ -1582,11 +1582,11 @@ function createWindow() {
         // M7-6. Mobile Connect (One-time code, QR, Permanent Link & Warning)
         console.log('[Test] M7-6. Mobile Connect (one-time code, QR, permanent link & warning)...');
         const mobCode = await authBillingService.generateMobileOneTimeCode();
-        if (mobCode.code.length !== 8 || !mobCode.qrPayload.includes('openbot://mobile-connect')) {
+        if (mobCode.code.length !== 8 || !mobCode.qrPayload.includes('bissbot://mobile-connect')) {
           throw new Error('Mobile one-time code or QR payload invalid');
         }
         const mobLink = await authBillingService.getMobileConnect();
-        if (mobLink.warning !== 'Anyone with this link can sign in to your OpenBot account.') {
+        if (mobLink.warning !== 'Anyone with this link can sign in to your BissBot account.') {
           throw new Error(`Expected mobile permanent link warning, got: "${mobLink.warning}"`);
         }
         console.log(`[Test]    - Mobile Connect verified with exact warning: "${mobLink.warning}".`);
@@ -1631,15 +1631,15 @@ function createWindow() {
           cycle: 'yearly',
           currency: 'EUR',
           hasHostedServerBundle: true,
-          companyName: 'Synthetify Tech Sp. z o.o.',
-          taxId: 'PL9452248912',
+          companyName: 'Tiyan Digital',
+          taxId: 'US123456789',
           buyerAuthorized: true,
         });
-        if (!licAcceptRes.success || !licAcceptRes.licence.licensor.includes('Synthetify Labs, Trzebunia 513, 32-438 Trzebunia, Poland, KRS 0000895882')) {
+        if (!licAcceptRes.success || !licAcceptRes.licence.licensor.includes('Tiyan Digital')) {
           throw new Error(`Licence acceptance failed or licensor mismatch: ${JSON.stringify(licAcceptRes)}`);
         }
         console.log(`[Test]    - Commercial licence pricing verified across EUR, USD, PLN, -20% yearly, -10% bundle, 3 devices/user.`);
-        console.log(`[Test]    - Licence acceptance recorded under Polish law (KRS 0000895882).`);
+        console.log(`[Test]    - Licence acceptance recorded under Tiyan Digital.`);
 
         // M7-8. Hosted-Server Plans (Starter, Standard, Pro specs & legacy limits)
         console.log('[Test] M7-8. Hosted-server plans specs & self-hosted 1-site limit...');
@@ -1968,7 +1968,7 @@ function createWindow() {
         // M8-10. Deep Links at /app (?agent, ?server invitation, ?plugin, ?billing=portal)
         console.log('[Test] M8-10. Deep links (?agent, ?server, ?plugin, ?billing=portal) and field stripping...');
         // Invitation link with secret
-        const inviteLink = 'https://openbot.run/app?server=srv-123&secret=topsecret999&host=openbot.run&name=CoreCluster';
+        const inviteLink = 'https://tiyandegital.com/app?server=srv-123&secret=topsecret999&host=tiyandegital.com&name=CoreCluster';
         const parsedInvite = webClientService.parseAndCleanDeepLink(inviteLink);
         if (parsedInvite.linkType !== 'invitation' || parsedInvite.data.secret !== 'topsecret999') {
           throw new Error(`Invitation link parsing failed: ${JSON.stringify(parsedInvite)}`);
@@ -1978,7 +1978,7 @@ function createWindow() {
           throw new Error(`Cleaned URL still contained secret: "${parsedInvite.cleanedUrl}"`);
         }
         // Billing portal return
-        const billingReturn = 'https://openbot.run/app?billing=portal';
+        const billingReturn = 'https://tiyandegital.com/app?billing=portal';
         const parsedBilling = webClientService.parseAndCleanDeepLink(billingReturn);
         if (parsedBilling.linkType !== 'billing_return' || parsedBilling.cleanedUrl.includes('billing')) {
           throw new Error(`Billing return parameter not cleanly stripped: ${JSON.stringify(parsedBilling)}`);
@@ -2013,10 +2013,11 @@ function createWindow() {
               }
 
               // 2. Dismiss onboarding and loading overlays via Solid store so main workspace is fully exposed
-              if (window.__OPENBOT_STORE__) {
-                window.__OPENBOT_STORE__.setState('settings', 'language', 'en');
-                window.__OPENBOT_STORE__.setState('settings', 'hasCompletedOnboarding', true);
-                window.__OPENBOT_STORE__.setState('isLoading', false);
+              const store = window.__BISBOT_STORE__ || window.__OPENBOT_STORE__;
+              if (store) {
+                store.setState('settings', 'language', 'en');
+                store.setState('settings', 'hasCompletedOnboarding', true);
+                store.setState('isLoading', false);
               }
 
               // 3. Verify all overlays are gone and main settled shell UI is visible
@@ -2098,27 +2099,27 @@ function createWindow() {
         console.log(`[Test]    - Zero installs invariant verified across all 107 extensions.`);
         console.log(`[Test]    - Pricing invariant verified: strictly unpriced (null), zero invented prices.`);
 
-        // M9-2. Deep link openbot:// and ?plugin=<slug>
-        console.log('[Test] M9-2. Verifying deep links openbot:// and ?plugin=<slug> (opens preview listing, never auto-installs)...');
-        const linkRes1 = marketplaceService.resolveDeepLink('openbot://plugin/github-mcp');
+        // M9-2. Deep link bissbot:// and ?plugin=<slug>
+        console.log('[Test] M9-2. Verifying deep links bissbot:// and ?plugin=<slug> (opens preview listing, never auto-installs)...');
+        const linkRes1 = marketplaceService.resolveDeepLink('bissbot://plugin/github-mcp');
         if (!linkRes1.item || linkRes1.item.slug !== 'github-mcp' || !linkRes1.requiresUserConfirmation) {
-          throw new Error(`Failed resolving openbot:// deep link: ${JSON.stringify(linkRes1)}`);
+          throw new Error(`Failed resolving bissbot:// deep link: ${JSON.stringify(linkRes1)}`);
         }
-        const linkRes2 = marketplaceService.resolveDeepLink('https://openbot.run/app?plugin=slack-connector-mcp');
+        const linkRes2 = marketplaceService.resolveDeepLink('https://tiyandegital.com/app?plugin=slack-connector-mcp');
         if (!linkRes2.item || linkRes2.item.slug !== 'slack-connector-mcp' || !linkRes2.requiresUserConfirmation) {
           throw new Error(`Failed resolving ?plugin= deep link: ${JSON.stringify(linkRes2)}`);
         }
-        const linkResInvalid = marketplaceService.resolveDeepLink('https://openbot.run/app?plugin=unknown-plugin-slug');
+        const linkResInvalid = marketplaceService.resolveDeepLink('https://tiyandegital.com/app?plugin=unknown-plugin-slug');
         if (linkResInvalid.item !== null || linkResInvalid.requiresUserConfirmation !== false) {
           throw new Error(`Invalid deep link should return null item: ${JSON.stringify(linkResInvalid)}`);
         }
-        console.log(`[Test]    - Deep links openbot:// and ?plugin=<slug> open preview listing and require explicit user confirmation.`);
+        console.log(`[Test]    - Deep links bissbot:// and ?plugin=<slug> open preview listing and require explicit user confirmation.`);
 
         // M9-3. Agent template vs marketplace agent
         console.log('[Test] M9-3. Verifying agent template vs marketplace agent (link-only, no workspace files/memories, not in catalog)...');
         const defaultAgentId = 'agent-custom-sentinel';
         const agentTemplate = marketplaceService.createAgentTemplate(defaultAgentId);
-        if (!agentTemplate.templateUrl.startsWith('https://openbot.run/template/')) {
+        if (!agentTemplate.templateUrl.startsWith('https://tiyandegital.com/template/')) {
           throw new Error(`Template URL format invalid: ${agentTemplate.templateUrl}`);
         }
         if ((agentTemplate as any).workspaceFiles || (agentTemplate as any).memories) {
@@ -2236,8 +2237,8 @@ function createWindow() {
         const payloadOn = telemetryReleaseService.buildOpenPanelPayload({
           consent: 'on',
           accountId: 'usr-123',
-          email: 'user@synthetify.io',
-          visitedWebsites: ['https://openbot.run'],
+          email: 'user@tiyandegital.com',
+          visitedWebsites: ['https://tiyandegital.com'],
           toolUse: ['bash', 'editor'],
           turnsCount: 42,
           tokensCount: 1500,
@@ -2248,8 +2249,8 @@ function createWindow() {
         const payloadOff = telemetryReleaseService.buildOpenPanelPayload({
           consent: 'off',
           accountId: 'usr-123',
-          email: 'user@synthetify.io',
-          visitedWebsites: ['https://openbot.run'],
+          email: 'user@tiyandegital.com',
+          visitedWebsites: ['https://tiyandegital.com'],
           toolUse: ['bash', 'editor'],
           turnsCount: 42,
           tokensCount: 1500,
@@ -2338,9 +2339,12 @@ function createWindow() {
         // M9-13. Capture Settled Shell Screenshot for Milestone 9
         console.log('[Test] M9-13. Capturing main settled shell UI screenshot for Milestone 9 (Marketplace View)...');
         await mainWindow!.webContents.executeJavaScript(`
-          if (window.__OPENBOT_STORE__) {
-            window.__OPENBOT_STORE__.setState('activePage', 'marketplace');
-          }
+          (() => {
+            const store = window.__BISBOT_STORE__ || window.__OPENBOT_STORE__;
+            if (store) {
+              store.setState('activePage', 'marketplace');
+            }
+          })();
         `);
         await new Promise((r) => setTimeout(r, 2000));
 
@@ -2420,44 +2424,41 @@ function createWindow() {
         console.log('[Test] P-4. Testing Codex real-auth check rejecting empty/missing auth file...');
         const tempCodexDir = path.join(os.tmpdir(), `test-codex-${Date.now()}`);
         fs.mkdirSync(tempCodexDir, { recursive: true });
-        const oldCodexHome = process.env.CODEX_HOME;
         const oldOpenAiKey = process.env.OPENAI_API_KEY;
         try {
-          process.env.CODEX_HOME = tempCodexDir;
           delete process.env.OPENAI_API_KEY;
 
           // Empty directory: must be false
-          if (verifyCodexAuth() !== false) {
-            throw new Error('Codex must NOT claim connected just because CODEX_HOME directory exists!');
+          if (verifyCodexAuth(tempCodexDir) !== false) {
+            throw new Error('Codex must NOT claim connected just because directory exists!');
           }
 
           // Empty auth.json (size <= 2 or "{}" / "[]")
           fs.writeFileSync(path.join(tempCodexDir, 'auth.json'), '{}');
-          if (verifyCodexAuth() !== false) {
+          if (verifyCodexAuth(tempCodexDir) !== false) {
             throw new Error('Codex must NOT claim connected with empty "{}" auth file!');
           }
 
           // 0-byte auth file
           fs.writeFileSync(path.join(tempCodexDir, 'credentials.json'), '');
-          if (verifyCodexAuth() !== false) {
+          if (verifyCodexAuth(tempCodexDir) !== false) {
             throw new Error('Codex must NOT claim connected with 0-byte credentials file!');
           }
 
           // Real credentials file with actual content
           fs.writeFileSync(path.join(tempCodexDir, 'auth.json'), JSON.stringify({ token: 'sk-proj-test123456789' }));
-          if (verifyCodexAuth() !== true) {
+          if (verifyCodexAuth(tempCodexDir) !== true) {
             throw new Error('Codex should verify valid credentials file with tokens');
           }
 
           // Test OPENAI_API_KEY override
           fs.unlinkSync(path.join(tempCodexDir, 'auth.json'));
           process.env.OPENAI_API_KEY = 'sk-test-live-openai-key-value-12345';
-          if (verifyCodexAuth() !== true) {
+          if (verifyCodexAuth(tempCodexDir) !== true) {
             throw new Error('Codex should verify active OPENAI_API_KEY');
           }
           console.log(`[Test]    - Codex auth successfully verified: empty dir, 0-byte file, and "{}" correctly rejected.`);
         } finally {
-          process.env.CODEX_HOME = oldCodexHome;
           if (oldOpenAiKey) process.env.OPENAI_API_KEY = oldOpenAiKey;
           else delete process.env.OPENAI_API_KEY;
           try { fs.rmSync(tempCodexDir, { recursive: true, force: true }); } catch {}
@@ -2498,11 +2499,14 @@ function createWindow() {
         // 7. Settled Shell Screenshot showing new Provider Setup Panel in Settings
         console.log('[Test] P-7. Capturing main settled shell UI screenshot for Provider Setup Panel...');
         await mainWindow!.webContents.executeJavaScript(`
-          if (window.__OPENBOT_STORE__) {
-            window.__OPENBOT_STORE__.setState('activePage', 'agents');
-            window.__OPENBOT_STORE__.setState('isSettingsOpen', true);
-            window.__OPENBOT_STORE__.setState('activeSettingsTab', 'providers');
-          }
+          (() => {
+            const store = window.__BISBOT_STORE__ || window.__OPENBOT_STORE__;
+            if (store) {
+              store.setState('activePage', 'agents');
+              store.setState('isSettingsOpen', true);
+              store.setState('activeSettingsTab', 'providers');
+            }
+          })();
         `);
         await new Promise((r) => setTimeout(r, 2000));
 
@@ -2522,8 +2526,126 @@ function createWindow() {
           console.log(`[Test] Mirroring to artifact dir skipped:`, e);
         }
 
+        // Dismiss Settings dialog to show main settled shell UI
+        await mainWindow!.webContents.executeJavaScript(`
+          (() => {
+            const store = window.__BISBOT_STORE__ || window.__OPENBOT_STORE__;
+            if (store) {
+              store.setState('isSettingsOpen', false);
+              store.setState('activePage', 'agents');
+            }
+          })();
+        `);
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const imgMainShell = await mainWindow!.webContents.capturePage();
+        const distScreenshotShell = path.resolve('dist/milestone-9-shell.png');
+        const repoScreenshotShell = path.join(screenshotsDir, 'milestone-9-shell.png');
+        const artifactScreenshotShell = path.join(artifactDir, 'milestone-9-shell.png');
+        const pngBuf = imgMainShell.toPNG();
+
+        const writeSafe = (targetPath: string) => {
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              const d = path.dirname(targetPath);
+              if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+              fs.writeFileSync(targetPath, pngBuf);
+              return;
+            } catch (e) {
+              const start = Date.now();
+              while (Date.now() - start < 200) {}
+            }
+          }
+        };
+
+        writeSafe(distScreenshotShell);
+        writeSafe(repoScreenshotShell);
+        writeSafe(artifactScreenshotShell);
+        writeSafe(path.join(screenshotsDir, 'bissbot-shell.png'));
+        writeSafe(path.join(artifactDir, 'bissbot-shell.png'));
+        console.log(`[Test] Main settled shell screenshot saved with BissBot branding.`);
+
+        // 8. Automated Decontamination & Rebrand Verification
+        console.log('[Test] P-8. Verifying zero forbidden legacy strings across codebase...');
+        const sourceDirs = [path.resolve(__dirname, '../electron'), path.resolve(__dirname, '../src')];
+        const forbiddenPatterns: { name: string; pattern: RegExp; allowedFiles?: string[] }[] = [
+          {
+            name: 'synthetify',
+            pattern: new RegExp(['syn', 'thetify'].join(''), 'i'),
+            allowedFiles: ['teamCollabService.ts', 'db.ts'], // legacy cleanup/migration queries
+          },
+          {
+            name: 'openbot.run',
+            pattern: new RegExp(['open', 'bot\\.run'].join(''), 'i'),
+          },
+          {
+            name: 'openbot.site',
+            pattern: new RegExp(['open', 'bot\\.site'].join(''), 'i'),
+            allowedFiles: ['db.ts'], // SQL migration query
+          },
+          {
+            name: 'Trzebunia',
+            pattern: new RegExp(['Trze', 'bunia'].join(''), 'i'),
+            allowedFiles: ['db.ts'], // SQL migration query
+          },
+          {
+            name: '0000895882',
+            pattern: new RegExp(['000089', '5882'].join(''), 'i'),
+          },
+          {
+            name: 'CODEX_HOME in providerEngine.ts',
+            pattern: new RegExp(['process\\.env\\.', 'CODEX_HOME'].join(''), 'i'),
+          },
+        ];
+
+        function scanDir(dir: string, violations: string[]) {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              if (entry.name !== 'node_modules' && entry.name !== 'dist' && entry.name !== 'dist-electron' && entry.name !== '.git') {
+                scanDir(fullPath, violations);
+              }
+            } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx') || entry.name.endsWith('.html'))) {
+              let content = fs.readFileSync(fullPath, 'utf-8');
+              if (entry.name === 'main.ts') {
+                const marker = 'P-8. Verifying zero forbidden legacy strings';
+                const idx = content.indexOf(marker);
+                if (idx !== -1) content = content.substring(0, idx);
+              }
+              for (const rule of forbiddenPatterns) {
+                if (rule.pattern.test(content)) {
+                  const isAllowed = rule.allowedFiles?.some(af => entry.name.includes(af));
+                  if (!isAllowed) {
+                    violations.push(`[${rule.name}] Found in ${fullPath}`);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        const violations: string[] = [];
+        for (const sDir of sourceDirs) {
+          if (fs.existsSync(sDir)) scanDir(sDir, violations);
+        }
+        const indexHtmlPath = path.resolve(__dirname, '../index.html');
+        if (fs.existsSync(indexHtmlPath)) {
+          const htmlContent = fs.readFileSync(indexHtmlPath, 'utf-8');
+          for (const rule of forbiddenPatterns) {
+            if (rule.pattern.test(htmlContent)) {
+              violations.push(`[${rule.name}] Found in index.html`);
+            }
+          }
+        }
+
+        if (violations.length > 0) {
+          throw new Error(`Decontamination failed with ${violations.length} violations:\n` + violations.join('\n'));
+        }
+        console.log('[Test]    - Decontamination verified: 0 forbidden legacy strings found.');
+
         console.log('=============================================================');
-        console.log('ALL MILESTONES & POST-MILESTONE PROVIDER FLOW CHECKS PASSED.');
+        console.log('ALL MILESTONES, REBRAND & DECONTAMINATION CHECKS PASSED.');
         console.log('=============================================================');
         setTimeout(() => app.quit(), 500);
       } catch (err) {
@@ -2540,9 +2662,9 @@ function setupAppMenu() {
     ...(isMac
       ? [
           {
-            label: 'OpenBot',
+            label: 'BissBot',
             submenu: [
-              { label: 'About OpenBot', role: 'about' },
+              { label: 'About BissBot', role: 'about' },
               { type: 'separator' },
               {
                 label: 'Check for Updates…',
@@ -2561,7 +2683,7 @@ function setupAppMenu() {
               },
               { type: 'separator' },
               {
-                label: 'Quit OpenBot',
+                label: 'Quit BissBot',
                 accelerator: 'CmdOrCtrl+Q',
                 click: () => handleQuitRequest(),
               },
@@ -2645,9 +2767,9 @@ function setupAppMenu() {
       label: 'Help',
       submenu: [
         {
-          label: 'OpenBot Website',
+          label: 'BissBot Website',
           click: async () => {
-            await shell.openExternal('https://openbot.run');
+            await shell.openExternal('https://tiyandegital.com');
           },
         },
         {
@@ -2673,7 +2795,7 @@ function setupTray() {
       tray = new Tray(iconPath);
       const contextMenu = Menu.buildFromTemplate([
         {
-          label: 'Open OpenBot',
+          label: 'Open BissBot',
           click: () => {
             if (mainWindow) {
               mainWindow.show();
@@ -2689,11 +2811,11 @@ function setupTray() {
         },
         { type: 'separator' },
         {
-          label: 'Quit OpenBot',
+          label: 'Quit BissBot',
           click: () => handleQuitRequest(),
         },
       ]);
-      tray.setToolTip('OpenBot - AI Teammate App');
+      tray.setToolTip('BissBot - AI Teammate App');
       tray.setContextMenu(contextMenu);
       tray.on('click', () => {
         if (mainWindow) {
@@ -2865,7 +2987,7 @@ ipcMain.handle('agent:export-template', async (_event, agentId: string) => {
   const template = {
     templateId: `tpl-${Date.now()}`,
     sourceAgentId: agentId,
-    publicUrl: `https://openbot.run/template/agent-${Date.now()}`,
+    publicUrl: `https://tiyandegital.com/template/agent-${Date.now()}`,
     exportedAt: new Date().toISOString(),
   };
   return { success: true, template };
@@ -2936,7 +3058,7 @@ ipcMain.handle('window:capture-screenshot', async (_event, customPath?: string) 
   if (!mainWindow) return '';
   const image = await mainWindow.webContents.capturePage();
   const png = image.toPNG();
-  const filePath = customPath || path.join(app.getPath('userData'), 'openbot-screenshot.png');
+  const filePath = customPath || path.join(app.getPath('userData'), 'bissbot-screenshot.png');
   fs.writeFileSync(filePath, png);
   console.log('[Main] Screenshot saved to:', filePath);
   return filePath;
@@ -3556,6 +3678,12 @@ ipcMain.handle('telemetry:get-optout-check', (_event, countryCode: string) => {
 });
 
 app.whenReady().then(async () => {
+  try {
+    app.setAsDefaultProtocolClient('bissbot');
+    app.setAsDefaultProtocolClient('openbot');
+  } catch (err) {
+    console.log('[Main] Protocol registration skipped:', err);
+  }
   await initDatabase();
   await chatSessionService.init();
   await agentRuntimeService.init();

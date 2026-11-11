@@ -37,8 +37,9 @@ export const MobileCompanionModal: Component = () => {
   const handlePromptAgent = async () => {
     if (!promptText().trim()) return;
     try {
-      if ((window as any).openbot?.createAgentFromMobilePrompt) {
-        const res = await (window as any).openbot.createAgentFromMobilePrompt(promptText().trim());
+      const api = (window as any).bissbot || (window as any).openbot;
+      if (api?.createAgentFromMobilePrompt) {
+        const res = await api.createAgentFromMobilePrompt(promptText().trim());
         addToast('success', 'Mobile Agent Created', `Created agent "${res.name}" from prompt.`);
         setPromptText('');
       }
@@ -62,7 +63,7 @@ export const MobileCompanionModal: Component = () => {
             <div class="flex items-center gap-2">
               <span class="material-symbols-outlined text-primary text-[20px]">phone_iphone</span>
               <div>
-                <div class="font-headline-sm text-xs font-semibold text-on-surface">OpenBot Mobile Companion</div>
+                <div class="font-headline-sm text-xs font-semibold text-on-surface">BissBot Mobile Companion</div>
                 <div class="text-[10px] text-secondary font-mono flex items-center gap-1">
                   <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
                   <span>prod-cluster-01 (TLS 1.3 Verified)</span>

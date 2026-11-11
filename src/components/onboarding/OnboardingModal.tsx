@@ -77,7 +77,8 @@ const PROVIDERS: ProviderOption[] = [
 ];
 
 export const OnboardingModal: Component = () => {
-  const isMac = () => (window as any).openbot?.platform === 'darwin';
+  const getApi = () => (window as any).bissbot || (window as any).openbot;
+  const isMac = () => getApi()?.platform === 'darwin';
 
   const [step, setStep] = createSignal<
     'language' | 'choose' | 'plan' | 'computer' | 'setup_location' | 'launching'
@@ -129,8 +130,9 @@ export const OnboardingModal: Component = () => {
     setStep('launching');
     setState('settings', 'hasCompletedOnboarding', true);
     setState('settings', 'analyticsConsent', analyticsConsent() ? 'on' : 'off');
-    if ((window as any).openbot?.saveSettings) {
-      (window as any).openbot.saveSettings(state.settings);
+    const api = getApi();
+    if (api?.saveSettings) {
+      api.saveSettings(state.settings);
     }
     setTimeout(() => {
       // Completed!
@@ -169,7 +171,7 @@ export const OnboardingModal: Component = () => {
                   Select your interface language
                 </h2>
                 <p class="font-body-sm text-xs text-outline mt-1">
-                  OpenBot shows menus, buttons, and system messages in this language.
+                  BissBot shows menus, buttons, and system messages in this language.
                 </p>
               </div>
 
@@ -429,7 +431,7 @@ export const OnboardingModal: Component = () => {
             </div>
           </Show>
 
-          {/* SETUP LOCATION STEP: Where will OpenBot run? */}
+          {/* SETUP LOCATION STEP: Where will BissBot run? */}
           <Show when={step() === 'setup_location'}>
             <div class="flex flex-col gap-4">
               <div class="text-center">
@@ -488,7 +490,7 @@ export const OnboardingModal: Component = () => {
               <span class="material-symbols-outlined text-4xl text-primary animate-spin">
                 progress_activity
               </span>
-              <h3 class="font-headline-sm text-on-surface">Opening OpenBot…</h3>
+              <h3 class="font-headline-sm text-on-surface">Opening BissBot…</h3>
               <p class="font-body-sm text-xs text-outline">
                 Configuring your local workspace and launching agent team.
               </p>

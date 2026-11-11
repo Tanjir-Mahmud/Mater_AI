@@ -270,7 +270,7 @@ const initialAgentMessages: Record<string, ChatMessage[]> = {
       reasoning: '1. Querying AWS credential status from local keychain...\n Profile `prod-us-east` authenticated\n2. Reading Terraform configurations in `infra/prod/`\n3. Generating plan execution graph for cluster...',
       toolStep: {
         name: 'Tool Execution: CLI Command',
-        output: '$ terraform plan -detailed-exitcode\nPlan: 2 to add, 1 to change, 0 to destroy.\nOutputs: cluster_endpoint = "k8s-prod.us-east.openbot.run"',
+        output: '$ terraform plan -detailed-exitcode\nPlan: 2 to add, 1 to change, 0 to destroy.\nOutputs: cluster_endpoint = "k8s-prod.us-east.tiyandegital.com"',
       },
       approval: {
         command: 'terraform apply -auto-approve prod-us-east',
@@ -489,7 +489,7 @@ export const [state, setState] = createStore({
       agent_id: 'agent-vanguard',
       instruction: 'Triggered on GitHub deployment webhook: dry-run terraform plan and post summary.',
       trigger_type: 'webhook',
-      trigger_value: 'https://openbot.local/webhook/route-gh-deploy',
+      trigger_value: 'https://bissbot.local/webhook/route-gh-deploy',
       webhook_route_id: 'route-gh-deploy',
       filters: '["production", "terraform"]',
       on_closed_action: 'skip',
@@ -518,7 +518,7 @@ export const [state, setState] = createStore({
   workflowRuns: [] as WorkflowRun[],
   agentMemories: {
     'agent-kestrel': [
-      { id: 'mem-1', agent_id: 'agent-kestrel', fact_text: 'Strict clean-room requirement: All specifications are drawn from openbot-complete-feature-spec-2026-11-09.md.', is_essential: 1, byte_size: 118, created_at: '2026-11-09T10:00:00Z' },
+      { id: 'mem-1', agent_id: 'agent-kestrel', fact_text: 'Strict clean-room requirement: All specifications are drawn from bissbot-complete-feature-spec-2026-11-09.md.', is_essential: 1, byte_size: 118, created_at: '2026-11-09T10:00:00Z' },
       { id: 'mem-2', agent_id: 'agent-kestrel', fact_text: 'Core invariant: Provider runtimes must stop before agent service on shutdown.', is_essential: 1, byte_size: 82, created_at: '2026-11-09T10:05:00Z' },
       { id: 'mem-3', agent_id: 'agent-kestrel', fact_text: 'Target production cluster uses AWS EKS us-east-1 VPC with strict CIDR masks.', is_essential: 0, byte_size: 79, created_at: '2026-11-09T11:00:00Z' },
     ],
@@ -626,6 +626,7 @@ export const [state, setState] = createStore({
 });
 
 if (typeof window !== 'undefined') {
+  (window as any).__BISBOT_STORE__ = { state, setState };
   (window as any).__OPENBOT_STORE__ = { state, setState };
 }
 
@@ -636,7 +637,7 @@ export function selectPage(page: PageId) {
   }
   if (page === 'website') {
     if (typeof window !== 'undefined') {
-      window.open('https://openbot.run', '_blank');
+      window.open('https://tiyandegital.com', '_blank');
     }
     return;
   }
@@ -810,7 +811,7 @@ export async function exportAgentTemplate(agentId: string) {
       return res.template;
     }
   }
-  addToast('success', 'Agent template exported', `https://openbot.run/template/${agentId}`);
+  addToast('success', 'Agent template exported', `https://tiyandegital.com/template/${agentId}`);
 }
 
 export function changeAgentModel(agentId: string, provider: string, model: string) {
@@ -1488,8 +1489,9 @@ export async function loadWorkflows() {
 export async function runWorkflowAction(workflowId: string) {
   try {
     addToast('success', 'Workflow Run Started', 'Executing DAG node dependencies across agents...');
-    if ((window as any).openbot?.runWorkflow) {
-      const run = await (window as any).openbot.runWorkflow(workflowId);
+    const api = (window as any).bissbot || (window as any).openbot;
+    if (api?.runWorkflow) {
+      const run = await api.runWorkflow(workflowId);
       setState('workflowRuns', (prev) => [run, ...prev]);
       addToast('success', 'Workflow Run Completed', run.result);
       return run;

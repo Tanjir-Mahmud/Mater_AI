@@ -1,7 +1,7 @@
 {
-  "name": "openbot-desktop",
+  "name": "bissbot-desktop",
   "version": "0.1.0",
-  "description": "OpenBot AI Teammate App",
+  "description": "BissBot AI Teammate App",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",

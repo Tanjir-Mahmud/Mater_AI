@@ -206,7 +206,7 @@ export const MainWorkspace: Component = () => {
                         </span>
                       </div>
                       <p class="text-xs text-outline mt-1">
-                        Routines run only while computer is awake and OpenBot is open. Overdue routines run once when network returns.
+                        Routines run only while computer is awake and BissBot is open. Overdue routines run once when network returns.
                       </p>
                       <div class="flex items-center gap-4 mt-2 text-[11px] font-mono text-outline">
                         <span>Webhook Routes: <strong class="text-primary">{state.routines.filter((r) => r.trigger_type === 'webhook').length}/64</strong></span>

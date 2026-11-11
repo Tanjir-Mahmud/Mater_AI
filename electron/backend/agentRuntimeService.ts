@@ -95,7 +95,7 @@ export class AgentRuntimeService {
     const id = `proc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const now = new Date().toISOString();
 
-    // Spawn detached process so it keeps running after chat ends and after quitting OpenBot
+    // Spawn detached process so it keeps running after chat ends and after quitting BissBot
     let pid = 0;
     try {
       const child = spawn(command, {
@@ -510,10 +510,10 @@ export class AgentRuntimeService {
     let ics = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//OpenBot//Automated Routines Calendar Feed//EN',
+      'PRODID:-//BissBot//Automated Routines Calendar Feed//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      'X-WR-CALNAME:OpenBot Routines (Next 30 Days)',
+      'X-WR-CALNAME:BissBot Routines (Next 30 Days)',
     ];
 
     const now = Date.now();
@@ -523,11 +523,11 @@ export class AgentRuntimeService {
         const dtstamp = eventTime.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
         ics.push(
           'BEGIN:VEVENT',
-          `UID:${r.id}-day-${day}@openbot.local`,
+          `UID:${r.id}-day-${day}@bissbot.local`,
           `DTSTAMP:${dtstamp}`,
           `DTSTART:${dtstamp}`,
           `SUMMARY:Routine: ${r.instruction.substring(0, 40)}`,
-          `DESCRIPTION:Automated OpenBot Routine scheduled execution`,
+          `DESCRIPTION:Automated BissBot Routine scheduled execution`,
           'END:VEVENT'
         );
       }
@@ -759,7 +759,7 @@ export class AgentRuntimeService {
   // -------------------------------------------------------------
 
   public getBrowserPartition(profile: 'shared' | 'only_this_agent', agentId?: string): string {
-    return profile === 'shared' ? 'persist:openbot-browser-shared' : `persist:openbot-browser-agent-${agentId || 'default'}`;
+    return profile === 'shared' ? 'persist:bissbot-browser-shared' : `persist:bissbot-browser-agent-${agentId || 'default'}`;
   }
 
   public async togglePictureInPicture(): Promise<boolean> {
@@ -776,10 +776,10 @@ export class AgentRuntimeService {
       minHeight: 200,
       alwaysOnTop: true,
       frame: false,
-      title: 'OpenBot Browser PiP',
+      title: 'BissBot Browser PiP',
       backgroundColor: '#0E1116',
       webPreferences: {
-        partition: 'persist:openbot-browser-shared',
+        partition: 'persist:bissbot-browser-shared',
         sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,

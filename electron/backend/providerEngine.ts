@@ -257,19 +257,19 @@ export function resolveGeminiBinary(): { command: string; resolved: ResolvedBina
 }
 
 /**
- * Requirement 4: Codex / OpenAI — do NOT claim connected just because an environment
- * variable CODEX_HOME exists. Verify real auth (auth file / credentials in the codex
- * directory with size > 2 and valid tokens/keys, or an active OpenAI API key).
- * A missing or empty auth file means "not signed in".
+ * Codex / OpenAI auth verification:
+ * Directly check ~/.codex/auth.json (and candidate files).
+ * Verify real auth (auth file / credentials in the codex directory with size > 2 and valid tokens/keys,
+ * or an active OpenAI API key). A missing or empty auth file means "not signed in".
  */
-export function verifyCodexAuth(): boolean {
+export function verifyCodexAuth(overrideCodexDir?: string): boolean {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (apiKey && apiKey.length > 10 && apiKey !== 'undefined' && apiKey !== 'null') {
     return true;
   }
 
   const homeDir = os.homedir();
-  const codexHome = process.env.CODEX_HOME || path.join(homeDir, '.codex');
+  const codexHome = overrideCodexDir || path.join(homeDir, '.codex');
   if (!fs.existsSync(codexHome)) {
     return false;
   }
@@ -566,7 +566,7 @@ export async function launchProviderSignIn(providerId: string): Promise<{
   if (liveStatusBefore.isBinaryInstalled) {
     try {
       if (process.platform === 'win32') {
-        const title = `OpenBot - ${liveStatusBefore.name} Sign In`;
+        const title = `BissBot - ${liveStatusBefore.name} Sign In`;
         spawn('cmd.exe', ['/c', 'start', title, 'cmd.exe', '/k', meta.loginCommand], {
           detached: true,
           stdio: 'ignore',

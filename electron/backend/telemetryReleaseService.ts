@@ -218,7 +218,7 @@ export class TelemetryReleaseService {
         turnsCount: params.turnsCount,
         tokensCount: params.tokensCount,
         metadata: {
-          visitedWebsites: params.visitedWebsites || ['openbot.run/docs', 'api.openbot.run'],
+          visitedWebsites: params.visitedWebsites || ['tiyandegital.com/docs', 'api.tiyandegital.com'],
           toolUse: params.toolUse || params.toolUsage || { 'read_file': 12, 'run_command': 4 },
           dailySetupSummary: params.dailySetupSummary || { mcpServers: 3, backgroundTasks: 1 },
         },
@@ -344,7 +344,7 @@ export class TelemetryReleaseService {
       reason,
       elapsedSeconds: elapsedSeconds ?? 12,
       fallbackMode: 'cpu_software',
-      description: 'OpenBot crashed or stopped in its first 30 seconds. Rendering on CPU while record is present.',
+      description: 'BissBot crashed or stopped in its first 30 seconds. Rendering on CPU while record is present.',
     };
 
     fs.writeFileSync(recordFile, JSON.stringify(data, null, 2), 'utf-8');

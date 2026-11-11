@@ -412,7 +412,7 @@ export const RightSidePanel: Component = () => {
                 <span class="text-[10px] font-mono text-outline">SHA-256: 9c2fa7...</span>
               </div>
               <div class="flex-1 p-3 rounded bg-surface-container-lowest border border-outline-variant/20 font-mono text-[11px] text-on-surface-variant overflow-y-auto space-y-1">
-                <div class="text-primary"># OpenBot Feature Specification</div>
+                <div class="text-primary"># BissBot Feature Specification</div>
                 <div class="text-outline">Clean-room rebuild from behavior spec.</div>
                 <div>- All agents persist in local workspaces</div>
                 <div>- SQLite canonical store with migrations</div>

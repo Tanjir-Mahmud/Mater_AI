@@ -278,7 +278,7 @@ export const ServerRail: Component = () => {
                 </div>
                 <div>
                   <div class="font-body-sm font-semibold text-on-surface">Join by Invitation Link</div>
-                  <div class="font-label-sm text-[11px] text-outline">Connect to your team's existing OpenBot server.</div>
+                  <div class="font-label-sm text-[11px] text-outline">Connect to your team's existing BissBot server.</div>
                 </div>
               </button>
             </div>

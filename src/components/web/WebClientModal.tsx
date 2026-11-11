@@ -12,7 +12,7 @@ import {
 export const WebClientModal: Component = () => {
   const [downloadSlotCount, setDownloadSlotCount] = createSignal(1);
   const [simulatedDeepLink, setSimulatedDeepLink] = createSignal(
-    'https://openbot.run/app?server=srv-cluster-01&secret=secret_token_alpha&host=openbot.run&name=ProdCluster'
+    'https://tiyandegital.com/app?server=srv-cluster-01&secret=secret_token_alpha&host=tiyandegital.com&name=ProdCluster'
   );
 
   const handleTestDownload = async (fileId: string) => {
@@ -45,8 +45,8 @@ export const WebClientModal: Component = () => {
             <div class="flex items-center gap-2">
               <span class="material-symbols-outlined text-primary text-[20px]">language</span>
               <div>
-                <div class="font-headline-sm text-xs font-semibold text-on-surface">OpenBot Web Client (/app)</div>
-                <div class="text-[10px] text-outline font-mono">openbot.run/app · Cookie-only email sign-in</div>
+                <div class="font-headline-sm text-xs font-semibold text-on-surface">BissBot Web Client (/app)</div>
+                <div class="text-[10px] text-outline font-mono">tiyandegital.com/app · Cookie-only email sign-in</div>
               </div>
             </div>
             <button
@@ -72,7 +72,7 @@ export const WebClientModal: Component = () => {
                     </span>
                   </div>
                   <p class="text-[11px] text-on-error-container/90 truncate mt-0.5">
-                    Another tab or workstation opened OpenBot at <span class="font-bold">14:26:10 UTC</span> (Hash: 0x9f8c..41a).
+                    Another tab or workstation opened BissBot at <span class="font-bold">14:26:10 UTC</span> (Hash: 0x9f8c..41a).
                   </p>
                 </div>
               </div>
@@ -187,7 +187,7 @@ export const WebClientModal: Component = () => {
               <div class="font-semibold text-on-surface">Desktop-Only Capabilities (Excluded from Web):</div>
               <ul class="list-disc pl-4 space-y-0.5">
                 <li>No remote desktop control or viewer.</li>
-                <li>No hosted-site publishing to openbot.site.</li>
+                <li>No hosted-site publishing to hosted.tiyandegital.com.</li>
                 <li>Providers & permissions and app updates stay desktop-only.</li>
                 <li>No web dashboard, welcome screen, separate conversation toolbar, or always-visible invitation form.</li>
               </ul>

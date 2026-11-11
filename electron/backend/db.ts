@@ -466,9 +466,18 @@ let SQL: SqlJsStatic | null = null;
 let dbInstance: Database | null = null;
 
 export function getAppBaseDir(): string {
-  const dir = path.join(app.getPath('userData'), 'OpenBotData');
+  const dir = path.join(app.getPath('userData'), 'BissBotData');
+  const legacyDir = path.join(app.getPath('userData'), 'OpenBotData');
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+    if (fs.existsSync(legacyDir)) {
+      try {
+        fs.cpSync(legacyDir, dir, { recursive: true });
+      } catch {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    } else {
+      fs.mkdirSync(dir, { recursive: true });
+    }
   }
   return dir;
 }
@@ -538,7 +547,7 @@ export function saveDatabase(db?: Database) {
   const target = db || dbInstance;
   if (!target) return;
   try {
-    const dbPath = path.join(getAppBaseDir(), 'openbot.sqlite');
+    const dbPath = path.join(getAppBaseDir(), 'bissbot.sqlite');
     const data = target.export();
     const buffer = Buffer.from(data);
     fs.writeFileSync(dbPath, buffer);
@@ -554,11 +563,19 @@ export async function initDatabase(): Promise<Database> {
     SQL = await initSqlJs();
   }
 
-  const dbPath = path.join(getAppBaseDir(), 'openbot.sqlite');
+  const dbPath = path.join(getAppBaseDir(), 'bissbot.sqlite');
+  const legacyDbPath = path.join(getAppBaseDir(), 'openbot.sqlite');
   let db: Database;
   if (fs.existsSync(dbPath)) {
     try {
       const fileBuffer = fs.readFileSync(dbPath);
+      db = new SQL.Database(fileBuffer);
+    } catch {
+      db = new SQL.Database();
+    }
+  } else if (fs.existsSync(legacyDbPath)) {
+    try {
+      const fileBuffer = fs.readFileSync(legacyDbPath);
       db = new SQL.Database(fileBuffer);
     } catch {
       db = new SQL.Database();
@@ -919,7 +936,7 @@ export async function initDatabase(): Promise<Database> {
     CREATE TABLE IF NOT EXISTS hosted_sites (
       id TEXT PRIMARY KEY,
       subdomain TEXT NOT NULL UNIQUE,
-      domain TEXT NOT NULL DEFAULT 'openbot.site',
+      domain TEXT NOT NULL DEFAULT 'hosted.tiyandegital.com',
       site_title TEXT NOT NULL,
       author_agent_id TEXT,
       source_files TEXT NOT NULL DEFAULT '{}',
@@ -996,7 +1013,7 @@ export async function initDatabase(): Promise<Database> {
       one_time_code_hash TEXT,
       one_time_code_expires_at TEXT,
       permanent_link_token TEXT,
-      permanent_link_warning TEXT NOT NULL DEFAULT 'Anyone with this link can sign in to your OpenBot account.',
+      permanent_link_warning TEXT NOT NULL DEFAULT 'Anyone with this link can sign in to your BissBot account.',
       status TEXT NOT NULL DEFAULT 'active',
       created_at TEXT NOT NULL
     );
@@ -1018,7 +1035,7 @@ export async function initDatabase(): Promise<Database> {
       accepted_at TEXT NOT NULL,
       terms_version TEXT NOT NULL DEFAULT 'v1.0',
       order_ref TEXT NOT NULL,
-      licensor TEXT NOT NULL DEFAULT 'Synthetify Labs, Trzebunia 513, 32-438 Trzebunia, Poland, KRS 0000895882; Polish law governs.',
+      licensor TEXT NOT NULL DEFAULT 'Tiyan Digital',
       max_devices_per_user INTEGER NOT NULL DEFAULT 3,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -1093,7 +1110,7 @@ export async function initDatabase(): Promise<Database> {
       name TEXT NOT NULL,
       slug TEXT NOT NULL UNIQUE,
       description TEXT NOT NULL,
-      author TEXT NOT NULL DEFAULT 'OpenBot',
+      author TEXT NOT NULL DEFAULT 'BissBot',
       license TEXT,
       installs_count INTEGER NOT NULL DEFAULT 0,
       version TEXT NOT NULL DEFAULT '1.0.0',
@@ -1177,6 +1194,17 @@ export async function initDatabase(): Promise<Database> {
 
   try {
     db.run(`ALTER TABLE team_servers ADD COLUMN key_fingerprint TEXT;`);
+  } catch {}
+
+  // BissBot decontamination / brand migration
+  try {
+    db.run(`UPDATE commercial_licences SET licensor = 'Tiyan Digital' WHERE licensor LIKE '%Synthetify%' OR licensor LIKE '%Trzebunia%';`);
+  } catch {}
+  try {
+    db.run(`UPDATE hosted_sites SET domain = 'hosted.tiyandegital.com' WHERE domain = 'openbot.site';`);
+  } catch {}
+  try {
+    db.run(`UPDATE mobile_connect_links SET permanent_link_warning = 'Anyone with this link can sign in to your BissBot account.' WHERE permanent_link_warning LIKE '%OpenBot%';`);
   } catch {}
 
   saveDatabase(db);

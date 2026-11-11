@@ -43,7 +43,7 @@ export const PageRail: Component = () => {
       <button
         onClick={() => selectPage('agents')}
         class="w-8 h-8 rounded-md flex items-center justify-center bg-primary-container/20 text-primary mb-3 hover:bg-primary-container/30 transition-colors"
-        title="OpenBot"
+        title="BissBot"
       >
         <span class="material-symbols-outlined text-[18px]">terminal</span>
       </button>
@@ -162,7 +162,7 @@ export const PageRail: Component = () => {
               <button
                 onClick={() => {
                   setIsHelpOpen(false);
-                  addToast('success', 'What\'s new in OpenBot v0.1.0');
+                  addToast('success', 'What\'s new in BissBot v0.1.0');
                 }}
                 class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[12px] font-body-sm text-left"
               >
@@ -172,7 +172,7 @@ export const PageRail: Component = () => {
               <button
                 onClick={() => {
                   setIsHelpOpen(false);
-                  window.open('https://openbot.run/changelog', '_blank');
+                  window.open('https://tiyandegital.com/changelog', '_blank');
                 }}
                 class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[12px] font-body-sm text-left"
               >
@@ -182,7 +182,7 @@ export const PageRail: Component = () => {
               <button
                 onClick={() => {
                   setIsHelpOpen(false);
-                  window.open('https://openbot.run/docs', '_blank');
+                  window.open('https://tiyandegital.com/docs', '_blank');
                 }}
                 class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[12px] font-body-sm text-left"
               >
@@ -192,7 +192,7 @@ export const PageRail: Component = () => {
               <button
                 onClick={() => {
                   setIsHelpOpen(false);
-                  window.open('https://discord.gg/openbot', '_blank');
+                  window.open('https://discord.gg/bissbot', '_blank');
                 }}
                 class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[12px] font-body-sm text-left"
               >
@@ -203,7 +203,7 @@ export const PageRail: Component = () => {
               <button
                 onClick={() => {
                   setIsHelpOpen(false);
-                  window.open('https://github.com/nightly-labs/openbot/issues', '_blank');
+                  window.open('https://github.com/Tanjir-Mahmud/Mater_AI/issues', '_blank');
                 }}
                 class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[12px] font-body-sm text-left"
               >

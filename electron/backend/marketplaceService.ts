@@ -54,7 +54,7 @@ export class MarketplaceService {
   private populateVerifiedRegistry(): void {
     this.items = [];
 
-    // 1. Exactly 41 Verified OpenBot Skills (Zero installs, unpriced)
+    // 1. Exactly 41 Verified BissBot Skills (Zero installs, unpriced)
     const skillNames = [
       'Git Commit Helper', 'Code Review Analyzer', 'PostgreSQL Schema Optimizer',
       'Dockerfile Linter', 'Kubernetes Manifest Validator', 'REST API Endpoint Tester',
@@ -73,23 +73,23 @@ export class MarketplaceService {
     ];
 
     for (let i = 0; i < VERIFIED_SKILLS_COUNT; i++) {
-      const name = skillNames[i] || `OpenBot Skill ${i + 1}`;
+      const name = skillNames[i] || `BissBot Skill ${i + 1}`;
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       this.items.push({
         id: `skill-${i + 1}`,
         type: 'skill',
         name,
         slug,
-        description: `Verified OpenBot skill for ${name.toLowerCase()}.`,
-        author: 'OpenBot',
+        description: `Verified BissBot skill for ${name.toLowerCase()}.`,
+        author: 'BissBot',
         license: 'Apache-2.0',
-        installsCount: 0, // All OpenBot, zero installs rule
+        installsCount: 0, // All BissBot, zero installs rule
         version: '1.0.0',
         price: null, // Spec rule: no price rather than a made-up one
       });
     }
 
-    // 2. Exactly 27 Verified OpenBot Agents (Zero installs, unpriced)
+    // 2. Exactly 27 Verified BissBot Agents (Zero installs, unpriced)
     const agentNames = [
       'Senior Systems Architect', 'Frontend Specialist', 'Backend Engineer',
       'DevOps Automation Lead', 'Security Compliance Auditor', 'Database Administrator',
@@ -103,7 +103,7 @@ export class MarketplaceService {
     ];
 
     for (let i = 0; i < VERIFIED_AGENTS_COUNT; i++) {
-      const name = agentNames[i] || `OpenBot Agent ${i + 1}`;
+      const name = agentNames[i] || `BissBot Agent ${i + 1}`;
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       this.items.push({
         id: `agent-market-${i + 1}`,
@@ -111,7 +111,7 @@ export class MarketplaceService {
         name,
         slug,
         description: `Autonomous agent persona: ${name}.`,
-        author: 'OpenBot',
+        author: 'BissBot',
         license: 'Commercial-Included',
         installsCount: 0, // Zero installs rule
         version: '1.0.0',
@@ -142,7 +142,7 @@ export class MarketplaceService {
         name,
         slug,
         description: `Verified MCP tool bridge: ${name}. Connects your agent to external services.`,
-        author: 'OpenBot Verified',
+        author: 'BissBot Verified',
         license: 'MIT',
         installsCount: 0,
         version: '1.0.0',
@@ -293,7 +293,7 @@ export class MarketplaceService {
   }
 
   // -------------------------------------------------------------
-  // DEEP LINK RESOLUTION (openbot:// and ?plugin=<slug>)
+  // DEEP LINK RESOLUTION (bissbot:// and ?plugin=<slug>)
   // -------------------------------------------------------------
 
   public resolveDeepLink(linkUri: string): {
@@ -304,7 +304,11 @@ export class MarketplaceService {
     dialogMessage: string;
   } {
     let slug = '';
-    if (linkUri.startsWith('openbot://plugin/')) {
+    if (linkUri.startsWith('bissbot://plugin/')) {
+      slug = linkUri.replace('bissbot://plugin/', '').split('?')[0].split('/')[0];
+    } else if (linkUri.startsWith('bissbot://marketplace/')) {
+      slug = linkUri.replace('bissbot://marketplace/', '').split('?')[0].split('/')[0];
+    } else if (linkUri.startsWith('openbot://plugin/')) {
       slug = linkUri.replace('openbot://plugin/', '').split('?')[0].split('/')[0];
     } else if (linkUri.startsWith('openbot://marketplace/')) {
       slug = linkUri.replace('openbot://marketplace/', '').split('?')[0].split('/')[0];
@@ -354,7 +358,7 @@ export class MarketplaceService {
     // Is NOT a marketplace agent (no review, no listing)
     return {
       templateId: `tpl-${Date.now().toString(36)}`,
-      templateUrl: `https://openbot.run/template/${agentId}`,
+      templateUrl: `https://tiyandegital.com/template/${agentId}`,
       name,
       role,
       instructions: `Public link-only template instructions for ${name}.`,
@@ -373,14 +377,14 @@ export class MarketplaceService {
 
   public getMarketplacePage(route: 'landing' | 'news' | 'guides' | 'items'): {
     title: string;
-    servedBy: 'api.openbot.run';
+    servedBy: 'api.tiyandegital.com';
     content: any;
   } {
     switch (route) {
       case 'landing':
         return {
-          title: 'OpenBot Marketplace Registry',
-          servedBy: 'api.openbot.run',
+          title: 'BissBot Marketplace Registry',
+          servedBy: 'api.tiyandegital.com',
           content: {
             headline: 'Extend your multi-agent cluster with verified tools and personas',
             stats: this.getRegistryCounts(),
@@ -389,8 +393,8 @@ export class MarketplaceService {
         };
       case 'news':
         return {
-          title: 'OpenBot Engineering News',
-          servedBy: 'api.openbot.run',
+          title: 'BissBot Engineering News',
+          servedBy: 'api.tiyandegital.com',
           content: {
             articles: [
               { title: 'Model Context Protocol (MCP) v1alpha Integration', date: '2026-11-10' },
@@ -401,7 +405,7 @@ export class MarketplaceService {
       case 'guides':
         return {
           title: 'Marketplace Development Guides',
-          servedBy: 'api.openbot.run',
+          servedBy: 'api.tiyandegital.com',
           content: {
             guides: [
               { title: 'Authoring an MCP Tool Bridge', slug: 'authoring-mcp' },
@@ -413,7 +417,7 @@ export class MarketplaceService {
       default:
         return {
           title: 'Marketplace Catalog',
-          servedBy: 'api.openbot.run',
+          servedBy: 'api.tiyandegital.com',
           content: {
             items: this.items,
             counts: this.getRegistryCounts(),
