@@ -10,6 +10,8 @@ import { SettingsModal } from '../settings/SettingsModal';
 import { GlobalSearchModal } from '../dialogs/GlobalSearchModal';
 import { QuitConfirmDialog } from '../dialogs/QuitConfirmDialog';
 import { AgentSetupModal } from '../modals/AgentSetupModal';
+import { MobileCompanionModal } from '../mobile/MobileCompanionModal';
+import { WebClientModal } from '../web/WebClientModal';
 
 export const Shell: Component = () => {
   const isMac = () => (window as any).openbot?.platform === 'darwin';
@@ -95,6 +97,24 @@ export const Shell: Component = () => {
             </span>
           </button>
 
+          {/* Mobile Companion Quick Button */}
+          <button
+            onClick={() => setState('isMobileCompanionModalOpen', true)}
+            class="w-7 h-7 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+            title="Mobile Companion (PIN & Live Activity)"
+          >
+            <span class="material-symbols-outlined text-[16px]">smartphone</span>
+          </button>
+
+          {/* Web Client Quick Button */}
+          <button
+            onClick={() => setState('isWebClientModalOpen', true)}
+            class="w-7 h-7 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+            title="Web Client /app (Session Lock & Sandboxed Viewer)"
+          >
+            <span class="material-symbols-outlined text-[16px]">language</span>
+          </button>
+
           {/* Settings Button */}
           <button
             onClick={() => setState('isSettingsOpen', true)}
@@ -166,6 +186,8 @@ export const Shell: Component = () => {
       <SettingsModal />
       <GlobalSearchModal />
       <QuitConfirmDialog />
+      <MobileCompanionModal />
+      <WebClientModal />
       <Show when={state.isAgentSetupModalOpen}>
         <AgentSetupModal />
       </Show>

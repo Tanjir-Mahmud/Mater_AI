@@ -340,6 +340,29 @@ const bridge: OpenBotBridge = {
   openStripeCheckout: (planType: string, planId: string) => ipcRenderer.invoke('billing:open-checkout', { planType, planId }),
   checkOfflineGrace: () => ipcRenderer.invoke('billing:check-offline-grace'),
   simulateServerValidation: (outcome: string, elapsedHours?: number) => ipcRenderer.invoke('billing:simulate-server-validation', { outcome, elapsedHours }),
+
+  // Milestone 8: Mobile App & Web Client APIs
+  verifyMobilePin: (deviceId: string, pin: string) => ipcRenderer.invoke('mobile:verify-pin', { deviceId, pin }),
+  validateMobileUpload: (fileName: string, byteSize: number) => ipcRenderer.invoke('mobile:validate-upload', { fileName, byteSize }),
+  queueMobileOutbox: (params: any) => ipcRenderer.invoke('mobile:queue-outbox', params),
+  flushMobileOutbox: (deviceId: string) => ipcRenderer.invoke('mobile:flush-outbox', deviceId),
+  calcMobileReconnectDelay: (failureCount: number) => ipcRenderer.invoke('mobile:calc-reconnect', failureCount),
+  updateLiveActivity: (params: any) => ipcRenderer.invoke('mobile:update-live-activity', params),
+  createAgentFromMobilePrompt: (prompt: string) => ipcRenderer.invoke('mobile:create-agent-prompt', prompt),
+  checkMobileDesktopOnly: (feature: string) => ipcRenderer.invoke('mobile:check-desktop-only', feature),
+
+  getSignalConnectionTicket: (accountId: string, hostId: string) => ipcRenderer.invoke('web:get-signal-ticket', { accountId, hostId }),
+  acquireTabLock: (hostId: string, accountId: string, tabId: string) => ipcRenderer.invoke('web:acquire-tab-lock', { hostId, accountId, tabId }),
+  takeOverTabLock: (hostId: string, accountId: string, tabId: string) => ipcRenderer.invoke('web:takeover-tab-lock', { hostId, accountId, tabId }),
+  releaseTabLock: (hostId: string, accountId: string, tabId: string) => ipcRenderer.invoke('web:release-tab-lock', { hostId, accountId, tabId }),
+  inspectInlineMedia: (fileName: string, byteSize: number, mimeType?: string) => ipcRenderer.invoke('web:inspect-media', { fileName, byteSize, mimeType }),
+  checkObjectUrlAllowed: (fileName: string, mimeType?: string) => ipcRenderer.invoke('web:check-object-url', { fileName, mimeType }),
+  requestDownloadSlot: (fileId: string) => ipcRenderer.invoke('web:request-download', fileId),
+  releaseDownloadSlot: () => ipcRenderer.invoke('web:release-download'),
+  cancelFileTransfer: (transferId: string) => ipcRenderer.invoke('web:cancel-transfer', transferId),
+  parseAndCleanDeepLink: (rawUrl: string) => ipcRenderer.invoke('web:parse-deeplink', rawUrl),
+  evaluateMessageRetry: (hostCapabilities: string[]) => ipcRenderer.invoke('web:eval-retry', hostCapabilities),
+  checkWebDesktopOnly: (feature: string) => ipcRenderer.invoke('web:check-desktop-only', feature),
 };
 
 contextBridge.exposeInMainWorld('openbot', bridge);

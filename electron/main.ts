@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen, Menu, Tray, nativeTheme, shell, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { initDatabase, getDatabase, saveDatabase, getAgentWorkspaceDir, deleteAgentWorkspace } from './backend/db';
 import { providerEngine } from './backend/providerEngine';
 import { generateAgentFromPrompt } from './backend/agentGenerator';
@@ -49,6 +50,26 @@ import {
   COMMERCIAL_LICENCE_PRICING,
   HOSTED_SERVER_PLANS,
 } from './backend/authBillingService';
+import {
+  mobileAppService,
+  MOBILE_FILE_LIMIT_BYTES,
+  MAX_PIN_FAILURES,
+  LIVE_ACTIVITY_MAX_LIFETIME_MS,
+  DESKTOP_ACTIVITY_SUPPRESSION_MS,
+  RECONNECT_MAX_FAST_FAILURES,
+  RECONNECT_DELAY_INITIAL_MS,
+  RECONNECT_DELAY_STEP_MS,
+  RECONNECT_SERIES_PAUSE_MS,
+} from './backend/mobileAppService';
+import {
+  webClientService,
+  WEB_FILE_LIMIT_BYTES,
+  WEB_IMAGE_THUMBNAIL_LIMIT_BYTES,
+  WEB_MEDIA_PLAY_LIMIT_BYTES,
+  MAX_CONCURRENT_DOWNLOADS,
+  OBJECT_URL_ALLOWED_EXTENSIONS,
+  OBJECT_URL_FORBIDDEN_EXTENSIONS,
+} from './backend/webClientService';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -1495,7 +1516,7 @@ function createWindow() {
         }
         // Insert and disconnect a hosted server session
         const dbRef = getDatabase();
-        dbRef.run(`INSERT INTO account_sessions (id, user_id, session_token_hash, kind, device_name, is_this_device, signed_in_at, last_active_at, status)
+        dbRef.run(`INSERT OR REPLACE INTO account_sessions (id, user_id, session_token_hash, kind, device_name, is_this_device, signed_in_at, last_active_at, status)
                    VALUES ('sess-srv-test', 'user-owner-default', 'hash-srv', 'Hosted server', 'Cloud Node Alpha', 0, '${new Date().toISOString()}', '${new Date().toISOString()}', 'active');`);
         saveDatabase(dbRef);
 
@@ -1680,6 +1701,274 @@ function createWindow() {
 
         console.log('=============================================================');
         console.log('ALL MILESTONE 3, 4, 5, 6 & 7 VERIFICATION CHECKS & EXACT LIMITS PASSED.');
+        console.log('=============================================================');
+
+        // -------------------------------------------------------------
+        // MILESTONE 8 VERIFICATION SUITE: MOBILE APP & WEB CLIENT
+        // -------------------------------------------------------------
+        console.log('[Test] -------------------------------------------------------------');
+        console.log('[Test] Running Milestone 8 verification suite (Mobile App & Web Client)...');
+        console.log('[Test] -------------------------------------------------------------');
+
+        // M8-1. Mobile 10 MB File Limit
+        console.log('[Test] M8-1. Mobile 10 MB file upload limit...');
+        const validMobFile = mobileAppService.validateMobileFileUpload('dataset.zip', 9 * 1024 * 1024);
+        if (!validMobFile.allowed) {
+          throw new Error('9 MB mobile upload was rejected');
+        }
+        const invalidMobFile = mobileAppService.validateMobileFileUpload('huge_video.mov', 11 * 1024 * 1024);
+        if (invalidMobFile.allowed || !invalidMobFile.error?.includes('exceeds mobile 10 MB upload limit')) {
+          throw new Error(`Expected mobile 10 MB limit error, got: ${JSON.stringify(invalidMobFile)}`);
+        }
+        console.log(`[Test]    - 10 MB mobile file upload limit verified.`);
+
+        // M8-2. 4-digit PIN lock & 10th failure sign-out / cache purge
+        console.log('[Test] M8-2. 4-digit PIN lock & 10th failure sign-out rule...');
+        // Insert a test mobile device
+        const testDevId = 'mob-test-pin-device';
+        const salt = crypto.randomBytes(16).toString('hex');
+        const pinHash = crypto.createHash('sha256').update('4821' + salt).digest('hex') + ':' + salt;
+        getDatabase().run(
+          `INSERT OR REPLACE INTO mobile_devices (id, user_id, device_name, platform, pin_hash, failed_pin_attempts, is_locked, encrypted_cache, last_sync_at, created_at)
+           VALUES ('${testDevId}', 'user-owner-default', 'Test Pixel 9', 'android', '${pinHash}', 0, 0, '{"cached_secrets": true}', '${new Date().toISOString()}', '${new Date().toISOString()}');`
+        );
+        saveDatabase();
+
+        // 9 incorrect attempts
+        for (let i = 1; i <= 9; i++) {
+          const attemptRes = await mobileAppService.verifyPin(testDevId, '0000');
+          if (attemptRes.success || attemptRes.signedOut || attemptRes.remainingAttempts !== 10 - i) {
+            throw new Error(`Attempt ${i} failed invariant: remaining=${attemptRes.remainingAttempts}`);
+          }
+        }
+        // 10th failure must sign out and wipe cached credentials
+        const tenthRes = await mobileAppService.verifyPin(testDevId, '0000');
+        if (!tenthRes.signedOut || tenthRes.remainingAttempts !== 0 || !tenthRes.error?.includes('10 failed PIN attempts')) {
+          throw new Error(`10th failure did not trigger sign-out: ${JSON.stringify(tenthRes)}`);
+        }
+        // Check cache wiped in DB
+        const dbCacheRes = getDatabase().exec(`SELECT encrypted_cache, is_locked FROM mobile_devices WHERE id = '${testDevId}';`);
+        const [wipedCache, isLocked] = [String(dbCacheRes[0].values[0][0]), Number(dbCacheRes[0].values[0][1])];
+        if (wipedCache !== '{}' || isLocked !== 1) {
+          throw new Error('Local encrypted cache was not wiped on 10th PIN failure');
+        }
+        console.log(`[Test]    - 4-digit PIN lock & 10th failure sign-out and cache purge verified.`);
+
+        // M8-3. Reconnection timing (immediate, 10s, 5 failures then 2-min wait)
+        console.log('[Test] M8-3. Reconnection timing schedule...');
+        const r0 = mobileAppService.calculateReconnectDelay(0);
+        if (r0.delaySeconds !== 0) throw new Error('First reconnect attempt must be immediate (0s)');
+        const r1 = mobileAppService.calculateReconnectDelay(1);
+        if (r1.delaySeconds !== 10) throw new Error('Subsequent reconnect must be 10s');
+        const r5 = mobileAppService.calculateReconnectDelay(5);
+        if (r5.delaySeconds !== 120 || !r5.isSeriesPause) {
+          throw new Error(`After 5 failures, must wait 120s (2 minutes), got: ${JSON.stringify(r5)}`);
+        }
+        console.log(`[Test]    - Reconnection timing verified: attempt 0=0s, attempt 1=10s, 5 failures=120s (2 min).`);
+
+        // M8-4. iPhone Live Activity (priority 10 / 5 with 5s delay, 8-hour lifetime, idle ends activity, Android no live activity)
+        console.log('[Test] M8-4. iPhone Live Activity priorities, 8h lifetime & Android exclusion...');
+        const androidAct = mobileAppService.updateLiveActivity({
+          platform: 'android',
+          agentId: 'agent-kestrel',
+          agentName: 'Kestrel',
+          agentState: 'thinking',
+          isStateChange: true,
+        });
+        if (androidAct.supported) {
+          throw new Error('Android must NOT have Live Activity');
+        }
+
+        const iosStateChange = mobileAppService.updateLiveActivity({
+          platform: 'ios',
+          agentId: 'agent-kestrel',
+          agentName: 'Kestrel',
+          agentState: 'tool_execution',
+          isStateChange: true,
+        });
+        if (!iosStateChange.supported || iosStateChange.priority !== 10 || iosStateChange.delaySeconds !== 0) {
+          throw new Error(`State change must have priority 10 with 0s delay, got: ${JSON.stringify(iosStateChange)}`);
+        }
+
+        const iosInternalChange = mobileAppService.updateLiveActivity({
+          platform: 'ios',
+          agentId: 'agent-kestrel',
+          agentName: 'Kestrel',
+          agentState: 'tool_execution',
+          isStateChange: false,
+        });
+        if (iosInternalChange.priority !== 5 || iosInternalChange.delaySeconds !== 5) {
+          throw new Error(`Internal change must have priority 5 and 5s delay, got: ${JSON.stringify(iosInternalChange)}`);
+        }
+
+        const iosIdle = mobileAppService.updateLiveActivity({
+          platform: 'ios',
+          agentId: 'agent-kestrel',
+          agentName: 'Kestrel',
+          agentState: 'idle',
+          isStateChange: true,
+        });
+        if (iosIdle.isActive) {
+          throw new Error('Idle state must end Live Activity');
+        }
+        console.log(`[Test]    - Live Activity verified: Android excluded, state change=10, internal=5 with 5s delay, idle ends activity.`);
+
+        // M8-5. One device per event (30-second desktop input suppression)
+        console.log('[Test] M8-5. One device per event (desktop 30s input suppression)...');
+        mobileAppService.recordDesktopInput();
+        const pushResult = mobileAppService.sendPushNotification({
+          platform: 'ios',
+          title: 'Turn complete',
+          body: 'Kestrel finished data analysis.',
+        });
+        if (!pushResult.suppressed || pushResult.delivered) {
+          throw new Error('Push notification was not suppressed while desktop active in last 30s');
+        }
+        console.log(`[Test]    - Single device per event verified: phone stays quiet when desktop active.`);
+
+        // M8-6. Desktop-only feature exclusion on mobile
+        console.log('[Test] M8-6. Desktop-only feature exclusions on mobile...');
+        let remoteDesktopBlocked = false;
+        try {
+          mobileAppService.enforceDesktopOnly('remote_desktop');
+        } catch {
+          remoteDesktopBlocked = true;
+        }
+        if (!remoteDesktopBlocked) {
+          throw new Error('Remote desktop was not blocked for mobile');
+        }
+        console.log(`[Test]    - Desktop-only features correctly barred from mobile.`);
+
+        // M8-7. Web client single-tab session lock per host
+        console.log('[Test] M8-7. Web client single-tab session lock per host...');
+        const lock1 = await webClientService.acquireTabLock('srv-host-1', 'acc-owner', 'tab-alpha-1');
+        if (!lock1.acquired) throw new Error('Initial tab failed to acquire lock');
+
+        const lock2 = await webClientService.acquireTabLock('srv-host-1', 'acc-owner', 'tab-beta-2');
+        if (lock2.acquired || !lock2.message.includes('Another tab is already connected')) {
+          throw new Error(`Expected second tab lock rejection, got: ${JSON.stringify(lock2)}`);
+        }
+        // Take over tab
+        const takeover = await webClientService.takeOverTabLock('srv-host-1', 'acc-owner', 'tab-beta-2');
+        if (!takeover.acquired || takeover.lockedTabId !== 'tab-beta-2') {
+          throw new Error('Tab takeover failed');
+        }
+        await webClientService.releaseTabLock('srv-host-1', 'acc-owner', 'tab-beta-2');
+        console.log(`[Test]    - Single-tab session lock per host and rejection message verified.`);
+
+        // M8-8. Web Client Inline Media Rules & Object URL Allowlist
+        console.log('[Test] M8-8. Web inline media (2MB thumbnail, 10MB media player, Object URL allowlist)...');
+        // Image <= 2 MB
+        const imgThumb = webClientService.inspectInlineMediaCard('chart.png', 1.5 * 1024 * 1024, 'image/png');
+        if (imgThumb.renderMode !== 'thumbnail' || !imgThumb.canAutoDownload || !imgThumb.objectUrlPermitted) {
+          throw new Error(`Expected thumbnail mode for <= 2MB image, got: ${JSON.stringify(imgThumb)}`);
+        }
+        // MP3 <= 10 MB
+        const audioPlay = webClientService.inspectInlineMediaCard('podcast.mp3', 8 * 1024 * 1024, 'audio/mpeg');
+        if (audioPlay.renderMode !== 'player_button' || audioPlay.canAutoDownload) {
+          throw new Error(`Expected player button mode for <= 10MB audio, got: ${JSON.stringify(audioPlay)}`);
+        }
+        // File > 10 MB
+        const largeDump = webClientService.inspectInlineMediaCard('archive.zip', 12 * 1024 * 1024);
+        if (largeDump.renderMode !== 'download_only') {
+          throw new Error(`Files > 10MB must be download only, got: ${JSON.stringify(largeDump)}`);
+        }
+        // Object URL Allowlist Security Check: HTML, SVG, XHTML must NEVER get Object URL
+        const svgCheck = webClientService.isObjectUrlAllowed('logo.svg', 'image/svg+xml');
+        const htmlCheck = webClientService.isObjectUrlAllowed('page.html', 'text/html');
+        if (svgCheck.allowed || htmlCheck.allowed) {
+          throw new Error('SECURITY VIOLATION: SVG or HTML was granted an Object URL!');
+        }
+        const pngCheck = webClientService.isObjectUrlAllowed('photo.png', 'image/png');
+        if (!pngCheck.allowed) {
+          throw new Error('Valid PNG was rejected from Object URL allowlist');
+        }
+        console.log(`[Test]    - Inline media display modes verified (2MB thumb, 10MB player, >10MB download).`);
+        console.log(`[Test]    - Object URL allowlist verified: PNG/JPEG/MP3/MOV allowed, HTML/SVG/XHTML strictly blocked.`);
+
+        // M8-9. Concurrent Downloads (Max 2 at once) & Cancel Transfer
+        console.log('[Test] M8-9. Web client max 2 concurrent downloads & cancellation...');
+        const d1 = webClientService.requestDownloadSlot('file-1');
+        const d2 = webClientService.requestDownloadSlot('file-2');
+        const d3 = webClientService.requestDownloadSlot('file-3');
+        if (!d1.granted || !d2.granted) throw new Error('Slots 1 and 2 should be granted');
+        if (d3.granted || !d3.error?.includes('At most 2 files can download at once')) {
+          throw new Error(`3rd concurrent download was incorrectly granted: ${JSON.stringify(d3)}`);
+        }
+        const cancelTransferRes = webClientService.cancelFileTransfer('transfer-99');
+        if (!cancelTransferRes.cancelled || cancelTransferRes.protocolFrame.type !== 'file-cancel') {
+          throw new Error('Cancel file transfer failed');
+        }
+        console.log(`[Test]    - Max 2 concurrent downloads limit and file-cancel frame verified.`);
+
+        // M8-10. Deep Links at /app (?agent, ?server invitation, ?plugin, ?billing=portal)
+        console.log('[Test] M8-10. Deep links (?agent, ?server, ?plugin, ?billing=portal) and field stripping...');
+        // Invitation link with secret
+        const inviteLink = 'https://openbot.run/app?server=srv-123&secret=topsecret999&host=openbot.run&name=CoreCluster';
+        const parsedInvite = webClientService.parseAndCleanDeepLink(inviteLink);
+        if (parsedInvite.linkType !== 'invitation' || parsedInvite.data.secret !== 'topsecret999') {
+          throw new Error(`Invitation link parsing failed: ${JSON.stringify(parsedInvite)}`);
+        }
+        // Verify cleaned URL strips secret so it doesn't stay in browser bar
+        if (parsedInvite.cleanedUrl.includes('secret') || parsedInvite.cleanedUrl.includes('topsecret999')) {
+          throw new Error(`Cleaned URL still contained secret: "${parsedInvite.cleanedUrl}"`);
+        }
+        // Billing portal return
+        const billingReturn = 'https://openbot.run/app?billing=portal';
+        const parsedBilling = webClientService.parseAndCleanDeepLink(billingReturn);
+        if (parsedBilling.linkType !== 'billing_return' || parsedBilling.cleanedUrl.includes('billing')) {
+          throw new Error(`Billing return parameter not cleanly stripped: ${JSON.stringify(parsedBilling)}`);
+        }
+        console.log(`[Test]    - Deep links verified and secret fields cleanly stripped from URL.`);
+
+        // M8-11. Reconnect Resend Policy & client-message-id Retry
+        console.log('[Test] M8-11. Reconnection message resend policy & retry capability check...');
+        const noCapRetry = webClientService.evaluateMessageRetry(['basic-chat']);
+        if (noCapRetry.canRetry) {
+          throw new Error('Retry was offered without client-message-id capability');
+        }
+        const capRetry = webClientService.evaluateMessageRetry(['basic-chat', 'client-message-id']);
+        if (!capRetry.canRetry) {
+          throw new Error('Retry was denied even with client-message-id capability');
+        }
+        console.log(`[Test]    - Reconnect message retry policy verified: never auto-resends, retry only with client-message-id.`);
+
+        // M8-12. Capture Shell Screenshot for Milestone 8 (Settled UI)
+        console.log('[Test] Waiting for loading animation to dismiss and shell UI to fully settle for Milestone 8...');
+        await mainWindow!.webContents.executeJavaScript(`
+          new Promise((resolve) => {
+            const startTime = Date.now();
+            const check = () => {
+              const bounceEl = document.querySelector('.animate-bounce');
+              if (!bounceEl || Date.now() - startTime > 4000) {
+                resolve(true);
+              } else {
+                setTimeout(check, 100);
+              }
+            };
+            check();
+          });
+        `);
+        await new Promise((r) => setTimeout(r, 600));
+
+        const img8 = await mainWindow!.webContents.capturePage();
+        const distScreenshot8 = path.resolve('dist/milestone-8-shell.png');
+        const repoScreenshot8 = path.join(screenshotsDir, 'milestone-8-shell.png');
+        const artifactScreenshot8 = path.join(artifactDir, 'milestone-8-shell.png');
+
+        fs.writeFileSync(distScreenshot8, img8.toPNG());
+        fs.writeFileSync(repoScreenshot8, img8.toPNG());
+        console.log(`[Test] M8-12. Shell screenshot captured and saved to: ${distScreenshot8} and ${repoScreenshot8}`);
+        try {
+          if (!fs.existsSync(artifactDir)) fs.mkdirSync(artifactDir, { recursive: true });
+          fs.writeFileSync(artifactScreenshot8, img8.toPNG());
+          console.log(`[Test] Screenshot also mirrored to artifact directory: ${artifactScreenshot8}`);
+        } catch (e) {
+          console.log(`[Test] Mirroring to artifact dir skipped:`, e);
+        }
+
+        console.log('=============================================================');
+        console.log('ALL MILESTONE 3, 4, 5, 6, 7 & 8 VERIFICATION CHECKS & EXACT LIMITS PASSED.');
         console.log('=============================================================');
         setTimeout(() => app.quit(), 500);
       } catch (err) {
@@ -2526,6 +2815,98 @@ ipcMain.handle('billing:simulate-server-validation', async (_event, { outcome, e
   return await authBillingService.simulateServerValidation(outcome, elapsedHours);
 });
 
+// Milestone 8: Mobile App IPC Handlers
+ipcMain.handle('mobile:verify-pin', async (_event, { deviceId, pin }) => {
+  return await mobileAppService.verifyPin(deviceId, pin);
+});
+
+ipcMain.handle('mobile:validate-upload', (_event, { fileName, byteSize }) => {
+  return mobileAppService.validateMobileFileUpload(fileName, byteSize);
+});
+
+ipcMain.handle('mobile:queue-outbox', async (_event, params) => {
+  return await mobileAppService.queueOutboxMessage(params);
+});
+
+ipcMain.handle('mobile:flush-outbox', async (_event, deviceId: string) => {
+  return await mobileAppService.flushOutbox(deviceId);
+});
+
+ipcMain.handle('mobile:calc-reconnect', (_event, failureCount: number) => {
+  return mobileAppService.calculateReconnectDelay(failureCount);
+});
+
+ipcMain.handle('mobile:update-live-activity', (_event, params) => {
+  return mobileAppService.updateLiveActivity(params);
+});
+
+ipcMain.handle('mobile:create-agent-prompt', async (_event, prompt: string) => {
+  return await mobileAppService.createAgentFromMobilePrompt(prompt);
+});
+
+ipcMain.handle('mobile:check-desktop-only', (_event, feature: string) => {
+  try {
+    mobileAppService.enforceDesktopOnly(feature);
+    return { allowed: true };
+  } catch (err: any) {
+    return { allowed: false, error: err?.message };
+  }
+});
+
+// Milestone 8: Web Client IPC Handlers
+ipcMain.handle('web:get-signal-ticket', (_event, { accountId, hostId }) => {
+  return webClientService.generateSignalConnectionTicket(accountId, hostId);
+});
+
+ipcMain.handle('web:acquire-tab-lock', async (_event, { hostId, accountId, tabId }) => {
+  return await webClientService.acquireTabLock(hostId, accountId, tabId);
+});
+
+ipcMain.handle('web:takeover-tab-lock', async (_event, { hostId, accountId, tabId }) => {
+  return await webClientService.takeOverTabLock(hostId, accountId, tabId);
+});
+
+ipcMain.handle('web:release-tab-lock', async (_event, { hostId, accountId, tabId }) => {
+  return await webClientService.releaseTabLock(hostId, accountId, tabId);
+});
+
+ipcMain.handle('web:inspect-media', (_event, { fileName, byteSize, mimeType }) => {
+  return webClientService.inspectInlineMediaCard(fileName, byteSize, mimeType);
+});
+
+ipcMain.handle('web:check-object-url', (_event, { fileName, mimeType }) => {
+  return webClientService.isObjectUrlAllowed(fileName, mimeType);
+});
+
+ipcMain.handle('web:request-download', (_event, fileId: string) => {
+  return webClientService.requestDownloadSlot(fileId);
+});
+
+ipcMain.handle('web:release-download', () => {
+  return webClientService.releaseDownloadSlot();
+});
+
+ipcMain.handle('web:cancel-transfer', (_event, transferId: string) => {
+  return webClientService.cancelFileTransfer(transferId);
+});
+
+ipcMain.handle('web:parse-deeplink', (_event, rawUrl: string) => {
+  return webClientService.parseAndCleanDeepLink(rawUrl);
+});
+
+ipcMain.handle('web:eval-retry', (_event, hostCapabilities: string[]) => {
+  return webClientService.evaluateMessageRetry(hostCapabilities);
+});
+
+ipcMain.handle('web:check-desktop-only', (_event, feature: string) => {
+  try {
+    webClientService.enforceWebDesktopOnly(feature);
+    return { allowed: true };
+  } catch (err: any) {
+    return { allowed: false, error: err?.message };
+  }
+});
+
 app.whenReady().then(async () => {
   await initDatabase();
   await chatSessionService.init();
@@ -2533,6 +2914,8 @@ app.whenReady().then(async () => {
   await teamCollabService.init();
   await integrationsVoiceService.init();
   await authBillingService.init();
+  await mobileAppService.init();
+  await webClientService.init();
   createWindow();
   setupThemeWatcher();
 

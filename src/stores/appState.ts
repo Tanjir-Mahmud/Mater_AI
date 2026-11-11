@@ -44,6 +44,11 @@ import {
   CommercialLicence,
   HostedServerSubscription,
   OfflineGraceState,
+  MobileDeviceState,
+  LiveActivityTelemetry,
+  WebSessionLockState,
+  InlineMediaInspection,
+  DeepLinkPayload,
 } from '../types';
 import { i18n } from '../shared/i18n';
 
@@ -584,6 +589,25 @@ export const [state, setState] = createStore({
     lastValidatedAt: new Date().toISOString(),
     message: 'Licence is valid and verified online.',
   } as OfflineGraceState,
+
+  // Milestone 8 state properties
+  mobileDevice: {
+    id: 'mob-dev-primary',
+    deviceName: 'iPhone 16 Pro (Mobile Companion)',
+    platform: 'ios',
+    failedPinAttempts: 0,
+    isLocked: false,
+    cachedAgentsCount: 3,
+    lastSyncAt: new Date().toISOString(),
+  } as MobileDeviceState | null,
+  webSessionLock: null as WebSessionLockState | null,
+  activeLiveActivity: null as LiveActivityTelemetry | null,
+  isWebClientModalOpen: false,
+  isMobileCompanionModalOpen: false,
+  pendingDeepLink: null as DeepLinkPayload | null,
+  reconnectAttempt: 0,
+  reconnectElapsedSeconds: 0,
+  reconnectText: '',
 });
 
 export function selectPage(page: PageId) {
@@ -2166,6 +2190,165 @@ export async function checkOfflineGraceAction() {
     console.error('Offline grace check error:', err);
   }
 }
+
+// -------------------------------------------------------------
+// Milestone 8: Mobile App & Web Client Actions
+// -------------------------------------------------------------
+
+export async function verifyMobilePinAction(pin: string) {
+  try {
+    if ((window as any).openbot?.verifyMobilePin) {
+      const res = await (window as any).openbot.verifyMobilePin('mob-dev-primary', pin);
+      if (res.signedOut) {
+        addToast('error', 'Device Signed Out', res.error || '10 failed PIN attempts.');
+        setState('mobileDevice', 'isLocked', true);
+      } else if (!res.success) {
+        addToast('warning', 'Incorrect PIN', res.error);
+      } else {
+        addToast('success', 'Mobile Unlocked', 'Session key active.');
+        setState('mobileDevice', 'isLocked', false);
+      }
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'PIN Verification Error', err?.message);
+  }
+}
+
+export async function validateMobileUploadAction(fileName: string, byteSize: number) {
+  try {
+    if ((window as any).openbot?.validateMobileUpload) {
+      return await (window as any).openbot.validateMobileUpload(fileName, byteSize);
+    }
+  } catch (err: any) {
+    return { allowed: false, error: err?.message };
+  }
+}
+
+export async function queueMobileOutboxAction(params: any) {
+  try {
+    if ((window as any).openbot?.queueMobileOutbox) {
+      const res = await (window as any).openbot.queueMobileOutbox(params);
+      addToast('success', 'Outbox Queued', 'Message stored locally. Will flush on host reconnect.');
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Outbox Error', err?.message);
+  }
+}
+
+export async function flushMobileOutboxAction() {
+  try {
+    if ((window as any).openbot?.flushMobileOutbox) {
+      const res = await (window as any).openbot.flushMobileOutbox('mob-dev-primary');
+      if (res.syncedCount > 0) {
+        addToast('success', 'Outbox Synced', `Flushed ${res.syncedCount} queued messages to host.`);
+      }
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Outbox Flush Error', err?.message);
+  }
+}
+
+export async function updateLiveActivityAction(params: any) {
+  try {
+    if ((window as any).openbot?.updateLiveActivity) {
+      const res = await (window as any).openbot.updateLiveActivity(params);
+      setState('activeLiveActivity', res);
+      return res;
+    }
+  } catch (err: any) {
+    console.error('Live activity update error:', err);
+  }
+}
+
+export async function acquireTabLockAction(hostId: string, accountId: string, tabId: string) {
+  try {
+    if ((window as any).openbot?.acquireTabLock) {
+      const res = await (window as any).openbot.acquireTabLock(hostId, accountId, tabId);
+      setState('webSessionLock', res);
+      if (!res.acquired) {
+        addToast('warning', 'Session Lock Active', res.message);
+      }
+      return res;
+    }
+  } catch (err: any) {
+    console.error('Tab lock acquire error:', err);
+  }
+}
+
+export async function takeOverTabLockAction(hostId: string, accountId: string, tabId: string) {
+  try {
+    if ((window as any).openbot?.takeOverTabLock) {
+      const res = await (window as any).openbot.takeOverTabLock(hostId, accountId, tabId);
+      setState('webSessionLock', res);
+      addToast('success', 'Session Taken Over', 'This tab now holds the active host session.');
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Takeover error', err?.message);
+  }
+}
+
+export async function releaseTabLockAction(hostId: string, accountId: string, tabId: string) {
+  try {
+    if ((window as any).openbot?.releaseTabLock) {
+      return await (window as any).openbot.releaseTabLock(hostId, accountId, tabId);
+    }
+  } catch (err: any) {
+    console.error('Release tab lock error:', err);
+  }
+}
+
+export async function inspectInlineMediaAction(fileName: string, byteSize: number, mimeType?: string) {
+  try {
+    if ((window as any).openbot?.inspectInlineMedia) {
+      return await (window as any).openbot.inspectInlineMedia(fileName, byteSize, mimeType);
+    }
+  } catch (err: any) {
+    return { renderMode: 'download_only', objectUrlPermitted: false, canAutoDownload: false };
+  }
+}
+
+export async function requestDownloadSlotAction(fileId: string) {
+  try {
+    if ((window as any).openbot?.requestDownloadSlot) {
+      const res = await (window as any).openbot.requestDownloadSlot(fileId);
+      if (!res.granted) {
+        addToast('warning', 'Download Queued', res.error || 'At most 2 files can download at once.');
+      }
+      return res;
+    }
+  } catch (err: any) {
+    return { granted: false, activeDownloads: 2, error: err?.message };
+  }
+}
+
+export async function cancelFileTransferAction(transferId: string) {
+  try {
+    if ((window as any).openbot?.cancelFileTransfer) {
+      const res = await (window as any).openbot.cancelFileTransfer(transferId);
+      addToast('warning', 'Transfer Cancelled', `File transfer ${transferId} cancelled via protocol frame.`);
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Cancel transfer error', err?.message);
+  }
+}
+
+export async function parseAndCleanDeepLinkAction(rawUrl: string) {
+  try {
+    if ((window as any).openbot?.parseAndCleanDeepLink) {
+      const res = await (window as any).openbot.parseAndCleanDeepLink(rawUrl);
+      setState('pendingDeepLink', res);
+      return res;
+    }
+  } catch (err: any) {
+    console.error('Deep link parse error:', err);
+  }
+}
+
 
 
 

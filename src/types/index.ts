@@ -591,4 +591,44 @@ export interface LicencePriceCalculation {
   devicesAllowed: number;
 }
 
+// Milestone 8: Mobile App & Web Client Types
+export interface MobileDeviceState {
+  id: string;
+  deviceName: string;
+  platform: 'ios' | 'android';
+  failedPinAttempts: number;
+  isLocked: boolean;
+  cachedAgentsCount: number;
+  lastSyncAt: string;
+}
+
+export interface LiveActivityTelemetry {
+  supported: boolean;
+  activityId?: string;
+  priority?: number;
+  delaySeconds?: number;
+  isActive: boolean;
+  message: string;
+}
+
+export interface WebSessionLockState {
+  acquired: boolean;
+  lockedTabId?: string;
+  message: string;
+}
+
+export interface InlineMediaInspection {
+  renderMode: 'thumbnail' | 'player_button' | 'download_only';
+  objectUrlPermitted: boolean;
+  canAutoDownload: boolean;
+}
+
+export interface DeepLinkPayload {
+  linkType: 'agent' | 'invitation' | 'plugin' | 'billing_return' | 'none';
+  data: any;
+  cleanedUrl: string;
+  requiresUserConfirmation: boolean;
+}
+
+
 

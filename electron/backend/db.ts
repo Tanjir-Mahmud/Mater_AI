@@ -427,6 +427,41 @@ export interface DBLicenceOfflineState {
   last_validation_error?: string;
 }
 
+// Milestone 8: Mobile App & Web Client Interfaces
+export interface DBMobileDevice {
+  id: string;
+  user_id: string;
+  device_name: string;
+  platform: 'ios' | 'android';
+  pin_hash: string;
+  failed_pin_attempts: number;
+  is_locked: number;
+  encrypted_cache: string; // JSON { agents, sections, recent_chats, channels, drawer_values }
+  push_token?: string;
+  last_sync_at: string;
+  created_at: string;
+}
+
+export interface DBMobileOutboxEntry {
+  id: string;
+  device_id: string;
+  thread_id: string;
+  agent_id: string;
+  body: string;
+  attachments: string;
+  status: 'queued' | 'synced' | 'failed';
+  created_at: string;
+}
+
+export interface DBWebSessionLock {
+  id: string;
+  host_id: string;
+  account_id: string;
+  tab_id: string;
+  locked_at: string;
+  last_heartbeat_at: string;
+}
+
 let SQL: SqlJsStatic | null = null;
 let dbInstance: Database | null = null;
 
@@ -1015,6 +1050,40 @@ export async function initDatabase(): Promise<Database> {
       offline_grace_hours INTEGER NOT NULL DEFAULT 24,
       is_blocked INTEGER NOT NULL DEFAULT 0,
       last_validation_error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS mobile_devices (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      device_name TEXT NOT NULL,
+      platform TEXT NOT NULL,
+      pin_hash TEXT NOT NULL,
+      failed_pin_attempts INTEGER NOT NULL DEFAULT 0,
+      is_locked INTEGER NOT NULL DEFAULT 0,
+      encrypted_cache TEXT NOT NULL DEFAULT '{}',
+      push_token TEXT,
+      last_sync_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS mobile_outbox (
+      id TEXT PRIMARY KEY,
+      device_id TEXT NOT NULL,
+      thread_id TEXT NOT NULL,
+      agent_id TEXT NOT NULL,
+      body TEXT NOT NULL,
+      attachments TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL DEFAULT 'queued',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS web_session_locks (
+      id TEXT PRIMARY KEY,
+      host_id TEXT NOT NULL,
+      account_id TEXT NOT NULL,
+      tab_id TEXT NOT NULL,
+      locked_at TEXT NOT NULL,
+      last_heartbeat_at TEXT NOT NULL
     );
   `);
 
