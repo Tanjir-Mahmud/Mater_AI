@@ -42,36 +42,76 @@ export class MobileAppService {
     if (this.initialised) return;
     const db = getDatabase();
 
-    // Seed default mobile device companion if not exists
-    const res = db.exec('SELECT * FROM mobile_devices LIMIT 1;');
-    if (!res.length || !res[0].values.length) {
-      const now = new Date().toISOString();
-      const salt = crypto.randomBytes(16).toString('hex');
-      const pinHash = crypto.createHash('sha256').update('1234' + salt).digest('hex') + ':' + salt;
-      db.run(
-        `INSERT INTO mobile_devices (id, user_id, device_name, platform, pin_hash, failed_pin_attempts, is_locked, encrypted_cache, push_token, last_sync_at, created_at)
-         VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?);`,
-        [
-          'mob-dev-primary',
-          'user-owner-default',
-          'iPhone 16 Pro (Mobile Companion)',
-          'ios',
-          pinHash,
-          JSON.stringify({
-            agents: ['agent-kestrel', 'agent-cipher', 'agent-vanguard'],
-            sections: ['pinned', 'needs_you'],
-            recent_chats: ['thread-1', 'thread-2'],
-            channels: ['channel-production'],
-            drawer_values: { active_server: 'server-local' },
-          }),
-          'apns_token_mock_123',
-          now,
-          now,
-        ]
-      );
+    // Clean up any legacy fake seed devices or mock tokens (Milestone 8 cleanup migration)
+    try {
+      db.run(`DELETE FROM mobile_devices WHERE id = 'mob-dev-primary' OR push_token LIKE '%mock%' OR id LIKE 'mob-test-%';`);
+      db.run(`DELETE FROM mobile_outbox WHERE device_id = 'mob-dev-primary' OR device_id LIKE 'mob-test-%';`);
       saveDatabase(db);
+    } catch (e) {
+      console.warn('Mobile database cleanup warning:', e);
     }
+
+    // Spec rule: The device list starts EMPTY until the user links a real phone via Mobile Connect.
+    // Do NOT seed any device, fake agents, fake channels, or mock tokens.
     this.initialised = true;
+  }
+
+  // -------------------------------------------------------------
+  // DEVICE LINKING & MANAGEMENT
+  // -------------------------------------------------------------
+
+  public async linkDevice(params: {
+    id?: string;
+    userId: string;
+    deviceName: string;
+    platform: 'ios' | 'android';
+    pin: string;
+    pushToken?: string;
+  }): Promise<{ success: boolean; deviceId: string; error?: string }> {
+    if (!/^\d{4}$/.test(params.pin)) {
+      return { success: false, deviceId: '', error: 'PIN must be exactly 4 digits.' };
+    }
+    const db = getDatabase();
+    const deviceId = params.id || `mob-dev-${crypto.randomUUID()}`;
+    const salt = crypto.randomBytes(16).toString('hex');
+    const pinHash = crypto.createHash('sha256').update(params.pin + salt).digest('hex') + ':' + salt;
+    const now = new Date().toISOString();
+
+    db.run(
+      `INSERT OR REPLACE INTO mobile_devices (id, user_id, device_name, platform, pin_hash, failed_pin_attempts, is_locked, encrypted_cache, push_token, last_sync_at, created_at)
+       VALUES (?, ?, ?, ?, ?, 0, 0, '{}', ?, ?, ?);`,
+      [
+        deviceId,
+        params.userId,
+        params.deviceName,
+        params.platform,
+        pinHash,
+        params.pushToken || null,
+        now,
+        now,
+      ]
+    );
+    saveDatabase(db);
+    return { success: true, deviceId };
+  }
+
+  public async listDevices(): Promise<any[]> {
+    const db = getDatabase();
+    const res = db.exec(
+      `SELECT id, user_id, device_name, platform, failed_pin_attempts, is_locked, push_token, last_sync_at, created_at FROM mobile_devices;`
+    );
+    if (!res.length || !res[0].values.length) return [];
+    return res[0].values.map((v) => ({
+      id: String(v[0]),
+      userId: String(v[1]),
+      deviceName: String(v[2]),
+      platform: String(v[3]),
+      failedPinAttempts: Number(v[4]),
+      isLocked: Boolean(v[5]),
+      pushToken: v[6] ? String(v[6]) : null,
+      lastSyncAt: String(v[7]),
+      createdAt: String(v[8]),
+    }));
   }
 
   // Record desktop user activity for single-device suppression
@@ -111,10 +151,19 @@ export class MobileAppService {
     }
 
     const [storedPinPayload, failedAttempts, isLocked] = [
-      String(res[0].values[0][0]),
+      String(res[0].values[0][0] || ''),
       Number(res[0].values[0][1]),
       Number(res[0].values[0][2]),
     ];
+
+    if (!storedPinPayload || !storedPinPayload.includes(':')) {
+      return {
+        success: false,
+        remainingAttempts: 0,
+        signedOut: true,
+        error: 'No PIN configured for this device. A PIN must be set by the user.',
+      };
+    }
 
     if (isLocked || failedAttempts >= MAX_PIN_FAILURES) {
       return {

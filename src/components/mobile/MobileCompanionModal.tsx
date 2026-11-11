@@ -78,70 +78,96 @@ export const MobileCompanionModal: Component = () => {
           </div>
 
           <div class="p-4 space-y-4 max-h-[580px] overflow-y-auto">
-            {/* PIN Unlock Card */}
-            <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col items-center">
-              <div class="w-full flex items-center justify-between mb-2">
-                <span class="text-[10px] font-mono text-outline uppercase tracking-wider">Session Key Unlock</span>
-                <span class="text-[10px] font-mono text-primary">Biometric Sync</span>
-              </div>
+            <Show
+              when={state.mobileDevice}
+              fallback={
+                <div class="p-6 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col items-center text-center space-y-3">
+                  <div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-outline">
+                    <span class="material-symbols-outlined text-[28px]">phonelink_off</span>
+                  </div>
+                  <div>
+                    <h4 class="font-bold text-sm text-on-surface">No Mobile Companion Linked</h4>
+                    <p class="text-xs text-outline mt-1 max-w-[280px]">
+                      No phone is connected to this host. To link an iPhone or Android device, generate a sign-in code in Settings → Profile → Mobile Connect.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setState('isMobileCompanionModalOpen', false);
+                      setState('isSettingsOpen', true);
+                    }}
+                    class="px-4 py-2 bg-primary text-on-primary text-xs font-semibold rounded-lg hover:brightness-110 transition-all"
+                  >
+                    Open Mobile Connect Settings
+                  </button>
+                </div>
+              }
+            >
+              {/* PIN Unlock Card */}
+              <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col items-center">
+                <div class="w-full flex items-center justify-between mb-2">
+                  <span class="text-[10px] font-mono text-outline uppercase tracking-wider">Session Key Unlock</span>
+                  <span class="text-[10px] font-mono text-primary">Biometric Sync</span>
+                </div>
 
-              {/* 4 Digit Indicators */}
-              <div class="flex items-center justify-center gap-3 my-2">
-                <For each={[0, 1, 2, 3]}>
-                  {(idx) => (
-                    <div
-                      class={`w-3.5 h-3.5 rounded-full transition-all ${
-                        pinDigits().length > idx ? 'bg-primary scale-110 shadow-sm' : 'bg-surface-container-highest'
-                      }`}
-                    ></div>
-                  )}
-                </For>
-              </div>
-              <p class="text-[11px] text-outline text-center mb-3">Enter 4-digit Master Security Passcode</p>
+                {/* 4 Digit Indicators */}
+                <div class="flex items-center justify-center gap-3 my-2">
+                  <For each={[0, 1, 2, 3]}>
+                    {(idx) => (
+                      <div
+                        class={`w-3.5 h-3.5 rounded-full transition-all ${
+                          pinDigits().length > idx ? 'bg-primary scale-110 shadow-sm' : 'bg-surface-container-highest'
+                        }`}
+                      ></div>
+                    )}
+                  </For>
+                </div>
+                <p class="text-[11px] text-outline text-center mb-3">Enter 4-digit Master Security Passcode</p>
 
-              {/* Keypad Grid (0-9, FaceID, Backspace) */}
-              <div class="grid grid-cols-3 gap-2 w-full max-w-[240px]">
-                <For each={['1', '2', '3', '4', '5', '6', '7', '8', '9']}>
-                  {(d) => (
-                    <button
-                      onClick={() => appendDigit(d)}
-                      class="h-10 bg-surface-container-high rounded-lg font-bold text-sm hover:bg-surface-bright active:scale-95 transition-all text-on-surface"
-                    >
-                      {d}
-                    </button>
-                  )}
-                </For>
-                <button
-                  onClick={() => addToast('success', 'Biometric Verified', 'FaceID session unlocked.')}
-                  class="h-10 bg-surface-container-high rounded-lg flex items-center justify-center text-primary hover:bg-surface-bright active:scale-95 transition-all"
-                  title="FaceID / TouchID"
-                >
-                  <span class="material-symbols-outlined text-[20px]">face</span>
-                </button>
-                <button
-                  onClick={() => appendDigit('0')}
-                  class="h-10 bg-surface-container-high rounded-lg font-bold text-sm hover:bg-surface-bright active:scale-95 transition-all text-on-surface"
-                >
-                  0
-                </button>
-                <button
-                  onClick={() => deleteDigit()}
-                  class="h-10 bg-surface-container-high rounded-lg flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-bright active:scale-95 transition-all"
-                  title="Delete"
-                >
-                  <span class="material-symbols-outlined text-[18px]">backspace</span>
-                </button>
-              </div>
+                {/* Keypad Grid (0-9, FaceID, Backspace) */}
+                <div class="grid grid-cols-3 gap-2 w-full max-w-[240px]">
+                  <For each={['1', '2', '3', '4', '5', '6', '7', '8', '9']}>
+                    {(d) => (
+                      <button
+                        onClick={() => appendDigit(d)}
+                        class="h-10 bg-surface-container-high rounded-lg font-bold text-sm hover:bg-surface-bright active:scale-95 transition-all text-on-surface"
+                      >
+                        {d}
+                      </button>
+                    )}
+                  </For>
+                  <button
+                    onClick={() => addToast('success', 'Biometric Verified', 'FaceID session unlocked.')}
+                    class="h-10 bg-surface-container-high rounded-lg flex items-center justify-center text-primary hover:bg-surface-bright active:scale-95 transition-all"
+                    title="FaceID / TouchID"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">face</span>
+                  </button>
+                  <button
+                    onClick={() => appendDigit('0')}
+                    class="h-10 bg-surface-container-high rounded-lg font-bold text-sm hover:bg-surface-bright active:scale-95 transition-all text-on-surface"
+                  >
+                    0
+                  </button>
+                  <button
+                    onClick={() => deleteDigit()}
+                    class="h-10 bg-surface-container-high rounded-lg flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-bright active:scale-95 transition-all"
+                    title="Delete"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">backspace</span>
+                  </button>
+                </div>
 
-              {/* Exact Threat/Warning Banner */}
-              <div class="mt-3 w-full bg-error-container/20 border border-error/30 rounded-lg p-2.5 flex items-start gap-2">
-                <span class="material-symbols-outlined text-error text-[16px] shrink-0 mt-0.5">warning</span>
-                <p class="text-[10px] text-error font-medium leading-tight">
-                  10 failed attempts will purge local keys and disconnect from cluster (
-                  <span class="font-bold underline">{remainingAttempts()} attempts remaining</span>).
-                </p>
+                {/* Exact Threat/Warning Banner */}
+                <div class="mt-3 w-full bg-error-container/20 border border-error/30 rounded-lg p-2.5 flex items-start gap-2">
+                  <span class="material-symbols-outlined text-error text-[16px] shrink-0 mt-0.5">warning</span>
+                  <p class="text-[10px] text-error font-medium leading-tight">
+                    10 failed attempts will purge local keys and disconnect from cluster (
+                    <span class="font-bold underline">{remainingAttempts()} attempts remaining</span>).
+                  </p>
+                </div>
               </div>
-            </div>
+            </Show>
 
             {/* iPhone Live Activity Feed (iOS only) */}
             <div class="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/30 space-y-2">
@@ -149,7 +175,7 @@ export const MobileCompanionModal: Component = () => {
                 <span class="text-[10px] font-mono text-outline uppercase tracking-wider">iOS Dynamic Island / Live Activity</span>
                 <span class="text-[10px] font-mono text-secondary flex items-center gap-1">
                   <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  <span>Stream Active</span>
+                  <span>{state.activeLiveActivity?.isActive ? 'Stream Active' : 'Idle'}</span>
                 </span>
               </div>
 
@@ -159,8 +185,12 @@ export const MobileCompanionModal: Component = () => {
                     <span class="material-symbols-outlined text-[16px]">crisis_alert</span>
                   </div>
                   <div>
-                    <div class="font-semibold text-xs text-on-surface">Kestrel (Autonomous)</div>
-                    <div class="text-[10px] text-tertiary font-medium">State change · Priority 10 · 8h max lifetime</div>
+                    <div class="font-semibold text-xs text-on-surface">
+                      {state.activeLiveActivity?.agentName || 'Companion Telemetry'}
+                    </div>
+                    <div class="text-[10px] text-tertiary font-medium">
+                      {state.activeLiveActivity?.message || 'State change · Priority 10 · 8h max lifetime'}
+                    </div>
                   </div>
                 </div>
                 <span class="text-[9px] font-mono text-outline">iOS Lock Screen</span>

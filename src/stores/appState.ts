@@ -591,15 +591,7 @@ export const [state, setState] = createStore({
   } as OfflineGraceState,
 
   // Milestone 8 state properties
-  mobileDevice: {
-    id: 'mob-dev-primary',
-    deviceName: 'iPhone 16 Pro (Mobile Companion)',
-    platform: 'ios',
-    failedPinAttempts: 0,
-    isLocked: false,
-    cachedAgentsCount: 3,
-    lastSyncAt: new Date().toISOString(),
-  } as MobileDeviceState | null,
+  mobileDevice: null as MobileDeviceState | null,
   webSessionLock: null as WebSessionLockState | null,
   activeLiveActivity: null as LiveActivityTelemetry | null,
   isWebClientModalOpen: false,
@@ -2197,8 +2189,13 @@ export async function checkOfflineGraceAction() {
 
 export async function verifyMobilePinAction(pin: string) {
   try {
+    const devId = state.mobileDevice?.id;
+    if (!devId) {
+      addToast('warning', 'No Mobile Device', 'No mobile companion is currently linked. Use Mobile Connect first.');
+      return;
+    }
     if ((window as any).openbot?.verifyMobilePin) {
-      const res = await (window as any).openbot.verifyMobilePin('mob-dev-primary', pin);
+      const res = await (window as any).openbot.verifyMobilePin(devId, pin);
       if (res.signedOut) {
         addToast('error', 'Device Signed Out', res.error || '10 failed PIN attempts.');
         setState('mobileDevice', 'isLocked', true);
@@ -2239,8 +2236,13 @@ export async function queueMobileOutboxAction(params: any) {
 
 export async function flushMobileOutboxAction() {
   try {
+    const devId = state.mobileDevice?.id;
+    if (!devId) {
+      addToast('info', 'No Device', 'No mobile device linked.');
+      return;
+    }
     if ((window as any).openbot?.flushMobileOutbox) {
-      const res = await (window as any).openbot.flushMobileOutbox('mob-dev-primary');
+      const res = await (window as any).openbot.flushMobileOutbox(devId);
       if (res.syncedCount > 0) {
         addToast('success', 'Outbox Synced', `Flushed ${res.syncedCount} queued messages to host.`);
       }

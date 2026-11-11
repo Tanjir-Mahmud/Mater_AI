@@ -1710,6 +1710,18 @@ function createWindow() {
         console.log('[Test] Running Milestone 8 verification suite (Mobile App & Web Client)...');
         console.log('[Test] -------------------------------------------------------------');
 
+        // M8-0. Fresh Database / Init Empty State Check
+        console.log('[Test] M8-0. Checking mobile device list starts EMPTY on fresh DB / after init...');
+        const initialDevices = await mobileAppService.listDevices();
+        if (initialDevices.length !== 0) {
+          throw new Error(`Mobile device list must start EMPTY on init (found ${initialDevices.length} devices)`);
+        }
+        const noDevRes = await mobileAppService.verifyPin('non-existent-device', '1234');
+        if (!noDevRes.signedOut || !noDevRes.error?.includes('not found')) {
+          throw new Error(`Verifying PIN on non-existent device must fail: ${JSON.stringify(noDevRes)}`);
+        }
+        console.log(`[Test]    - Mobile device list verified EMPTY (0 devices) after init. No fake seeds.`);
+
         // M8-1. Mobile 10 MB File Limit
         console.log('[Test] M8-1. Mobile 10 MB file upload limit...');
         const validMobFile = mobileAppService.validateMobileFileUpload('dataset.zip', 9 * 1024 * 1024);
@@ -1724,15 +1736,24 @@ function createWindow() {
 
         // M8-2. 4-digit PIN lock & 10th failure sign-out / cache purge
         console.log('[Test] M8-2. 4-digit PIN lock & 10th failure sign-out rule...');
-        // Insert a test mobile device
         const testDevId = 'mob-test-pin-device';
-        const salt = crypto.randomBytes(16).toString('hex');
-        const pinHash = crypto.createHash('sha256').update('4821' + salt).digest('hex') + ':' + salt;
-        getDatabase().run(
-          `INSERT OR REPLACE INTO mobile_devices (id, user_id, device_name, platform, pin_hash, failed_pin_attempts, is_locked, encrypted_cache, last_sync_at, created_at)
-           VALUES ('${testDevId}', 'user-owner-default', 'Test Pixel 9', 'android', '${pinHash}', 0, 0, '{"cached_secrets": true}', '${new Date().toISOString()}', '${new Date().toISOString()}');`
-        );
-        saveDatabase();
+        const linkRes = await mobileAppService.linkDevice({
+          id: testDevId,
+          userId: 'user-owner-default',
+          deviceName: 'Test Pixel 9 Pro',
+          platform: 'android',
+          pin: '4821',
+          pushToken: 'fcm_real_token_test_abc',
+        });
+        if (!linkRes.success) {
+          throw new Error(`Failed to link test device: ${linkRes.error}`);
+        }
+
+        // Test valid PIN succeeds
+        const validPinRes = await mobileAppService.verifyPin(testDevId, '4821');
+        if (!validPinRes.success || validPinRes.remainingAttempts !== 10) {
+          throw new Error(`Valid PIN verification failed: ${JSON.stringify(validPinRes)}`);
+        }
 
         // 9 incorrect attempts
         for (let i = 1; i <= 9; i++) {
@@ -1752,6 +1773,9 @@ function createWindow() {
         if (wipedCache !== '{}' || isLocked !== 1) {
           throw new Error('Local encrypted cache was not wiped on 10th PIN failure');
         }
+        // Clean up test device so DB returns to empty
+        getDatabase().run(`DELETE FROM mobile_devices WHERE id = '${testDevId}';`);
+        saveDatabase();
         console.log(`[Test]    - 4-digit PIN lock & 10th failure sign-out and cache purge verified.`);
 
         // M8-3. Reconnection timing (immediate, 10s, 5 failures then 2-min wait)
@@ -1940,7 +1964,11 @@ function createWindow() {
             const startTime = Date.now();
             const check = () => {
               const bounceEl = document.querySelector('.animate-bounce');
-              if (!bounceEl || Date.now() - startTime > 4000) {
+              const loadingEl = document.querySelector('[class*="z-[100]"]');
+              const mainEl = document.querySelector('header');
+              if (!bounceEl && !loadingEl && mainEl) {
+                resolve(true);
+              } else if (Date.now() - startTime > 6000) {
                 resolve(true);
               } else {
                 setTimeout(check, 100);
@@ -1949,7 +1977,7 @@ function createWindow() {
             check();
           });
         `);
-        await new Promise((r) => setTimeout(r, 600));
+        await new Promise((r) => setTimeout(r, 1200));
 
         const img8 = await mainWindow!.webContents.capturePage();
         const distScreenshot8 = path.resolve('dist/milestone-8-shell.png');
@@ -2816,6 +2844,14 @@ ipcMain.handle('billing:simulate-server-validation', async (_event, { outcome, e
 });
 
 // Milestone 8: Mobile App IPC Handlers
+ipcMain.handle('mobile:link-device', async (_event, params) => {
+  return await mobileAppService.linkDevice(params);
+});
+
+ipcMain.handle('mobile:list-devices', async () => {
+  return await mobileAppService.listDevices();
+});
+
 ipcMain.handle('mobile:verify-pin', async (_event, { deviceId, pin }) => {
   return await mobileAppService.verifyPin(deviceId, pin);
 });

@@ -342,6 +342,8 @@ const bridge: OpenBotBridge = {
   simulateServerValidation: (outcome: string, elapsedHours?: number) => ipcRenderer.invoke('billing:simulate-server-validation', { outcome, elapsedHours }),
 
   // Milestone 8: Mobile App & Web Client APIs
+  linkMobileDevice: (params: any) => ipcRenderer.invoke('mobile:link-device', params),
+  listMobileDevices: () => ipcRenderer.invoke('mobile:list-devices'),
   verifyMobilePin: (deviceId: string, pin: string) => ipcRenderer.invoke('mobile:verify-pin', { deviceId, pin }),
   validateMobileUpload: (fileName: string, byteSize: number) => ipcRenderer.invoke('mobile:validate-upload', { fileName, byteSize }),
   queueMobileOutbox: (params: any) => ipcRenderer.invoke('mobile:queue-outbox', params),
