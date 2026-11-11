@@ -127,6 +127,29 @@ export interface OpenBotBridge {
   createRemoteDesktopTest: (serverId: string, targetName: string) => Promise<any>;
   verifyRemoteDesktopTest: (sessionId: string, code: string) => Promise<any>;
   stopAllRemoteControl: () => Promise<boolean>;
+
+  // Milestone 6: Integrations & Voice
+  getConnectors: () => Promise<any[]>;
+  connectConnector: (service: string, accountIdentifier: string, authPayload?: string) => Promise<any>;
+  disconnectConnector: (service: string) => Promise<boolean>;
+  getMessagingConnections: () => Promise<any[]>;
+  updateMessagingConnection: (id: string, updates: any) => Promise<boolean>;
+  connectWhatsAppBaileys: () => Promise<any>;
+  disconnectWhatsAppBaileys: () => Promise<any>;
+  getDictationModels: () => Promise<any[]>;
+  getTTSModels: () => Promise<any[]>;
+  getVoiceSettings: () => Promise<any>;
+  updateVoiceSettings: (updates: any) => Promise<any>;
+  saveVoiceApiKey: (provider: string, apiKey: string) => Promise<boolean>;
+  removeVoiceApiKey: (provider: string) => Promise<boolean>;
+  checkLiveVoiceEligibility: (isCodexConnected: boolean) => Promise<any>;
+  configureVoiceServer: (params: any) => Promise<any>;
+  formatWebhookPayload: (format: string, eventType: string, data: any, secretKey?: string) => Promise<any>;
+  getHostedSites: () => Promise<any[]>;
+  publishHostedSite: (params: any) => Promise<any>;
+  deleteHostedSite: (siteId: string) => Promise<any>;
+  getEnterpriseSSOConfigs: () => Promise<any[]>;
+  configureEnterpriseSSO: (params: any) => Promise<any>;
 }
 
 const bridge: OpenBotBridge = {
@@ -266,6 +289,29 @@ const bridge: OpenBotBridge = {
   createRemoteDesktopTest: (serverId, targetName) => ipcRenderer.invoke('team:create-remote-desktop-test', { serverId, targetName }),
   verifyRemoteDesktopTest: (sessionId, code) => ipcRenderer.invoke('team:verify-remote-desktop-test', { sessionId, code }),
   stopAllRemoteControl: () => ipcRenderer.invoke('team:stop-all-remote-control'),
+
+  // Milestone 6 IPC
+  getConnectors: () => ipcRenderer.invoke('integrations:get-connectors'),
+  connectConnector: (service, accountIdentifier, authPayload) => ipcRenderer.invoke('integrations:connect-connector', { service, accountIdentifier, authPayload }),
+  disconnectConnector: (service) => ipcRenderer.invoke('integrations:disconnect-connector', service),
+  getMessagingConnections: () => ipcRenderer.invoke('integrations:get-messaging-connections'),
+  updateMessagingConnection: (id, updates) => ipcRenderer.invoke('integrations:update-messaging-connection', { id, updates }),
+  connectWhatsAppBaileys: () => ipcRenderer.invoke('integrations:connect-whatsapp-baileys'),
+  disconnectWhatsAppBaileys: () => ipcRenderer.invoke('integrations:disconnect-whatsapp-baileys'),
+  getDictationModels: () => ipcRenderer.invoke('voice:get-dictation-models'),
+  getTTSModels: () => ipcRenderer.invoke('voice:get-tts-models'),
+  getVoiceSettings: () => ipcRenderer.invoke('voice:get-settings'),
+  updateVoiceSettings: (updates) => ipcRenderer.invoke('voice:update-settings', updates),
+  saveVoiceApiKey: (provider, apiKey) => ipcRenderer.invoke('voice:save-api-key', { provider, apiKey }),
+  removeVoiceApiKey: (provider) => ipcRenderer.invoke('voice:remove-api-key', provider),
+  checkLiveVoiceEligibility: (isCodexConnected) => ipcRenderer.invoke('voice:check-live-voice', isCodexConnected),
+  configureVoiceServer: (params) => ipcRenderer.invoke('voice:configure-server', params),
+  formatWebhookPayload: (format, eventType, data, secretKey) => ipcRenderer.invoke('webhooks:format-payload', { format, eventType, data, secretKey }),
+  getHostedSites: () => ipcRenderer.invoke('sites:get-hosted-sites'),
+  publishHostedSite: (params) => ipcRenderer.invoke('sites:publish', params),
+  deleteHostedSite: (siteId) => ipcRenderer.invoke('sites:delete', siteId),
+  getEnterpriseSSOConfigs: () => ipcRenderer.invoke('sso:get-configs'),
+  configureEnterpriseSSO: (params) => ipcRenderer.invoke('sso:configure', params),
 };
 
 contextBridge.exposeInMainWorld('openbot', bridge);

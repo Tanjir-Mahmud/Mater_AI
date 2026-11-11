@@ -18,6 +18,17 @@ import {
   createRemoteDesktopTestAction,
   verifyRemoteDesktopTestAction,
   stopAllRemoteControlAction,
+  connectConnectorAction,
+  disconnectConnectorAction,
+  updateMessagingConnectionAction,
+  connectWhatsAppBaileysAction,
+  disconnectWhatsAppBaileysAction,
+  updateVoiceSettingsAction,
+  saveVoiceApiKeyAction,
+  removeVoiceApiKeyAction,
+  configureVoiceServerAction,
+  publishHostedSiteAction,
+  deleteHostedSiteAction,
 } from '../../stores/appState';
 import { SUPPORTED_LOCALES, i18n } from '../../shared/i18n';
 import { AppTheme, SendShortcut, HoldCmdQMode, LogoColor, ServerRole } from '../../types';
@@ -41,7 +52,9 @@ const SETTINGS_TABS: SettingsTabItem[] = [
   { id: 'mcp', name: 'MCP Servers', icon: 'hub', description: 'Model Context Protocol servers that give agents tools on this computer.' },
   { id: 'profile', name: 'Profile', icon: 'account_circle', description: 'Manage how you appear in OpenBot.' },
   { id: 'notifications', name: 'Notifications', icon: 'notifications', description: 'Choose how OpenBot alerts you.' },
-  { id: 'voice', name: 'Voice', icon: 'mic', description: 'Dictation in the message box. Local models run on this computer; ElevenLabs and Groq run in the cloud.' },
+  { id: 'voice', name: 'Voice & Dictation', icon: 'mic', description: 'Dictation in the message box (Parakeet, Bark, Whisper, Cohere, ElevenLabs, Groq) and OpenAI-compatible voice server.' },
+  { id: 'connectors', name: 'Connectors & Messaging', icon: 'cable', description: 'Built-in sign-ins to outside services (GitHub, Slack Orchestrator, Discord, Telegram, WhatsApp Baileys).' },
+  { id: 'hosted_sites', name: 'Hosted Sites & SSO', icon: 'public', description: 'Websites published to openbot.site (30-day expiry) and company OpenID Connect / SCIM sign-in.' },
   { id: 'dynamic_island', name: 'Dynamic Island', icon: 'dock_to_bottom', description: 'Show agent activity in the MacBook notch.', macOnly: true },
   { id: 'agent_dock', name: 'Agent Dock', icon: 'dock', description: 'Show agents at the screen edge, ready for a quick chat.', macOnly: true },
   { id: 'computer_use', name: 'Computer Use', icon: 'desktop_windows', description: "Let agents on this computer's OpenBot see and use its apps." },
@@ -841,8 +854,488 @@ export const SettingsModal: Component = () => {
                 </div>
               </Show>
 
+              {/* TAB: VOICE & DICTATION */}
+              <Show when={state.activeSettingsTab === 'voice'}>
+                <div class="space-y-4">
+                  {/* Local & Cloud Dictation STT */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <span class="font-semibold text-xs text-on-surface">Speech-to-Text Dictation (Message Box)</span>
+                        <p class="text-[11px] text-outline mt-0.5">
+                          Local models run offline on this computer. Cloud models require your own provider API key.
+                        </p>
+                      </div>
+                      <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-secondary/20 text-secondary font-semibold uppercase">
+                        {state.voiceSettings.dictationModel}
+                      </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                      {/* Local Models */}
+                      <div
+                        onClick={() => updateVoiceSettingsAction({ dictation_engine: 'parakeet', dictation_model: 'Parakeet' })}
+                        class={`p-3 rounded-lg border cursor-pointer transition-all ${
+                          state.voiceSettings.dictationModel === 'Parakeet'
+                            ? 'bg-primary-container/20 border-primary text-on-surface font-semibold'
+                            : 'bg-surface-container border-outline-variant/20 text-outline hover:text-on-surface'
+                        }`}
+                      >
+                        <div class="flex items-center justify-between">
+                          <span class="font-bold">Parakeet</span>
+                          <span class="text-[10px] bg-surface-container-high px-1.5 py-0.5 rounded text-secondary font-mono">Fast · 25 Langs</span>
+                        </div>
+                        <p class="text-[11px] text-outline mt-1 font-normal">
+                          Fast, finds the spoken language itself, 25 European languages. Runs on this computer.
+                        </p>
+                      </div>
+
+                      <div
+                        onClick={() => updateVoiceSettingsAction({ dictation_engine: 'parakeet-unified', dictation_model: 'Parakeet Unified' })}
+                        class={`p-3 rounded-lg border cursor-pointer transition-all ${
+                          state.voiceSettings.dictationModel === 'Parakeet Unified'
+                            ? 'bg-primary-container/20 border-primary text-on-surface font-semibold'
+                            : 'bg-surface-container border-outline-variant/20 text-outline hover:text-on-surface'
+                        }`}
+                      >
+                        <div class="flex items-center justify-between">
+                          <span class="font-bold">Parakeet Unified</span>
+                          <span class="text-[10px] bg-surface-container-high px-1.5 py-0.5 rounded text-outline font-mono">Fast · English</span>
+                        </div>
+                        <p class="text-[11px] text-outline mt-1 font-normal">Fast, English only. Local execution.</p>
+                      </div>
+
+                      <div
+                        onClick={() => updateVoiceSettingsAction({ dictation_engine: 'bark', dictation_model: 'Bark' })}
+                        class={`p-3 rounded-lg border cursor-pointer transition-all ${
+                          state.voiceSettings.dictationModel === 'Bark'
+                            ? 'bg-primary-container/20 border-primary text-on-surface font-semibold'
+                            : 'bg-surface-container border-outline-variant/20 text-outline hover:text-on-surface'
+                        }`}
+                      >
+                        <div class="flex items-center justify-between">
+                          <span class="font-bold">Bark</span>
+                          <span class="text-[10px] bg-surface-container-high px-1.5 py-0.5 rounded text-outline font-mono">Fast · English</span>
+                        </div>
+                        <p class="text-[11px] text-outline mt-1 font-normal">Fast, English only. Lightweight local model.</p>
+                      </div>
+
+                      <div
+                        onClick={() => updateVoiceSettingsAction({ dictation_engine: 'whisper', dictation_model: 'Whisper' })}
+                        class={`p-3 rounded-lg border cursor-pointer transition-all ${
+                          state.voiceSettings.dictationModel === 'Whisper'
+                            ? 'bg-primary-container/20 border-primary text-on-surface font-semibold'
+                            : 'bg-surface-container border-outline-variant/20 text-outline hover:text-on-surface'
+                        }`}
+                      >
+                        <div class="flex items-center justify-between">
+                          <span class="font-bold">Whisper</span>
+                          <span class="text-[10px] bg-surface-container-high px-1.5 py-0.5 rounded text-tertiary font-mono">Slower · ~100 Langs</span>
+                        </div>
+                        <p class="text-[11px] text-outline mt-1 font-normal">Slower, about 100 languages. Maximum accuracy.</p>
+                      </div>
+
+                      <div
+                        onClick={() => updateVoiceSettingsAction({ dictation_engine: 'cohere', dictation_model: 'Cohere' })}
+                        class={`p-3 rounded-lg border cursor-pointer transition-all ${
+                          state.voiceSettings.dictationModel === 'Cohere'
+                            ? 'bg-primary-container/20 border-primary text-on-surface font-semibold'
+                            : 'bg-surface-container border-outline-variant/20 text-outline hover:text-on-surface'
+                        }`}
+                      >
+                        <div class="flex items-center justify-between">
+                          <span class="font-bold">Cohere</span>
+                          <span class="text-[10px] bg-surface-container-high px-1.5 py-0.5 rounded text-tertiary font-mono">Slower · 14 Langs · 4 GB</span>
+                        </div>
+                        <p class="text-[11px] text-outline mt-1 font-normal">Slower, 14 languages, about 4 GB memory.</p>
+                      </div>
+
+                      <div
+                        onClick={() => updateVoiceSettingsAction({ dictation_engine: 'elevenlabs', dictation_model: 'ElevenLabs' })}
+                        class={`p-3 rounded-lg border cursor-pointer transition-all ${
+                          state.voiceSettings.dictationModel === 'ElevenLabs'
+                            ? 'bg-primary-container/20 border-primary text-on-surface font-semibold'
+                            : 'bg-surface-container border-outline-variant/20 text-outline hover:text-on-surface'
+                        }`}
+                      >
+                        <div class="flex items-center justify-between">
+                          <span class="font-bold">ElevenLabs (Cloud)</span>
+                          <span class="text-[10px] bg-surface-container-high px-1.5 py-0.5 rounded text-primary font-mono">Streaming STT</span>
+                        </div>
+                        <p class="text-[11px] text-outline mt-1 font-normal">Streams, text shows while speaking. Billed by provider.</p>
+                      </div>
+                    </div>
+
+                    {/* Language Picker & API Key Management */}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-outline-variant/10 text-xs">
+                      <div>
+                        <label class="font-semibold text-outline">Spoken Language</label>
+                        <select
+                          value={state.voiceSettings.dictationLanguage}
+                          onChange={(e) => updateVoiceSettingsAction({ dictation_language: e.currentTarget.value })}
+                          class="w-full mt-1 bg-surface-container text-on-surface p-2 rounded-lg border border-outline-variant/30"
+                        >
+                          <option value="Automatic">Automatic (Detects from recording)</option>
+                          <option value="English">English</option>
+                          <option value="Spanish">Spanish</option>
+                          <option value="French">French</option>
+                          <option value="German">German</option>
+                          <option value="Japanese">Japanese</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label class="font-semibold text-outline">Cloud Provider API Key (ElevenLabs / Groq)</label>
+                        <div class="flex gap-1.5 mt-1">
+                          <button
+                            onClick={() => {
+                              const key = prompt('Paste API Key:');
+                              if (key) saveVoiceApiKeyAction('groq', key);
+                            }}
+                            class="px-2.5 py-1.5 bg-surface-container hover:bg-surface-container-high text-xs rounded border border-outline-variant/30 text-on-surface"
+                          >
+                            Paste Key
+                          </button>
+                          <button
+                            onClick={() => removeVoiceApiKeyAction('groq')}
+                            class="px-2.5 py-1.5 bg-surface-container hover:bg-surface-container-high text-xs rounded border border-outline-variant/30 text-error"
+                          >
+                            Remove Key
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Spoken Replies (TTS) */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <span class="font-semibold text-xs text-on-surface">Spoken Replies (TTS)</span>
+                        <p class="text-[11px] text-outline mt-0.5">Read agent replies aloud with high-fidelity speech synthesis.</p>
+                      </div>
+                      <label class="flex items-center gap-2 cursor-pointer text-xs">
+                        <span class="text-outline">Read aloud:</span>
+                        <input
+                          type="checkbox"
+                          checked={state.voiceSettings.ttsAutoRead}
+                          onChange={(e) => updateVoiceSettingsAction({ tts_auto_read: e.currentTarget.checked ? 1 : 0 })}
+                          class="accent-primary w-4 h-4"
+                        />
+                      </label>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <label class="font-semibold text-outline">Voice Persona</label>
+                        <select
+                          value={state.voiceSettings.ttsVoice}
+                          onChange={(e) => updateVoiceSettingsAction({ tts_voice: e.currentTarget.value })}
+                          class="w-full mt-1 bg-surface-container text-on-surface p-2 rounded-lg border border-outline-variant/30"
+                        >
+                          <option value="Female (Nova)">Female (Nova)</option>
+                          <option value="Male (Echo)">Male (Echo)</option>
+                          <option value="Female (Shimmer)">Female (Shimmer)</option>
+                          <option value="Male (Onyx)">Male (Onyx)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label class="font-semibold text-outline">Synthesis Model (31 Languages)</label>
+                        <select
+                          value={state.voiceSettings.ttsModel}
+                          onChange={(e) => updateVoiceSettingsAction({ tts_model: e.currentTarget.value })}
+                          class="w-full mt-1 bg-surface-container text-on-surface p-2 rounded-lg border border-outline-variant/30"
+                        >
+                          <option value="Flash">Flash (31 Languages)</option>
+                          <option value="Multilingual">Multilingual (31 Languages)</option>
+                          <option value="v3">Neural v3 (31 Languages)</option>
+                          <option value="xAI">xAI Voice (31 Languages)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label class="font-semibold text-outline">Voice Gender</label>
+                        <div class="flex gap-2 mt-1">
+                          <button
+                            onClick={() => updateVoiceSettingsAction({ tts_gender: 'female', tts_voice: 'Female (Nova)' })}
+                            class={`flex-1 py-1.5 rounded text-xs font-semibold border ${
+                              state.voiceSettings.ttsGender === 'female'
+                                ? 'bg-primary-container text-on-primary-container border-primary'
+                                : 'bg-surface-container text-outline border-outline-variant/20'
+                            }`}
+                          >
+                            Female
+                          </button>
+                          <button
+                            onClick={() => updateVoiceSettingsAction({ tts_gender: 'male', tts_voice: 'Male (Echo)' })}
+                            class={`flex-1 py-1.5 rounded text-xs font-semibold border ${
+                              state.voiceSettings.ttsGender === 'male'
+                                ? 'bg-primary-container text-on-primary-container border-primary'
+                                : 'bg-surface-container text-outline border-outline-variant/20'
+                            }`}
+                          >
+                            Male
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Voice & Voice Server */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-3">
+                    <span class="font-semibold text-xs text-on-surface">OpenAI-Compatible Voice Server (/v1/audio)</span>
+                    <p class="text-[11px] text-outline">
+                      Use a custom endpoint for dictation or spoken replies. Status: {state.voiceSettings.voiceServerStatus}.
+                    </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label class="text-outline font-semibold">Server Address</label>
+                        <input
+                          type="text"
+                          placeholder="https://voice.local/v1/audio"
+                          value={state.voiceSettings.voiceServerAddress || ''}
+                          onChange={(e) => updateVoiceSettingsAction({ voice_server_address: e.currentTarget.value })}
+                          class="w-full mt-1 bg-surface-container text-on-surface p-2 rounded-lg border border-outline-variant/30 font-mono text-[11px]"
+                        />
+                      </div>
+                      <div>
+                        <label class="text-outline font-semibold">API Key (Optional)</label>
+                        <input
+                          type="password"
+                          placeholder="Saved"
+                          value={state.voiceSettings.voiceServerApiKey || ''}
+                          onChange={(e) => updateVoiceSettingsAction({ voice_server_api_key: e.currentTarget.value })}
+                          class="w-full mt-1 bg-surface-container text-on-surface p-2 rounded-lg border border-outline-variant/30 font-mono text-[11px]"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-4 text-xs pt-1">
+                      <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={state.voiceSettings.voiceServerUseForDictation}
+                          onChange={(e) =>
+                            configureVoiceServerAction({
+                              address: state.voiceSettings.voiceServerAddress || 'https://voice.openbot.local/v1/audio',
+                              useForDictation: e.currentTarget.checked,
+                              useForTTS: state.voiceSettings.voiceServerUseForTTS,
+                            })
+                          }
+                          class="accent-primary"
+                        />
+                        <span>Use for Dictation</span>
+                      </label>
+                      <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={state.voiceSettings.voiceServerUseForTTS}
+                          onChange={(e) =>
+                            configureVoiceServerAction({
+                              address: state.voiceSettings.voiceServerAddress || 'https://voice.openbot.local/v1/audio',
+                              useForDictation: state.voiceSettings.voiceServerUseForDictation,
+                              useForTTS: e.currentTarget.checked,
+                            })
+                          }
+                          class="accent-primary"
+                        />
+                        <span>Use for Spoken replies</span>
+                      </label>
+                    </div>
+
+                    {/* Codex Live Voice notice */}
+                    <div class="p-3 rounded-lg bg-surface-container-high/40 border border-outline-variant/20 text-xs flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-secondary text-[18px]">graphic_eq</span>
+                        <div>
+                          <div class="font-semibold text-on-surface">Live Voice Duplex Conversation</div>
+                          <div class="text-[11px] text-outline">Sign in to Codex with your ChatGPT account to use live voice. Requests go directly to OpenAI.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Show>
+
+              {/* TAB: CONNECTORS & MESSAGING */}
+              <Show when={state.activeSettingsTab === 'connectors'}>
+                <div class="space-y-4">
+                  {/* Built-in Outside Connectors */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-3">
+                    <div>
+                      <span class="font-semibold text-xs text-on-surface">Built-in Outside Service Connectors</span>
+                      <p class="text-[11px] text-outline mt-0.5">
+                        A connector is a built-in sign-in to an outside service that OpenBot turns into agent tools, one per OpenBot computer. A user-added MCP server or marketplace plugin is NOT a connector.
+                      </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                          <span class="material-symbols-outlined text-[20px] text-primary">code</span>
+                          <div>
+                            <div class="font-semibold text-on-surface">GitHub</div>
+                            <div class="text-[11px] text-outline">Provides repos, issues, pull requests tools.</div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => connectConnectorAction('github', 'tanjir-user')}
+                          class="px-2.5 py-1 rounded bg-primary text-on-primary font-semibold text-[11px]"
+                        >
+                          Connect
+                        </button>
+                      </div>
+
+                      <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                          <span class="material-symbols-outlined text-[20px] text-secondary">cloud</span>
+                          <div>
+                            <div class="font-semibold text-on-surface">Google Drive</div>
+                            <div class="text-[11px] text-outline">Docs, sheets, and workspace file access.</div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => connectConnectorAction('google', 'user@gmail.com')}
+                          class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface font-semibold text-[11px]"
+                        >
+                          Connect
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Messaging Connections */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-3">
+                    <div>
+                      <span class="font-semibold text-xs text-on-surface">Messaging Platforms (Signal Relay)</span>
+                      <p class="text-[11px] text-outline mt-0.5">
+                        External chat platforms where this computer's agents answer via the Signal relay service.
+                      </p>
+                    </div>
+
+                    <div class="space-y-2 text-xs">
+                      {/* Slack with Slack Orchestrator */}
+                      <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 flex items-center justify-between">
+                        <div>
+                          <div class="font-semibold text-on-surface flex items-center gap-2">
+                            <span>Slack Workspace</span>
+                            <span class="px-1.5 py-0.2 bg-primary/20 text-primary text-[10px] font-mono rounded">
+                              Slack Orchestrator
+                            </span>
+                          </div>
+                          <div class="text-[11px] text-outline mt-0.5">
+                            The Slack Orchestrator is the agent that receives each new conversation and asks its teammates.
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => updateMessagingConnectionAction('msg-slack', { status: 'connected' })}
+                          class="px-2.5 py-1 rounded bg-surface-container-high hover:bg-surface-bright font-semibold text-[11px]"
+                        >
+                          Configure
+                        </button>
+                      </div>
+
+                      {/* WhatsApp via Baileys (Unofficial Notice) */}
+                      <div class="p-3 rounded-lg bg-surface-container border border-tertiary/40 flex items-center justify-between">
+                        <div>
+                          <div class="font-semibold text-on-surface flex items-center gap-2">
+                            <span>WhatsApp</span>
+                            <span class="px-1.5 py-0.2 bg-tertiary/20 text-tertiary text-[10px] font-mono rounded uppercase font-bold">
+                              Unofficial Client
+                            </span>
+                          </div>
+                          <div class="text-[11px] text-tertiary/90 mt-0.5">
+                            Connected via vendored Baileys (an unofficial client, NOT an official WhatsApp Business API integration).
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => connectWhatsAppBaileysAction()}
+                          class="px-2.5 py-1 rounded bg-tertiary text-on-tertiary font-semibold text-[11px]"
+                        >
+                          Connect Baileys
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Show>
+
+              {/* TAB: HOSTED SITES & SSO */}
+              <Show when={state.activeSettingsTab === 'hosted_sites'}>
+                <div class="space-y-4">
+                  {/* Hosted Sites on openbot.site */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <span class="font-semibold text-xs text-on-surface">Hosted Sites (openbot.site)</span>
+                        <p class="text-[11px] text-outline mt-0.5">
+                          Sites published to openbot.site have a strict 30-day expiry. Deleting a site returns HTTP 410 Gone.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const sub = prompt('Subdomain name:');
+                          const title = prompt('Site title:');
+                          if (sub && title) publishHostedSiteAction({ subdomain: sub, siteTitle: title });
+                        }}
+                        class="px-3 py-1.5 bg-primary text-on-primary text-xs font-semibold rounded-lg hover:brightness-110 flex items-center gap-1"
+                      >
+                        <span class="material-symbols-outlined text-[15px]">publish</span>
+                        <span>Publish Site</span>
+                      </button>
+                    </div>
+
+                    <div class="space-y-2 text-xs">
+                      <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 flex items-center justify-between">
+                        <div>
+                          <div class="font-semibold text-on-surface">demo.openbot.site</div>
+                          <div class="text-[11px] text-outline">Clean Room Workstation Artifacts · Expires in 30 days</div>
+                        </div>
+                        <button
+                          onClick={() => deleteHostedSiteAction('site-demo')}
+                          class="text-error hover:underline text-xs"
+                        >
+                          Delete (410 Gone)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Page Endpoint */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 flex items-center justify-between text-xs">
+                    <div>
+                      <div class="font-semibold text-on-surface">System Status Page</div>
+                      <div class="text-[11px] text-outline">Global service reachability and Signal relay uptime.</div>
+                    </div>
+                    <a
+                      href="https://status.openbot.run"
+                      target="_blank"
+                      class="px-3 py-1.5 bg-surface-container hover:bg-surface-container-high rounded text-primary font-mono text-[11px] border border-outline-variant/30 flex items-center gap-1"
+                    >
+                      <span>status.openbot.run</span>
+                      <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+                    </a>
+                  </div>
+
+                  {/* Enterprise SSO & SCIM */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 space-y-2 text-xs">
+                    <span class="font-semibold text-on-surface">Company Sign-In (OpenID Connect) & SCIM</span>
+                    <p class="text-[11px] text-outline">
+                      Authenticate team members via Microsoft Entra ID, Okta, or Google Workspace with automated SCIM user provisioning.
+                    </p>
+                    <div class="flex gap-2 pt-1">
+                      <span class="px-2 py-1 rounded bg-surface-container border border-outline-variant/20 text-on-surface">Microsoft Entra ID</span>
+                      <span class="px-2 py-1 rounded bg-surface-container border border-outline-variant/20 text-on-surface">Okta</span>
+                      <span class="px-2 py-1 rounded bg-surface-container border border-outline-variant/20 text-on-surface">Google Workspace</span>
+                    </div>
+                  </div>
+                </div>
+              </Show>
+
               {/* OTHER TABS PLACEHOLDER / REALISTIC DETAILS */}
-              <Show when={!['general', 'server_general', 'members', 'roles', 'audit_log', 'remote_desktop', 'agents', 'mcp', 'computer_use', 'billing', 'updates', 'hosted_servers'].includes(state.activeSettingsTab)}>
+              <Show when={!['general', 'server_general', 'members', 'roles', 'audit_log', 'remote_desktop', 'agents', 'mcp', 'computer_use', 'billing', 'updates', 'hosted_servers', 'voice', 'connectors', 'hosted_sites'].includes(state.activeSettingsTab)}>
                 <div class="p-6 rounded-xl bg-surface-container-low border border-outline-variant/20 text-center flex flex-col items-center justify-center gap-2">
                   <span class="material-symbols-outlined text-3xl text-outline">{currentTab().icon}</span>
                   <div class="font-semibold text-xs text-on-surface">{currentTab().name} Settings</div>

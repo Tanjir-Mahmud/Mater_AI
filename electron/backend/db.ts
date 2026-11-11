@@ -241,6 +241,78 @@ export interface DBRemoteDesktopSession {
   created_at: string;
 }
 
+// Milestone 6: Integrations and Voice Interfaces
+export interface DBConnector {
+  id: string;
+  service: string;
+  name: string;
+  status: 'connected' | 'not-connected' | 'connecting' | 'error';
+  account_identifier?: string;
+  auth_payload?: string;
+  config?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBMessagingConnection {
+  id: string;
+  platform: 'slack' | 'discord' | 'telegram' | 'whatsapp';
+  workspace_name: string;
+  answering_agent_id: string;
+  status: 'connected' | 'not-connected' | 'connecting' | 'error';
+  signal_relay_connected: number;
+  is_unofficial: number;
+  details?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBVoiceSettings {
+  id: string;
+  dictation_engine: string;
+  dictation_model: string;
+  dictation_language: string;
+  tts_voice: string;
+  tts_model: string;
+  tts_gender: 'female' | 'male';
+  tts_language: string;
+  tts_auto_read: number;
+  api_keys: string; // JSON { elevenlabs, groq, xai }
+  voice_server_address?: string;
+  voice_server_api_key?: string;
+  voice_server_status: 'Not set up' | 'Not in use' | 'Set up';
+  voice_server_use_for_dictation: number;
+  voice_server_use_for_tts: number;
+  voice_server_dictation_model?: string;
+  voice_server_tts_model?: string;
+  voice_server_voice?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DBHostedSite {
+  id: string;
+  subdomain: string;
+  domain: string;
+  site_title: string;
+  author_agent_id?: string;
+  source_files: string;
+  status: 'published' | 'expired' | 'deleted';
+  published_at: string;
+  expires_at: string;
+  deleted_at?: string;
+}
+
+export interface DBEnterpriseSSO {
+  id: string;
+  provider: 'entra' | 'okta' | 'google_workspace';
+  client_id?: string;
+  issuer_url?: string;
+  scim_enabled: number;
+  scim_status: string;
+  created_at: string;
+}
+
 let SQL: SqlJsStatic | null = null;
 let dbInstance: Database | null = null;
 
@@ -637,6 +709,77 @@ export async function initDatabase(): Promise<Database> {
       four_digit_code TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'active',
       expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS connectors (
+      id TEXT PRIMARY KEY,
+      service TEXT NOT NULL,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'not-connected',
+      account_identifier TEXT,
+      auth_payload TEXT,
+      config TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS messaging_connections (
+      id TEXT PRIMARY KEY,
+      platform TEXT NOT NULL,
+      workspace_name TEXT NOT NULL,
+      answering_agent_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'not-connected',
+      signal_relay_connected INTEGER NOT NULL DEFAULT 0,
+      is_unofficial INTEGER NOT NULL DEFAULT 0,
+      details TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS voice_settings (
+      id TEXT PRIMARY KEY,
+      dictation_engine TEXT NOT NULL DEFAULT 'parakeet',
+      dictation_model TEXT NOT NULL DEFAULT 'Parakeet',
+      dictation_language TEXT NOT NULL DEFAULT 'Automatic',
+      tts_voice TEXT NOT NULL DEFAULT 'Female (Nova)',
+      tts_model TEXT NOT NULL DEFAULT 'Flash',
+      tts_gender TEXT NOT NULL DEFAULT 'female',
+      tts_language TEXT NOT NULL DEFAULT 'en',
+      tts_auto_read INTEGER NOT NULL DEFAULT 1,
+      api_keys TEXT NOT NULL DEFAULT '{}',
+      voice_server_address TEXT,
+      voice_server_api_key TEXT,
+      voice_server_status TEXT NOT NULL DEFAULT 'Not set up',
+      voice_server_use_for_dictation INTEGER NOT NULL DEFAULT 0,
+      voice_server_use_for_tts INTEGER NOT NULL DEFAULT 0,
+      voice_server_dictation_model TEXT,
+      voice_server_tts_model TEXT,
+      voice_server_voice TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS hosted_sites (
+      id TEXT PRIMARY KEY,
+      subdomain TEXT NOT NULL UNIQUE,
+      domain TEXT NOT NULL DEFAULT 'openbot.site',
+      site_title TEXT NOT NULL,
+      author_agent_id TEXT,
+      source_files TEXT NOT NULL DEFAULT '{}',
+      status TEXT NOT NULL DEFAULT 'published',
+      published_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      deleted_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS enterprise_sso (
+      id TEXT PRIMARY KEY,
+      provider TEXT NOT NULL,
+      client_id TEXT,
+      issuer_url TEXT,
+      scim_enabled INTEGER NOT NULL DEFAULT 1,
+      scim_status TEXT NOT NULL DEFAULT 'synced',
       created_at TEXT NOT NULL
     );
   `);

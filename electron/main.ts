@@ -28,6 +28,14 @@ import {
   HOSTED_IDLE_STOP_MS,
   HOSTED_RETENTION_DAYS,
 } from './backend/teamCollabService';
+import {
+  integrationsVoiceService,
+  DICTATION_MODELS,
+  TTS_MODELS,
+  HOSTED_SITE_EXPIRY_DAYS,
+  STATUS_PAGE_URL,
+  HOSTED_SITES_DOMAIN,
+} from './backend/integrationsVoiceService';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -1120,6 +1128,279 @@ function createWindow() {
         console.log('=============================================================');
         console.log('ALL MILESTONE 3, 4 & 5 VERIFICATION CHECKS & EXACT LIMITS PASSED.');
         console.log('=============================================================');
+
+        // =========================================================================
+        // MILESTONE 6 TESTS: Integrations & Voice
+        // =========================================================================
+        console.log('[Test] -------------------------------------------------------------');
+        console.log('[Test] Running Milestone 6 verification suite (Integrations & Voice)...');
+        console.log('[Test] -------------------------------------------------------------');
+
+        // 1. Connectors (Connect, Disconnect, Status) & GitHub Connector Tools
+        console.log('[Test] M6-1. Built-in Connectors & GitHub tools generation...');
+        const connectors = await integrationsVoiceService.getConnectors();
+        if (connectors.length < 5) throw new Error('Default built-in connectors catalog should be seeded');
+        const ghConn = connectors.find((c) => c.service === 'github');
+        if (!ghConn || ghConn.status !== 'not-connected') {
+          throw new Error('GitHub connector not found or initial status is not not-connected');
+        }
+
+        // Connect GitHub account
+        const connectRes = await integrationsVoiceService.connectConnector('github', 'tanjir-dev', 'oauth_token_verified');
+        if (!connectRes.success || connectRes.connector.status !== 'connected' || connectRes.toolsCount !== 3) {
+          throw new Error('GitHub connector connect failed or did not return 3 tools');
+        }
+        const ghTools = integrationsVoiceService.getGitHubTools();
+        const toolNames = ghTools.map((t) => t.name);
+        if (
+          !toolNames.includes('github_list_repositories') ||
+          !toolNames.includes('github_get_issues') ||
+          !toolNames.includes('github_create_pull_request')
+        ) {
+          throw new Error(`GitHub agent tools missing required operations: ${toolNames.join(', ')}`);
+        }
+        console.log(`[Test]    - GitHub connector connected (account: ${connectRes.connector.account_identifier}) with 3 agent tools: ${toolNames.join(', ')}.`);
+
+        // Disconnect connector
+        await integrationsVoiceService.disconnectConnector('github');
+        const afterDisc = (await integrationsVoiceService.getConnectors()).find((c) => c.service === 'github');
+        if (afterDisc?.status !== 'not-connected') throw new Error('Disconnecting connector failed');
+        console.log(`[Test]    - Connector disconnect verified.`);
+
+        // 2. Messaging Connections (Slack Orchestrator, Discord, Telegram)
+        console.log('[Test] M6-2. Messaging Connections & Slack Orchestrator routing...');
+        const msgConns = await integrationsVoiceService.getMessagingConnections();
+        const slackConn = msgConns.find((m) => m.platform === 'slack');
+        if (!slackConn || slackConn.answering_agent_id !== 'agent-slack-orchestrator') {
+          throw new Error('Slack connection must route new conversations to Slack Orchestrator');
+        }
+        console.log(`[Test]    - Slack Orchestrator verified: answering agent is "${slackConn.answering_agent_id}".`);
+
+        // 3. WhatsApp via Baileys (Unofficial Client Notice)
+        console.log('[Test] M6-3. WhatsApp via vendored Baileys (explicit unofficial notice)...');
+        const waConn = await integrationsVoiceService.connectWhatsAppBaileys();
+        if (!waConn.success || !waConn.isUnofficial) {
+          throw new Error('WhatsApp connection failed or failed to mark isUnofficial');
+        }
+        if (!waConn.notice.includes('NOT an official WhatsApp Business API integration') || !waConn.notice.includes('Baileys')) {
+          throw new Error(`WhatsApp notice must explicitly state unofficial Baileys status, got: "${waConn.notice}"`);
+        }
+        console.log(`[Test]    - WhatsApp Baileys connected with verified unofficial notice: "${waConn.notice}".`);
+        await integrationsVoiceService.disconnectWhatsAppBaileys();
+
+        // 4. Voice Dictation Models (Exact spec counts & languages)
+        console.log('[Test] M6-4. Voice Dictation Models (exact language counts & specs)...');
+        const dictModels = integrationsVoiceService.getDictationModels();
+        const parakeet = dictModels.find((m) => m.id === 'parakeet');
+        const parakeetUnified = dictModels.find((m) => m.id === 'parakeet-unified');
+        const bark = dictModels.find((m) => m.id === 'bark');
+        const whisper = dictModels.find((m) => m.id === 'whisper');
+        const cohere = dictModels.find((m) => m.id === 'cohere');
+        const elevenlabs = dictModels.find((m) => m.id === 'elevenlabs');
+        const groqTurbo = dictModels.find((m) => m.id === 'groq-turbo');
+
+        // Check exact limits
+        if (!parakeet || parakeet.languageCount !== 25 || parakeet.speed !== 'fast' || !parakeet.autoDetectsLanguage) {
+          throw new Error(`Parakeet spec invalid: ${JSON.stringify(parakeet)}`);
+        }
+        if (!parakeetUnified || parakeetUnified.languageCount !== 1 || parakeetUnified.languagesDescription !== 'English only') {
+          throw new Error(`Parakeet Unified spec invalid: ${JSON.stringify(parakeetUnified)}`);
+        }
+        if (!bark || bark.languageCount !== 1 || bark.languagesDescription !== 'English only') {
+          throw new Error(`Bark spec invalid: ${JSON.stringify(bark)}`);
+        }
+        if (!whisper || whisper.languageCount !== 100 || whisper.speed !== 'slower') {
+          throw new Error(`Whisper spec invalid: ${JSON.stringify(whisper)}`);
+        }
+        if (!cohere || cohere.languageCount !== 14 || !cohere.memoryRequirement?.includes('4 GB') || cohere.speed !== 'slower') {
+          throw new Error(`Cohere spec invalid: ${JSON.stringify(cohere)}`);
+        }
+        if (!elevenlabs || !elevenlabs.requiresApiKey || !elevenlabs.description.includes('streams')) {
+          throw new Error(`ElevenLabs spec invalid: ${JSON.stringify(elevenlabs)}`);
+        }
+        if (!groqTurbo || !groqTurbo.requiresApiKey) {
+          throw new Error(`Groq Turbo spec invalid: ${JSON.stringify(groqTurbo)}`);
+        }
+        console.log(`[Test]    - Local models verified: Parakeet (25 langs), Parakeet Unified (English), Bark (English), Whisper (100 langs), Cohere (14 langs, 4GB).`);
+        console.log(`[Test]    - Cloud models verified: ElevenLabs (streaming), Groq Turbo / Large (own API key).`);
+
+        // Test API Key Management (Save / Remove)
+        await integrationsVoiceService.saveVoiceApiKey('groq', 'gsk_test_secret_key_8492');
+        let voiceCfg = await integrationsVoiceService.getVoiceSettings();
+        if (!voiceCfg.api_keys.includes('gsk_test_secret_key_8492')) {
+          throw new Error('API key save failed');
+        }
+        await integrationsVoiceService.removeVoiceApiKey('groq');
+        voiceCfg = await integrationsVoiceService.getVoiceSettings();
+        if (voiceCfg.api_keys.includes('gsk_test_secret_key_8492')) {
+          throw new Error('API key removal failed');
+        }
+        console.log(`[Test]    - API key management verified (save, retrieve, remove).`);
+
+        // 5. Spoken Replies (TTS) Models (31 Languages) & Gender Voices
+        console.log('[Test] M6-5. Spoken Replies TTS models (31 languages, Female/Male voices)...');
+        const ttsModels = integrationsVoiceService.getTTSModels();
+        const ttsNames = ttsModels.map((m) => m.name);
+        if (!ttsNames.includes('Flash') || !ttsNames.includes('Multilingual') || !ttsNames.includes('v3') || !ttsNames.includes('xAI')) {
+          throw new Error(`TTS models missing required variants: ${ttsNames.join(', ')}`);
+        }
+        for (const tm of ttsModels) {
+          if (tm.languageCount !== 31) {
+            throw new Error(`TTS model ${tm.name} expected 31 languages, got ${tm.languageCount}`);
+          }
+        }
+        await integrationsVoiceService.updateVoiceSettings({ tts_gender: 'female', tts_voice: 'Female (Nova)', tts_auto_read: 1 });
+        const updatedVoice = await integrationsVoiceService.getVoiceSettings();
+        if (updatedVoice.tts_gender !== 'female' || updatedVoice.tts_voice !== 'Female (Nova)' || updatedVoice.tts_auto_read !== 1) {
+          throw new Error('TTS voice setting update failed');
+        }
+        console.log(`[Test]    - Spoken reply models verified (Flash, Multilingual, v3, xAI across 31 languages).`);
+
+        // 6. Live Voice (OpenAI Codex Sign-In Requirement)
+        console.log('[Test] M6-6. Live Voice (OpenAI Live Voice via Codex sign-in)...');
+        const ineligible = integrationsVoiceService.checkLiveVoiceEligibility(false);
+        if (ineligible.canUseLiveVoice !== false || !ineligible.instructions.includes('Sign in to Codex with your ChatGPT account to use live voice.')) {
+          throw new Error(`Ineligible live voice check failed: ${JSON.stringify(ineligible)}`);
+        }
+        const eligible = integrationsVoiceService.checkLiveVoiceEligibility(true);
+        if (eligible.canUseLiveVoice !== true) {
+          throw new Error('Eligible live voice check failed');
+        }
+        console.log(`[Test]    - Live voice enforcement verified: "${ineligible.instructions}".`);
+
+        // 7. Voice Server (/v1/audio OpenAI-Compatible)
+        console.log('[Test] M6-7. Voice Server (/v1/audio OpenAI-compatible states & notices)...');
+        // Not set up
+        const notSetUp = await integrationsVoiceService.configureVoiceServer({
+          address: '',
+          useForDictation: false,
+          useForTTS: false,
+        });
+        if (notSetUp.status !== 'Not set up') throw new Error('Expected status "Not set up"');
+
+        // Not in use
+        const notInUse = await integrationsVoiceService.configureVoiceServer({
+          address: 'https://voice.openbot.local/v1/audio',
+          useForDictation: false,
+          useForTTS: false,
+        });
+        if (notInUse.status !== 'Not in use') throw new Error('Expected status "Not in use"');
+
+        // Set up with notices
+        const setUp = await integrationsVoiceService.configureVoiceServer({
+          address: 'https://voice.openbot.local/v1/audio',
+          apiKey: 'sk-voice-9921',
+          useForDictation: true,
+          useForTTS: true,
+          dictationModel: 'whisper-large-v3',
+          ttsModel: 'tts-1-hd',
+          voice: 'nova',
+        });
+        if (setUp.status !== 'Set up') throw new Error('Expected status "Set up"');
+        if (!setUp.notices.includes('Your voice server takes dictation now.') || !setUp.notices.includes('Your voice server reads replies aloud now.')) {
+          throw new Error(`Expected specific voice server notices, got: ${JSON.stringify(setUp.notices)}`);
+        }
+        console.log(`[Test]    - Voice server states verified (Not set up / Not in use / Set up) with notices.`);
+
+        // 8. Webhook Formats (OpenBot + Standard Webhooks)
+        console.log('[Test] M6-8. Webhooks formats (OpenBot format & Standard Webhooks format)...');
+        const testPayload = { task: 'dependency-scan', status: 'completed' };
+        const openbotHook = integrationsVoiceService.formatWebhookPayload('openbot', 'task.completed', testPayload, 'secret-key');
+        if (!openbotHook.payload.event || !openbotHook.headers['x-openbot-signature']) {
+          throw new Error('OpenBot webhook format invalid');
+        }
+        const standardHook = integrationsVoiceService.formatWebhookPayload('standard', 'task.completed', testPayload, 'secret-key');
+        if (!standardHook.payload.id || !standardHook.payload.type || !standardHook.headers['webhook-signature']) {
+          throw new Error('Standard Webhooks format invalid');
+        }
+        console.log(`[Test]    - Both OpenBot and Standard Webhooks formats generated with valid signatures.`);
+
+        // 9. Enterprise SSO & SCIM
+        console.log('[Test] M6-9. Company SSO (Entra ID, Okta, Google Workspace) & SCIM user sync...');
+        const ssoRes = await integrationsVoiceService.configureEnterpriseSSO({
+          provider: 'okta',
+          clientId: '0oa1b2c3d4e5f6',
+          issuerUrl: 'https://company.okta.com',
+          scimEnabled: true,
+        });
+        if (ssoRes.provider !== 'okta' || ssoRes.scim_status !== 'synced') {
+          throw new Error('Enterprise SSO configuration failed');
+        }
+        console.log(`[Test]    - Enterprise SSO verified with SCIM sync: ${ssoRes.provider} (${ssoRes.issuer_url}).`);
+
+        // 10. Hosted Sites (openbot.site, 30-day expiry, 410 Gone on delete)
+        console.log('[Test] M6-10. Hosted Sites (openbot.site, 30-day expiry, 410 Gone on delete)...');
+        if (HOSTED_SITE_EXPIRY_DAYS !== 30) {
+          throw new Error(`Expected HOSTED_SITE_EXPIRY_DAYS === 30, got ${HOSTED_SITE_EXPIRY_DAYS}`);
+        }
+        const site = await integrationsVoiceService.publishHostedSite({
+          subdomain: `demo-site-${Date.now()}`,
+          siteTitle: 'Synthetify Cloud Status & Metrics',
+          authorAgentId: 'agent-kestrel',
+        });
+        if (!site.domain.includes(HOSTED_SITES_DOMAIN) || site.status !== 'published') {
+          throw new Error('Publishing hosted site failed');
+        }
+        // Verify exact 30-day expiry calculation
+        const pubTime = new Date(site.published_at).getTime();
+        const expTime = new Date(site.expires_at).getTime();
+        const daysDiff = Math.round((expTime - pubTime) / (24 * 60 * 60 * 1000));
+        if (daysDiff !== 30) {
+          throw new Error(`Expected exactly 30 days expiry, got ${daysDiff} days`);
+        }
+        console.log(`[Test]    - Site published to "${site.subdomain}.${site.domain}" with verified 30-day expiry (${site.expires_at}).`);
+
+        // Test 410 Gone on delete
+        const delRes = await integrationsVoiceService.deleteHostedSite(site.id);
+        if (delRes.httpStatus !== 410 || !delRes.message.includes('410 Gone')) {
+          throw new Error(`Expected 410 Gone response on hosted site deletion, got: ${JSON.stringify(delRes)}`);
+        }
+        console.log(`[Test]    - Deletion returns 410 Gone response: "${delRes.message}".`);
+
+        // Status page endpoint verification
+        const statusPage = integrationsVoiceService.getStatusPageEndpoint();
+        if (statusPage.url !== 'https://status.openbot.run') {
+          throw new Error(`Expected status page "https://status.openbot.run", got "${statusPage.url}"`);
+        }
+        console.log(`[Test]    - Operations status endpoint verified: ${statusPage.url}.`);
+
+        // 11. Capture Shell Screenshot for Milestone 6 (Settled UI)
+        console.log('[Test] Waiting for loading animation to dismiss and shell UI to fully settle for Milestone 6...');
+        await mainWindow!.webContents.executeJavaScript(`
+          new Promise((resolve) => {
+            const startTime = Date.now();
+            const check = () => {
+              const bounceEl = document.querySelector('.animate-bounce');
+              if (!bounceEl || Date.now() - startTime > 4000) {
+                resolve(true);
+              } else {
+                setTimeout(check, 100);
+              }
+            };
+            check();
+          });
+        `);
+        await new Promise((r) => setTimeout(r, 600));
+
+        const img6 = await mainWindow!.webContents.capturePage();
+        const distScreenshot6 = path.resolve('dist/milestone-6-shell.png');
+        const repoScreenshot6 = path.join(screenshotsDir, 'milestone-6-shell.png');
+        const artifactScreenshot6 = path.join(artifactDir, 'milestone-6-shell.png');
+
+        fs.writeFileSync(distScreenshot6, img6.toPNG());
+        fs.writeFileSync(repoScreenshot6, img6.toPNG());
+        console.log(`[Test] M6-11. Shell screenshot captured and saved to: ${distScreenshot6} and ${repoScreenshot6}`);
+        try {
+          if (!fs.existsSync(artifactDir)) fs.mkdirSync(artifactDir, { recursive: true });
+          fs.writeFileSync(artifactScreenshot6, img6.toPNG());
+          console.log(`[Test] Screenshot also mirrored to artifact directory: ${artifactScreenshot6}`);
+        } catch (e) {
+          console.log(`[Test] Mirroring to artifact dir skipped:`, e);
+        }
+
+        console.log('=============================================================');
+        console.log('ALL MILESTONE 3, 4, 5 & 6 VERIFICATION CHECKS & EXACT LIMITS PASSED.');
+        console.log('=============================================================');
         setTimeout(() => app.quit(), 500);
       } catch (err) {
         console.error('[Test] Suite error:', err);
@@ -1775,11 +2056,97 @@ ipcMain.handle('team:stop-all-remote-control', () => {
   return teamCollabService.stopAllRemoteControl();
 });
 
+// Milestone 6 IPC Handlers: Integrations & Voice
+ipcMain.handle('integrations:get-connectors', async () => {
+  return await integrationsVoiceService.getConnectors();
+});
+
+ipcMain.handle('integrations:connect-connector', async (_event, { service, accountIdentifier, authPayload }) => {
+  return await integrationsVoiceService.connectConnector(service, accountIdentifier, authPayload);
+});
+
+ipcMain.handle('integrations:disconnect-connector', async (_event, service: string) => {
+  return await integrationsVoiceService.disconnectConnector(service);
+});
+
+ipcMain.handle('integrations:get-messaging-connections', async () => {
+  return await integrationsVoiceService.getMessagingConnections();
+});
+
+ipcMain.handle('integrations:update-messaging-connection', async (_event, { id, updates }) => {
+  return await integrationsVoiceService.updateMessagingConnection(id, updates);
+});
+
+ipcMain.handle('integrations:connect-whatsapp-baileys', async () => {
+  return await integrationsVoiceService.connectWhatsAppBaileys();
+});
+
+ipcMain.handle('integrations:disconnect-whatsapp-baileys', async () => {
+  return await integrationsVoiceService.disconnectWhatsAppBaileys();
+});
+
+ipcMain.handle('voice:get-dictation-models', () => {
+  return integrationsVoiceService.getDictationModels();
+});
+
+ipcMain.handle('voice:get-tts-models', () => {
+  return integrationsVoiceService.getTTSModels();
+});
+
+ipcMain.handle('voice:get-settings', async () => {
+  return await integrationsVoiceService.getVoiceSettings();
+});
+
+ipcMain.handle('voice:update-settings', async (_event, updates) => {
+  return await integrationsVoiceService.updateVoiceSettings(updates);
+});
+
+ipcMain.handle('voice:save-api-key', async (_event, { provider, apiKey }) => {
+  return await integrationsVoiceService.saveVoiceApiKey(provider, apiKey);
+});
+
+ipcMain.handle('voice:remove-api-key', async (_event, provider) => {
+  return await integrationsVoiceService.removeVoiceApiKey(provider);
+});
+
+ipcMain.handle('voice:check-live-voice', async (_event, isCodexConnected: boolean) => {
+  return integrationsVoiceService.checkLiveVoiceEligibility(isCodexConnected);
+});
+
+ipcMain.handle('voice:configure-server', async (_event, params) => {
+  return await integrationsVoiceService.configureVoiceServer(params);
+});
+
+ipcMain.handle('webhooks:format-payload', (_event, { format, eventType, data, secretKey }) => {
+  return integrationsVoiceService.formatWebhookPayload(format, eventType, data, secretKey);
+});
+
+ipcMain.handle('sites:get-hosted-sites', async () => {
+  return await integrationsVoiceService.getHostedSites();
+});
+
+ipcMain.handle('sites:publish', async (_event, params) => {
+  return await integrationsVoiceService.publishHostedSite(params);
+});
+
+ipcMain.handle('sites:delete', async (_event, siteId: string) => {
+  return await integrationsVoiceService.deleteHostedSite(siteId);
+});
+
+ipcMain.handle('sso:get-configs', async () => {
+  return await integrationsVoiceService.getEnterpriseSSOConfigs();
+});
+
+ipcMain.handle('sso:configure', async (_event, params) => {
+  return await integrationsVoiceService.configureEnterpriseSSO(params);
+});
+
 app.whenReady().then(async () => {
   await initDatabase();
   await chatSessionService.init();
   await agentRuntimeService.init();
   await teamCollabService.init();
+  await integrationsVoiceService.init();
   createWindow();
   setupThemeWatcher();
 

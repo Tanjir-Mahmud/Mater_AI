@@ -420,4 +420,69 @@ export interface RemoteDesktopSession {
   expiresInSeconds: number;
 }
 
+// Milestone 6: Integrations and Voice Types
+export interface Connector {
+  id: string;
+  service: string;
+  name: string;
+  status: 'connected' | 'not-connected' | 'connecting' | 'error';
+  accountIdentifier?: string;
+  authPayload?: string;
+  config?: string;
+}
+
+export interface MessagingConnection {
+  id: string;
+  platform: 'slack' | 'discord' | 'telegram' | 'whatsapp';
+  workspaceName: string;
+  answeringAgentId: string;
+  status: 'connected' | 'not-connected' | 'connecting' | 'error';
+  signalRelayConnected: boolean;
+  isUnofficial: boolean;
+  details?: string;
+}
+
+export interface VoiceSettingsState {
+  dictationEngine: string;
+  dictationModel: string;
+  dictationLanguage: string;
+  ttsVoice: string;
+  ttsModel: string;
+  ttsGender: 'female' | 'male';
+  ttsLanguage: string;
+  ttsAutoRead: boolean;
+  apiKeys: Record<string, string>;
+  voiceServerAddress?: string;
+  voiceServerApiKey?: string;
+  voiceServerStatus: 'Not set up' | 'Not in use' | 'Set up';
+  voiceServerUseForDictation: boolean;
+  voiceServerUseForTTS: boolean;
+  voiceServerDictationModel?: string;
+  voiceServerTTSModel?: string;
+  voiceServerVoice?: string;
+}
+
+export interface HostedSite {
+  id: string;
+  subdomain: string;
+  domain: string;
+  siteTitle: string;
+  authorAgentId?: string;
+  sourceFiles: Record<string, string>;
+  status: 'published' | 'expired' | 'deleted';
+  publishedAt: string;
+  expiresAt: string;
+  deletedAt?: string;
+}
+
+export interface EnterpriseSSOConfig {
+  id: string;
+  provider: 'entra' | 'okta' | 'google_workspace';
+  clientId?: string;
+  issuerUrl?: string;
+  scimEnabled: boolean;
+  scimStatus: string;
+  createdAt: string;
+}
+
 

@@ -32,6 +32,11 @@ import {
   RemoteDesktopSession,
   ServerRole,
   AgentAccessLevel,
+  Connector,
+  MessagingConnection,
+  VoiceSettingsState,
+  HostedSite,
+  EnterpriseSSOConfig,
 } from '../types';
 import { i18n } from '../shared/i18n';
 
@@ -537,6 +542,26 @@ export const [state, setState] = createStore({
   ] as AuditLogEntry[],
   activeRemoteDesktopSession: null as RemoteDesktopSession | null,
   isRemoteDesktopActive: false,
+
+  // Milestone 6: Integrations and Voice
+  connectors: [] as Connector[],
+  messagingConnections: [] as MessagingConnection[],
+  voiceSettings: {
+    dictationEngine: 'parakeet',
+    dictationModel: 'Parakeet',
+    dictationLanguage: 'Automatic',
+    ttsVoice: 'Female (Nova)',
+    ttsModel: 'Flash',
+    ttsGender: 'female',
+    ttsLanguage: 'en',
+    ttsAutoRead: true,
+    apiKeys: {},
+    voiceServerStatus: 'Not set up',
+    voiceServerUseForDictation: false,
+    voiceServerUseForTTS: false,
+  } as VoiceSettingsState,
+  hostedSites: [] as HostedSite[],
+  enterpriseSSO: [] as EnterpriseSSOConfig[],
 });
 
 export function selectPage(page: PageId) {
@@ -1661,6 +1686,214 @@ export async function stopAllRemoteControlAction() {
     }
   } catch (err: any) {
     console.error('Failed to stop remote control:', err);
+  }
+}
+
+// Milestone 6 Actions: Integrations & Voice
+
+export async function loadConnectors() {
+  try {
+    if ((window as any).openbot?.getConnectors) {
+      const data = await (window as any).openbot.getConnectors();
+      setState('connectors', data);
+      return data;
+    }
+  } catch (err: any) {
+    console.error('Failed to load connectors:', err);
+  }
+}
+
+export async function connectConnectorAction(service: string, accountIdentifier: string, authPayload?: string) {
+  try {
+    if ((window as any).openbot?.connectConnector) {
+      const res = await (window as any).openbot.connectConnector(service, accountIdentifier, authPayload);
+      if (res.success) {
+        addToast('success', `${res.connector.name} connected`, `Configured as agent tools (${res.toolsCount || 0} tools added).`);
+        await loadConnectors();
+      }
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Connection failed', err?.message);
+  }
+}
+
+export async function disconnectConnectorAction(service: string) {
+  try {
+    if ((window as any).openbot?.disconnectConnector) {
+      await (window as any).openbot.disconnectConnector(service);
+      addToast('warning', 'Connector disconnected', `Service "${service}" disconnected.`);
+      await loadConnectors();
+    }
+  } catch (err: any) {
+    console.error('Failed to disconnect connector:', err);
+  }
+}
+
+export async function loadMessagingConnections() {
+  try {
+    if ((window as any).openbot?.getMessagingConnections) {
+      const data = await (window as any).openbot.getMessagingConnections();
+      setState('messagingConnections', data);
+      return data;
+    }
+  } catch (err: any) {
+    console.error('Failed to load messaging connections:', err);
+  }
+}
+
+export async function updateMessagingConnectionAction(id: string, updates: any) {
+  try {
+    if ((window as any).openbot?.updateMessagingConnection) {
+      await (window as any).openbot.updateMessagingConnection(id, updates);
+      await loadMessagingConnections();
+    }
+  } catch (err: any) {
+    console.error('Failed to update messaging connection:', err);
+  }
+}
+
+export async function connectWhatsAppBaileysAction() {
+  try {
+    if ((window as any).openbot?.connectWhatsAppBaileys) {
+      const res = await (window as any).openbot.connectWhatsAppBaileys();
+      addToast('success', 'WhatsApp Connected', res.notice);
+      await loadMessagingConnections();
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'WhatsApp Baileys error', err?.message);
+  }
+}
+
+export async function disconnectWhatsAppBaileysAction() {
+  try {
+    if ((window as any).openbot?.disconnectWhatsAppBaileys) {
+      await (window as any).openbot.disconnectWhatsAppBaileys();
+      addToast('warning', 'WhatsApp Disconnected', 'Baileys client session stopped.');
+      await loadMessagingConnections();
+    }
+  } catch (err: any) {
+    console.error('Failed to disconnect WhatsApp:', err);
+  }
+}
+
+export async function loadVoiceSettings() {
+  try {
+    if ((window as any).openbot?.getVoiceSettings) {
+      const data = await (window as any).openbot.getVoiceSettings();
+      setState('voiceSettings', {
+        dictationEngine: data.dictation_engine,
+        dictationModel: data.dictation_model,
+        dictationLanguage: data.dictation_language,
+        ttsVoice: data.tts_voice,
+        ttsModel: data.tts_model,
+        ttsGender: data.tts_gender,
+        ttsLanguage: data.tts_language,
+        ttsAutoRead: Boolean(data.tts_auto_read),
+        apiKeys: JSON.parse(data.api_keys || '{}'),
+        voiceServerAddress: data.voice_server_address,
+        voiceServerApiKey: data.voice_server_api_key,
+        voiceServerStatus: data.voice_server_status,
+        voiceServerUseForDictation: Boolean(data.voice_server_use_for_dictation),
+        voiceServerUseForTTS: Boolean(data.voice_server_use_for_tts),
+        voiceServerDictationModel: data.voice_server_dictation_model,
+        voiceServerTTSModel: data.voice_server_tts_model,
+        voiceServerVoice: data.voice_server_voice,
+      });
+      return data;
+    }
+  } catch (err: any) {
+    console.error('Failed to load voice settings:', err);
+  }
+}
+
+export async function updateVoiceSettingsAction(updates: any) {
+  try {
+    if ((window as any).openbot?.updateVoiceSettings) {
+      await (window as any).openbot.updateVoiceSettings(updates);
+      await loadVoiceSettings();
+      addToast('success', 'Voice settings updated', 'Audio DSP and synthesis configuration saved.');
+    }
+  } catch (err: any) {
+    addToast('error', 'Voice settings update error', err?.message);
+  }
+}
+
+export async function saveVoiceApiKeyAction(provider: string, apiKey: string) {
+  try {
+    if ((window as any).openbot?.saveVoiceApiKey) {
+      await (window as any).openbot.saveVoiceApiKey(provider, apiKey);
+      addToast('success', 'API Key saved', `Saved key for ${provider}.`);
+      await loadVoiceSettings();
+    }
+  } catch (err: any) {
+    addToast('error', 'Save API key error', err?.message);
+  }
+}
+
+export async function removeVoiceApiKeyAction(provider: string) {
+  try {
+    if ((window as any).openbot?.removeVoiceApiKey) {
+      await (window as any).openbot.removeVoiceApiKey(provider);
+      addToast('warning', 'API Key removed', `Removed key for ${provider}.`);
+      await loadVoiceSettings();
+    }
+  } catch (err: any) {
+    addToast('error', 'Remove API key error', err?.message);
+  }
+}
+
+export async function configureVoiceServerAction(params: any) {
+  try {
+    if ((window as any).openbot?.configureVoiceServer) {
+      const res = await (window as any).openbot.configureVoiceServer(params);
+      for (const notice of res.notices) {
+        addToast('success', 'Voice Server', notice);
+      }
+      await loadVoiceSettings();
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Voice server configuration error', err?.message);
+  }
+}
+
+export async function loadHostedSites() {
+  try {
+    if ((window as any).openbot?.getHostedSites) {
+      const data = await (window as any).openbot.getHostedSites();
+      setState('hostedSites', data);
+      return data;
+    }
+  } catch (err: any) {
+    console.error('Failed to load hosted sites:', err);
+  }
+}
+
+export async function publishHostedSiteAction(params: { subdomain: string; siteTitle: string; authorAgentId?: string }) {
+  try {
+    if ((window as any).openbot?.publishHostedSite) {
+      const res = await (window as any).openbot.publishHostedSite(params);
+      addToast('success', 'Site Published', `Live at ${res.subdomain}.${res.domain} (expires in 30 days).`);
+      await loadHostedSites();
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Publish site error', err?.message);
+  }
+}
+
+export async function deleteHostedSiteAction(siteId: string) {
+  try {
+    if ((window as any).openbot?.deleteHostedSite) {
+      const res = await (window as any).openbot.deleteHostedSite(siteId);
+      addToast('warning', 'Site Deleted', res.message);
+      await loadHostedSites();
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Delete site error', err?.message);
   }
 }
 
