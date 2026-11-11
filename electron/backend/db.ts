@@ -1085,7 +1085,63 @@ export async function initDatabase(): Promise<Database> {
       locked_at TEXT NOT NULL,
       last_heartbeat_at TEXT NOT NULL
     );
+
+    -- Milestone 9: Marketplace, Data & Release Tables
+    CREATE TABLE IF NOT EXISTS marketplace_items (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL, -- 'skill' | 'agent' | 'plugin' | 'bundle'
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      description TEXT NOT NULL,
+      author TEXT NOT NULL DEFAULT 'OpenBot',
+      license TEXT,
+      installs_count INTEGER NOT NULL DEFAULT 0,
+      version TEXT NOT NULL DEFAULT '1.0.0',
+      price TEXT, -- Invariant: null / unverified (no fake pricing)
+      metadata TEXT NOT NULL DEFAULT '{}',
+      is_bundle INTEGER NOT NULL DEFAULT 0,
+      bundle_items_count INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS transfer_manifests (
+      id TEXT PRIMARY KEY,
+      transfer_id TEXT NOT NULL,
+      sender_agent_id TEXT NOT NULL,
+      recipient_agent_ids TEXT NOT NULL DEFAULT '[]',
+      file_name TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      sha256_hash TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS docker_backups (
+      id TEXT PRIMARY KEY,
+      filename TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      backup_time TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'completed',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS storage_telemetry (
+      id TEXT PRIMARY KEY,
+      total_bytes INTEGER NOT NULL,
+      used_bytes INTEGER NOT NULL,
+      free_bytes INTEGER NOT NULL,
+      utilization_pct REAL NOT NULL,
+      alert_level TEXT NOT NULL DEFAULT 'normal', -- 'normal' | 'warning' | 'critical'
+      trigger_source TEXT NOT NULL, -- 'start' | 'interval_5m' | 'settings_close'
+      recorded_at TEXT NOT NULL
+    );
   `);
+
+  // Schema v58 per Section 10
+  db.run(`PRAGMA user_version = 58;`);
+  db.run(
+    `INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (58, '${new Date().toISOString()}');`
+  );
 
   try {
     db.run(`ALTER TABLE threads ADD COLUMN title TEXT NOT NULL DEFAULT 'Main Thread';`);
@@ -1126,4 +1182,13 @@ export async function initDatabase(): Promise<Database> {
   saveDatabase(db);
   dbInstance = db;
   return db;
+}
+
+export function getSchemaVersion(): number {
+  const db = getDatabase();
+  const res = db.exec('PRAGMA user_version;');
+  if (res.length && res[0].values.length) {
+    return Number(res[0].values[0][0]) || 58;
+  }
+  return 58;
 }

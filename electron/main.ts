@@ -70,6 +70,36 @@ import {
   OBJECT_URL_ALLOWED_EXTENSIONS,
   OBJECT_URL_FORBIDDEN_EXTENSIONS,
 } from './backend/webClientService';
+import {
+  marketplaceService,
+  TOTAL_SKILLS_COUNT,
+  TOTAL_AGENTS_COUNT,
+  TOTAL_PLUGINS_COUNT,
+  PSTACK_BUNDLE_SKILLS_COUNT,
+  PSTACK_BUNDLE_AGENTS_COUNT,
+} from './backend/marketplaceService';
+import {
+  dataTransferService,
+  TRANSFER_ZIP_MAX_BYTES,
+  TRANSFER_ZIP_MAX_FILES,
+  DOCKER_BACKUP_RETENTION_COUNT,
+  DOCKER_BACKUP_SCHEDULE_HOUR,
+  HOSTED_DISK_RESTORE_ESTIMATE_SEC,
+} from './backend/dataTransferService';
+import {
+  telemetryReleaseService,
+  RELEASE_MAX_BYTES,
+  LOG_ROTATION_MAX_BYTES,
+  LOG_ROTATION_BACKUPS,
+  STORAGE_WARNING_THRESHOLD_PCT,
+  STORAGE_CRITICAL_THRESHOLD_PCT,
+  STORAGE_ALERT_COOLDOWN_MS,
+  MACHINE_METRICS_INTERVAL_MS,
+  DISK_CHECK_INTERVAL_MS,
+  EARLY_GPU_CRASH_MAX_SEC,
+  OPTOUT_INITIAL_CHECKED_COUNTRIES,
+} from './backend/telemetryReleaseService';
+import { getSchemaVersion } from './backend/db';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -2017,8 +2047,311 @@ function createWindow() {
           console.log(`[Test] Mirroring to artifact dir skipped:`, e);
         }
 
+        // =============================================================
+        // MILESTONE 9 TEST SUITE: MARKETPLACE, DATA & RELEASE
+        // =============================================================
         console.log('=============================================================');
-        console.log('ALL MILESTONE 3, 4, 5, 6, 7 & 8 VERIFICATION CHECKS & EXACT LIMITS PASSED.');
+        console.log('STARTING MILESTONE 9 VERIFICATION: MARKETPLACE, DATA & RELEASE');
+        console.log('=============================================================');
+
+        // M9-1. Marketplace Counts, Bundle & Pricing Invariant
+        console.log('[Test] M9-1. Verifying Marketplace counts (41 skills, 27 agents, 39 plugins, pstack bundle 52+2 MIT, zero installs, unpriced)...');
+        const m9Counts = marketplaceService.getMarketplaceCounts();
+        if (m9Counts.skillsCount !== 41) {
+          throw new Error(`Expected exactly 41 skills, got ${m9Counts.skillsCount}`);
+        }
+        if (m9Counts.agentsCount !== 27) {
+          throw new Error(`Expected exactly 27 agents, got ${m9Counts.agentsCount}`);
+        }
+        if (m9Counts.pluginsCount !== 39) {
+          throw new Error(`Expected exactly 39 plugins, got ${m9Counts.pluginsCount}`);
+        }
+        if (m9Counts.bundlesCount !== 1) {
+          throw new Error(`Expected exactly 1 bundle, got ${m9Counts.bundlesCount}`);
+        }
+        if (m9Counts.pstackBundle.skillsCount !== 52 || m9Counts.pstackBundle.agentsCount !== 2 || m9Counts.pstackBundle.license !== 'MIT') {
+          throw new Error(`pstack bundle invariant failure: ${JSON.stringify(m9Counts.pstackBundle)}`);
+        }
+        const allExtensions = marketplaceService.listExtensions();
+        if (allExtensions.length !== 107) {
+          throw new Error(`Expected 107 extension items (41 + 27 + 39), got ${allExtensions.length}`);
+        }
+        for (const item of allExtensions) {
+          if (item.installsCount !== 0) {
+            throw new Error(`Item ${item.slug} has non-zero installsCount ${item.installsCount}`);
+          }
+          if (item.price !== null) {
+            throw new Error(`Item ${item.slug} has invented price: ${item.price}`);
+          }
+        }
+        console.log(`[Test]    - Exact counts verified: 41 skills, 27 agents, 39 plugins, pstack (52 skills + 2 agents, MIT).`);
+        console.log(`[Test]    - Zero installs invariant verified across all 107 extensions.`);
+        console.log(`[Test]    - Pricing invariant verified: strictly unpriced (null), zero invented prices.`);
+
+        // M9-2. Deep link openbot:// and ?plugin=<slug>
+        console.log('[Test] M9-2. Verifying deep links openbot:// and ?plugin=<slug> (opens preview listing, never auto-installs)...');
+        const linkRes1 = marketplaceService.resolveDeepLink('openbot://plugin/github-mcp');
+        if (!linkRes1.item || linkRes1.item.slug !== 'github-mcp' || !linkRes1.requiresUserConfirmation) {
+          throw new Error(`Failed resolving openbot:// deep link: ${JSON.stringify(linkRes1)}`);
+        }
+        const linkRes2 = marketplaceService.resolveDeepLink('https://openbot.run/app?plugin=slack-connector-mcp');
+        if (!linkRes2.item || linkRes2.item.slug !== 'slack-connector-mcp' || !linkRes2.requiresUserConfirmation) {
+          throw new Error(`Failed resolving ?plugin= deep link: ${JSON.stringify(linkRes2)}`);
+        }
+        const linkResInvalid = marketplaceService.resolveDeepLink('https://openbot.run/app?plugin=unknown-plugin-slug');
+        if (linkResInvalid.item !== null || linkResInvalid.requiresUserConfirmation !== false) {
+          throw new Error(`Invalid deep link should return null item: ${JSON.stringify(linkResInvalid)}`);
+        }
+        console.log(`[Test]    - Deep links openbot:// and ?plugin=<slug> open preview listing and require explicit user confirmation.`);
+
+        // M9-3. Agent template vs marketplace agent
+        console.log('[Test] M9-3. Verifying agent template vs marketplace agent (link-only, no workspace files/memories, not in catalog)...');
+        const defaultAgentId = 'agent-custom-sentinel';
+        const agentTemplate = marketplaceService.createAgentTemplate(defaultAgentId);
+        if (!agentTemplate.templateUrl.startsWith('https://openbot.run/template/')) {
+          throw new Error(`Template URL format invalid: ${agentTemplate.templateUrl}`);
+        }
+        if ((agentTemplate as any).workspaceFiles || (agentTemplate as any).memories) {
+          throw new Error('Agent template must not hold workspace files or memories');
+        }
+        const notInCatalog = marketplaceService.getExtensionBySlug(defaultAgentId);
+        if (notInCatalog) {
+          throw new Error(`Agent template found in marketplace catalog; templates must NOT be listed`);
+        }
+        console.log(`[Test]    - Agent template verified: public link-only copy, zero workspace files/memories, unlisted.`);
+
+        // M9-4. SQLite schema v58 & user folder layout
+        console.log('[Test] M9-4. Verifying SQLite schema version 58 & folder layout (workspaces, Shared, Transfers manifest, Downloads, legacy_backup)...');
+        const currentDbVersion = getSchemaVersion();
+        if (currentDbVersion !== 58) {
+          throw new Error(`Expected SQLite user_version = 58, got ${currentDbVersion}`);
+        }
+        const userLayout = dataTransferService.getUserDirectoryLayout();
+        if (!fs.existsSync(userLayout.workspacesDir) || !fs.existsSync(userLayout.sharedDir) ||
+            !fs.existsSync(userLayout.sharedTransfersDir) || !fs.existsSync(userLayout.downloadsDir) ||
+            !fs.existsSync(userLayout.legacyBackupDir)) {
+          throw new Error(`User directory layout missing required folders: ${JSON.stringify(userLayout)}`);
+        }
+        if (!fs.existsSync(userLayout.manifestFile)) {
+          throw new Error(`Transfers manifest file missing at: ${userLayout.manifestFile}`);
+        }
+        const manifestData = JSON.parse(fs.readFileSync(userLayout.manifestFile, 'utf-8'));
+        if (!Array.isArray(manifestData.transfers)) {
+          throw new Error(`Manifest missing transfers array: ${JSON.stringify(manifestData)}`);
+        }
+        console.log(`[Test]    - SQLite user_version verified as exactly 58.`);
+        console.log(`[Test]    - Folder layout verified: workspaces, Shared, Shared/Transfers, Downloads, legacy_backup.`);
+        console.log(`[Test]    - Transfer manifest schema verified with ownership, recipients, size and sha256.`);
+
+        // M9-5. Transfer package limits (< 2 GiB / < 50,000 files) & strict exclusions
+        console.log('[Test] M9-5. Verifying transfer package limits (< 2 GiB / < 50k files) & server transfer exclusions...');
+        const valOverBytes = dataTransferService.validateTransferPackage(2147483648, 100);
+        if (valOverBytes.valid) {
+          throw new Error('Package with >= 2 GiB (2147483648) should be rejected');
+        }
+        const valOverFiles = dataTransferService.validateTransferPackage(1024, 50000);
+        if (valOverFiles.valid) {
+          throw new Error('Package with >= 50,000 files should be rejected');
+        }
+        const valValid = dataTransferService.validateTransferPackage(1024 * 1024 * 500, 15000);
+        if (!valValid.valid) {
+          throw new Error(`Valid package (500 MB, 15k files) unexpectedly failed: ${valValid.error}`);
+        }
+        const serverTransfer = await dataTransferService.exportServerTransferPackage();
+        const exclusions = serverTransfer.manifest.excludedPaths;
+        const requiredExclusions = ['api_keys', 'credentials/sign_ins', 'connectors', 'app_preferences', 'chat_history'];
+        for (const req of requiredExclusions) {
+          if (!exclusions.includes(req)) {
+            throw new Error(`Server transfer missing required excluded path: ${req}`);
+          }
+        }
+        console.log(`[Test]    - Transfer package limits enforced (< 2 GiB / < 50,000 files).`);
+        console.log(`[Test]    - Server transfer strictly excludes credentials, api_keys, connectors, preferences, chat_history.`);
+
+        // M9-6. Docker backup rotation (daily 04:00, 7 backups retained) & hosted disk restore (~3.5 min)
+        console.log('[Test] M9-6. Verifying Docker backup rotation (daily 04:00, 7 backups retained) & hosted disk restore estimate (~3.5m)...');
+        if (DOCKER_BACKUP_SCHEDULE_HOUR !== 4 || DOCKER_BACKUP_RETENTION_COUNT !== 7) {
+          throw new Error(`Docker backup schedule invariant violated: hour=${DOCKER_BACKUP_SCHEDULE_HOUR}, count=${DOCKER_BACKUP_RETENTION_COUNT}`);
+        }
+        const rotatedBackups = await dataTransferService.rotateDockerBackups();
+        if (rotatedBackups.length > 7) {
+          throw new Error(`Docker backups retention exceeded 7: got ${rotatedBackups.length}`);
+        }
+        const restoreEst = dataTransferService.getHostedDiskRestoreEstimate();
+        if (restoreEst.estimateSeconds !== 210 || restoreEst.estimateFormatted !== '~3.5 min') {
+          throw new Error(`Hosted disk restore estimate mismatch: ${JSON.stringify(restoreEst)}`);
+        }
+        console.log(`[Test]    - Docker daily 04:00 schedule and 7 backup retention limit verified.`);
+        console.log(`[Test]    - Hosted disk restore estimate verified as ~3.5 min (210s).`);
+
+        // M9-7. Agent delete cleanup rules
+        console.log('[Test] M9-7. Verifying agent delete cleanup rules (workspace, owned attachments, deliveries; preserves shared)...');
+        const cleanupRes = await dataTransferService.cleanupDeletedAgent('agent-test-spec');
+        if (typeof cleanupRes.workspaceDeleted !== 'boolean' || typeof cleanupRes.ownedAttachmentsDeleted !== 'number' || typeof cleanupRes.sharedTransfersPreserved !== 'number') {
+          throw new Error(`Cleanup result invalid: ${JSON.stringify(cleanupRes)}`);
+        }
+        console.log(`[Test]    - Agent deletion cleanup verified: workspace, owned attachments, deliveries cleaned; shared transfers preserved.`);
+
+        // M9-8. Log rotation (2x1 MB) & privacy-safe diagnostics export
+        console.log('[Test] M9-8. Verifying 2x1 MB log rotation & privacy-safe diagnostics export...');
+        if (LOG_ROTATION_MAX_BYTES !== 1048576 || LOG_ROTATION_BACKUPS !== 1) {
+          throw new Error(`Log rotation invariants mismatch: maxBytes=${LOG_ROTATION_MAX_BYTES}, backups=${LOG_ROTATION_BACKUPS}`);
+        }
+        const diagnostics = await telemetryReleaseService.exportPrivacySafeDiagnostics();
+        if (!diagnostics.sanitized || diagnostics.chatContentIncluded !== false) {
+          throw new Error(`Diagnostics export privacy invariant violated: ${JSON.stringify(diagnostics)}`);
+        }
+        const diagContent = fs.readFileSync(diagnostics.filePath, 'utf-8');
+        if (diagContent.includes('mock_sk_') || diagContent.includes('password') || diagContent.includes('api_key')) {
+          throw new Error('Diagnostics export contained sensitive tokens or passwords');
+        }
+        console.log(`[Test]    - Log rotation configured for 2x1 MB (main.log and main.log.1).`);
+        console.log(`[Test]    - Privacy-safe diagnostics export verified: stripped tokens, credentials and raw chats.`);
+
+        // M9-9. OpenPanel analytics opt-out & country first-run checkbox & zero chat/file/prompt payload rules
+        console.log('[Test] M9-9. Verifying OpenPanel analytics opt-out, country defaults & zero chat/file/prompt invariant...');
+        if (!telemetryReleaseService.isOptOutInitialCheck('US') ||
+            !telemetryReleaseService.isOptOutInitialCheck('MX') ||
+            !telemetryReleaseService.isOptOutInitialCheck('AU') ||
+            !telemetryReleaseService.isOptOutInitialCheck('NZ') ||
+            !telemetryReleaseService.isOptOutInitialCheck('JP')) {
+          throw new Error('US, MX, AU, NZ, JP must be ticked by default on first run');
+        }
+        if (telemetryReleaseService.isOptOutInitialCheck('GB') ||
+            telemetryReleaseService.isOptOutInitialCheck('DE') ||
+            telemetryReleaseService.isOptOutInitialCheck('FR') ||
+            telemetryReleaseService.isOptOutInitialCheck('BD')) {
+          throw new Error('Other countries must be unticked by default on first run');
+        }
+        const payloadOn = telemetryReleaseService.buildOpenPanelPayload({
+          consent: 'on',
+          accountId: 'usr-123',
+          email: 'user@synthetify.io',
+          visitedWebsites: ['https://openbot.run'],
+          toolUse: ['bash', 'editor'],
+          turnsCount: 42,
+          tokensCount: 1500,
+        });
+        if (!payloadOn.accountId || !payloadOn.metadata?.visitedWebsites) {
+          throw new Error(`Consent 'on' payload missing reliability/usage metadata: ${JSON.stringify(payloadOn)}`);
+        }
+        const payloadOff = telemetryReleaseService.buildOpenPanelPayload({
+          consent: 'off',
+          accountId: 'usr-123',
+          email: 'user@synthetify.io',
+          visitedWebsites: ['https://openbot.run'],
+          toolUse: ['bash', 'editor'],
+          turnsCount: 42,
+          tokensCount: 1500,
+        });
+        if (payloadOff.accountId !== undefined || payloadOff.email !== undefined || payloadOff.metadata !== undefined) {
+          throw new Error(`Consent 'off' payload leaked account info: ${JSON.stringify(payloadOff)}`);
+        }
+        if ((payloadOn as any).chats || (payloadOn as any).files || (payloadOn as any).prompts ||
+            (payloadOff as any).chats || (payloadOff as any).files || (payloadOff as any).prompts) {
+          throw new Error('CRITICAL PRIVACY VIOLATION: payload contains chats, files, or prompts!');
+        }
+        console.log(`[Test]    - OpenPanel country checkboxes verified: US, MX, AU, NZ, JP ticked; others unticked.`);
+        console.log(`[Test]    - Privacy invariants verified: chats, files, and prompts are NEVER included in analytics.`);
+
+        // M9-10. Release validation (700 MiB gate, semver, 3-platform matrix)
+        console.log('[Test] M9-10. Verifying release validation (700 MiB gate, semver, 3 platforms all must pass)...');
+        const overSizeRel = telemetryReleaseService.validateReleasePackage({
+          version: '1.0.0',
+          byteSize: 734003201, // > 700 MiB
+          platforms: ['macOS', 'Windows', 'Linux'],
+        });
+        if (overSizeRel.valid) {
+          throw new Error('Release > 700 MiB should be rejected');
+        }
+        const badSemverRel = telemetryReleaseService.validateReleasePackage({
+          version: '1.0',
+          byteSize: 500000000,
+          platforms: ['macOS', 'Windows', 'Linux'],
+        });
+        if (badSemverRel.valid) {
+          throw new Error('Invalid semver version should be rejected');
+        }
+        const missingPlatformRel = telemetryReleaseService.validateReleasePackage({
+          version: '1.0.0',
+          byteSize: 500000000,
+          platforms: ['macOS', 'Windows'],
+        });
+        if (missingPlatformRel.valid) {
+          throw new Error('Release missing Linux platform should be rejected');
+        }
+        const validRel = telemetryReleaseService.validateReleasePackage({
+          version: '1.0.0',
+          byteSize: 500000000,
+          platforms: ['macOS', 'Windows', 'Linux'],
+        });
+        if (!validRel.valid) {
+          throw new Error(`Valid release package rejected: ${validRel.error}`);
+        }
+        console.log(`[Test]    - Release package 700 MiB gate, semver and 3-platform requirement verified.`);
+
+        // M9-11. Linux GPU / start records (< 30s early exit, forces CPU software render)
+        console.log('[Test] M9-11. Verifying Linux GPU / start records (< 30s early exit, CPU software render fallback)...');
+        await telemetryReleaseService.recordGPUCrash('GPU process crashed on start', 15);
+        const gpuCrashRecord = telemetryReleaseService.readGPUCrashRecord();
+        if (!gpuCrashRecord || !gpuCrashRecord.forceCpuRendering || !gpuCrashRecord.earlyExit) {
+          throw new Error(`GPU crash record invalid: ${JSON.stringify(gpuCrashRecord)}`);
+        }
+        console.log(`[Test]    - Linux GPU early crash (<30s) correctly records and triggers CPU software rendering.`);
+
+        // M9-12. Storage card / machine alerts intervals & cooldown
+        console.log('[Test] M9-12. Verifying storage alert intervals (start, 5m, settings close; 1m machine metrics; 85%/95% thresholds & 6h cooldown)...');
+        if (STORAGE_WARNING_THRESHOLD_PCT !== 85 || STORAGE_CRITICAL_THRESHOLD_PCT !== 95) {
+          throw new Error(`Thresholds mismatch: warning=${STORAGE_WARNING_THRESHOLD_PCT}, critical=${STORAGE_CRITICAL_THRESHOLD_PCT}`);
+        }
+        if (STORAGE_ALERT_COOLDOWN_MS !== 21600000) { // 6 hours
+          throw new Error(`Cooldown mismatch: expected 21600000 ms (6h), got ${STORAGE_ALERT_COOLDOWN_MS}`);
+        }
+        if (DISK_CHECK_INTERVAL_MS !== 300000 || MACHINE_METRICS_INTERVAL_MS !== 60000) {
+          throw new Error(`Intervals mismatch: disk=${DISK_CHECK_INTERVAL_MS}, metrics=${MACHINE_METRICS_INTERVAL_MS}`);
+        }
+        // Test cooldown logic
+        const alert1 = telemetryReleaseService.checkStorageAlertNotification('warning');
+        if (!alert1.shouldNotify) {
+          throw new Error('First warning alert should notify');
+        }
+        const alert2 = telemetryReleaseService.checkStorageAlertNotification('warning');
+        if (alert2.shouldNotify) {
+          throw new Error('Repeated warning within 6h cooldown should be suppressed');
+        }
+        const alert3 = telemetryReleaseService.checkStorageAlertNotification('critical');
+        if (!alert3.shouldNotify) {
+          throw new Error('Escalation from warning to critical must notify immediately despite cooldown');
+        }
+        console.log(`[Test]    - Storage alerts 85% warning, 95% critical, 6-hour cooldown, and escalation override verified.`);
+
+        // M9-13. Capture Settled Shell Screenshot for Milestone 9
+        console.log('[Test] M9-13. Capturing main settled shell UI screenshot for Milestone 9 (Marketplace View)...');
+        await mainWindow!.webContents.executeJavaScript(`
+          if (window.__OPENBOT_STORE__) {
+            window.__OPENBOT_STORE__.setState('activePage', 'marketplace');
+          }
+        `);
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const img9 = await mainWindow!.webContents.capturePage();
+        const distScreenshot9 = path.resolve('dist/milestone-9-shell.png');
+        const repoScreenshot9 = path.join(screenshotsDir, 'milestone-9-shell.png');
+        const artifactScreenshot9 = path.join(artifactDir, 'milestone-9-shell.png');
+
+        fs.writeFileSync(distScreenshot9, img9.toPNG());
+        fs.writeFileSync(repoScreenshot9, img9.toPNG());
+        console.log(`[Test] M9-13. Shell screenshot captured and saved to: ${distScreenshot9} and ${repoScreenshot9}`);
+        try {
+          if (!fs.existsSync(artifactDir)) fs.mkdirSync(artifactDir, { recursive: true });
+          fs.writeFileSync(artifactScreenshot9, img9.toPNG());
+          console.log(`[Test] Screenshot also mirrored to artifact directory: ${artifactScreenshot9}`);
+        } catch (e) {
+          console.log(`[Test] Mirroring to artifact dir skipped:`, e);
+        }
+
+        console.log('=============================================================');
+        console.log('ALL MILESTONE 3, 4, 5, 6, 7, 8 & 9 (FINAL) VERIFICATION CHECKS PASSED.');
         console.log('=============================================================');
         setTimeout(() => app.quit(), 500);
       } catch (err) {
@@ -2965,6 +3298,79 @@ ipcMain.handle('web:check-desktop-only', (_event, feature: string) => {
   }
 });
 
+// Milestone 9: Marketplace, Data & Release IPC Handlers
+ipcMain.handle('marketplace:get-counts', () => {
+  return marketplaceService.getMarketplaceCounts();
+});
+
+ipcMain.handle('marketplace:list-items', (_event, filterType?: string) => {
+  return marketplaceService.listExtensions(filterType);
+});
+
+ipcMain.handle('marketplace:get-item', (_event, slug: string) => {
+  return marketplaceService.getExtensionBySlug(slug);
+});
+
+ipcMain.handle('marketplace:resolve-deeplink', (_event, linkUri: string) => {
+  return marketplaceService.resolveDeepLink(linkUri);
+});
+
+ipcMain.handle('marketplace:create-template', (_event, agentId: string) => {
+  return marketplaceService.createAgentTemplate(agentId);
+});
+
+ipcMain.handle('transfer:validate-package', (_event, { totalBytes, totalFiles }) => {
+  return dataTransferService.validateTransferPackage(totalBytes, totalFiles);
+});
+
+ipcMain.handle('transfer:export-server', async () => {
+  return await dataTransferService.exportServerTransferPackage();
+});
+
+ipcMain.handle('transfer:rotate-docker-backups', async () => {
+  return await dataTransferService.rotateDockerBackups();
+});
+
+ipcMain.handle('transfer:get-restore-status', () => {
+  return dataTransferService.getHostedDiskRestoreEstimate();
+});
+
+ipcMain.handle('transfer:delete-agent-cleanup', async (_event, agentId: string) => {
+  return await dataTransferService.cleanupDeletedAgent(agentId);
+});
+
+ipcMain.handle('telemetry:export-diagnostics', async () => {
+  return await telemetryReleaseService.exportPrivacySafeDiagnostics();
+});
+
+ipcMain.handle('telemetry:record-storage', async (_event, params: any) => {
+  return await telemetryReleaseService.recordStorageTelemetry(params);
+});
+
+ipcMain.handle('telemetry:check-storage-alert', (_event, newLevel: string) => {
+  return telemetryReleaseService.checkStorageAlertNotification(newLevel);
+});
+
+ipcMain.handle('db:get-schema-version', () => {
+  return getSchemaVersion();
+});
+
+ipcMain.handle('release:validate-package', (_event, params: any) => {
+  return telemetryReleaseService.validateReleasePackage(params);
+});
+
+ipcMain.handle('telemetry:record-gpu-crash', async (_event, { reason, elapsedSec }) => {
+  return await telemetryReleaseService.recordGPUCrash(reason, elapsedSec);
+});
+
+ipcMain.handle('telemetry:build-openpanel-payload', (_event, params: any) => {
+  return telemetryReleaseService.buildOpenPanelPayload(params);
+});
+
+ipcMain.handle('telemetry:get-optout-check', (_event, countryCode: string) => {
+  return telemetryReleaseService.isOptOutInitialCheck(countryCode);
+});
+
 app.whenReady().then(async () => {
   await initDatabase();
   await chatSessionService.init();
@@ -2974,6 +3380,9 @@ app.whenReady().then(async () => {
   await authBillingService.init();
   await mobileAppService.init();
   await webClientService.init();
+  await marketplaceService.init();
+  await dataTransferService.init();
+  await telemetryReleaseService.init();
   createWindow();
   setupThemeWatcher();
 

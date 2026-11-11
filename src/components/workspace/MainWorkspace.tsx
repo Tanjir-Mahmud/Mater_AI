@@ -25,6 +25,7 @@ import {
   restoreDeletedWorkflowAction,
 } from '../../stores/appState';
 import { RightSidePanel } from './RightSidePanel';
+import { MarketplaceView } from '../marketplace/MarketplaceView';
 import { i18n } from '../../shared/i18n';
 
 interface ModelOption {
@@ -465,7 +466,11 @@ export const MainWorkspace: Component = () => {
                 </div>
               </Show>
 
-              <Show when={state.activePage === 'library' || state.activePage === 'marketplace'}>
+              <Show when={state.activePage === 'marketplace'}>
+                <MarketplaceView />
+              </Show>
+
+              <Show when={state.activePage === 'library'}>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div class="p-4 rounded-xl bg-surface-container border border-outline-variant/30 flex flex-col gap-2">
                     <div class="flex items-center justify-between">

@@ -630,5 +630,40 @@ export interface DeepLinkPayload {
   requiresUserConfirmation: boolean;
 }
 
+// Milestone 9: Marketplace, Data & Release Types
+export interface MarketplaceExtension {
+  id: string;
+  type: 'skill' | 'agent' | 'plugin' | 'bundle';
+  name: string;
+  slug: string;
+  description: string;
+  author: string;
+  license?: string;
+  installsCount: number;
+  version: string;
+  price: null;
+  isBundle?: boolean;
+  bundleItemsCount?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface StorageTelemetryState {
+  totalBytes: number;
+  usedBytes: number;
+  freeBytes: number;
+  utilizationPct: number;
+  alertLevel: 'normal' | 'warning' | 'critical';
+  triggerSource: 'start' | 'interval_5m' | 'settings_close';
+  recordedAt: string;
+}
+
+export interface DiagnosticsExportResult {
+  filePath?: string;
+  sanitized: boolean;
+  chatContentIncluded: false;
+  exportedAt: string;
+}
+
+
 
 

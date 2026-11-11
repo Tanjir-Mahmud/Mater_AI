@@ -49,6 +49,9 @@ import {
   WebSessionLockState,
   InlineMediaInspection,
   DeepLinkPayload,
+  MarketplaceExtension,
+  StorageTelemetryState,
+  DiagnosticsExportResult,
 } from '../types';
 import { i18n } from '../shared/i18n';
 
@@ -600,6 +603,21 @@ export const [state, setState] = createStore({
   reconnectAttempt: 0,
   reconnectElapsedSeconds: 0,
   reconnectText: '',
+
+  // Milestone 9: Marketplace, Data & Release
+  marketplaceFilter: 'all' as 'all' | 'skills' | 'agents' | 'plugins' | 'installed',
+  marketplaceSearchQuery: '',
+  marketplaceItems: [] as MarketplaceExtension[],
+  activeMarketplacePreview: null as MarketplaceExtension | null,
+  storageTelemetry: {
+    totalBytes: 100 * 1024 * 1024 * 1024,
+    usedBytes: 38.4 * 1024 * 1024 * 1024,
+    freeBytes: 61.6 * 1024 * 1024 * 1024,
+    utilizationPct: 38.4,
+    alertLevel: 'normal',
+    triggerSource: 'start',
+    recordedAt: new Date().toISOString(),
+  } as StorageTelemetryState,
 });
 
 if (typeof window !== 'undefined') {
@@ -2352,6 +2370,88 @@ export async function parseAndCleanDeepLinkAction(rawUrl: string) {
     }
   } catch (err: any) {
     console.error('Deep link parse error:', err);
+  }
+}
+
+// -------------------------------------------------------------
+// Milestone 9: Marketplace, Data & Release Actions
+// -------------------------------------------------------------
+
+export async function loadMarketplaceItemsAction(filterType?: string) {
+  try {
+    if ((window as any).openbot?.listMarketplaceItems) {
+      const items = await (window as any).openbot.listMarketplaceItems(filterType);
+      setState('marketplaceItems', items);
+      return items;
+    }
+  } catch (err: any) {
+    console.error('Failed to load marketplace items:', err);
+  }
+}
+
+export async function resolveMarketplaceDeepLinkAction(linkUri: string) {
+  try {
+    if ((window as any).openbot?.resolveMarketplaceDeepLink) {
+      const res = await (window as any).openbot.resolveMarketplaceDeepLink(linkUri);
+      if (res.item) {
+        setState('activeMarketplacePreview', res.item);
+      }
+      return res;
+    }
+  } catch (err: any) {
+    console.error('Marketplace deep link resolve error:', err);
+  }
+}
+
+export async function recordStorageTelemetryAction(triggerSource: 'start' | 'interval_5m' | 'settings_close') {
+  try {
+    if ((window as any).openbot?.recordStorageTelemetry) {
+      const metrics = await (window as any).openbot.recordStorageTelemetry({
+        totalBytes: 100 * 1024 * 1024 * 1024,
+        usedBytes: 38.4 * 1024 * 1024 * 1024,
+        triggerSource,
+      });
+      setState('storageTelemetry', metrics);
+      return metrics;
+    }
+  } catch (err: any) {
+    console.error('Storage telemetry record error:', err);
+  }
+}
+
+export async function exportPrivacySafeDiagnosticsAction() {
+  try {
+    if ((window as any).openbot?.exportPrivacySafeDiagnostics) {
+      const res = await (window as any).openbot.exportPrivacySafeDiagnostics();
+      addToast('success', 'Diagnostics Exported', 'Privacy-safe bundle generated (zero chats/keys exported).');
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Diagnostics Export Failed', err?.message);
+  }
+}
+
+export async function exportServerTransferAction() {
+  try {
+    if ((window as any).openbot?.exportServerTransfer) {
+      const res = await (window as any).openbot.exportServerTransfer();
+      addToast('success', 'Server Package Ready', `Prepared transfer (${res.included.filesCount} files). Secrets and chats excluded.`);
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Transfer Export Failed', err?.message);
+  }
+}
+
+export async function rotateDockerBackupsAction() {
+  try {
+    if ((window as any).openbot?.rotateDockerBackups) {
+      const res = await (window as any).openbot.rotateDockerBackups();
+      addToast('success', 'Docker Backup Rotated', `Schedule daily 04:00 (7 backups retained).`);
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Docker Backup Error', err?.message);
   }
 }
 

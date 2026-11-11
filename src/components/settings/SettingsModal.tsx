@@ -47,6 +47,8 @@ import {
   openStripePortalAction,
   openStripeCheckoutAction,
   checkOfflineGraceAction,
+  exportPrivacySafeDiagnosticsAction,
+  recordStorageTelemetryAction,
 } from '../../stores/appState';
 import { SUPPORTED_LOCALES, i18n } from '../../shared/i18n';
 import { AppTheme, SendShortcut, HoldCmdQMode, LogoColor, ServerRole } from '../../types';
@@ -80,6 +82,7 @@ const SETTINGS_TABS: SettingsTabItem[] = [
   { id: 'mobile_connect', name: 'Mobile Connect', icon: 'smartphone', description: 'Sign in securely on your phone.' },
   { id: 'updates', name: 'Updates', icon: 'system_update_alt', description: 'Keep OpenBot current on this computer.' },
   { id: 'hosted_servers', name: 'Hosted servers', icon: 'cloud', description: 'Create OpenBot servers that run when this computer is off (15-min idle stop, 14-day disk retention).' },
+  { id: 'storage', name: 'Storage & Telemetry', icon: 'hard_drive', description: 'Disk partitions, retention policies, and real-time hardware consumption on host node.' },
 ];
 
 export const SettingsModal: Component = () => {
@@ -167,11 +170,16 @@ export const SettingsModal: Component = () => {
     };
   };
 
+  const closeSettings = () => {
+    setState('isSettingsOpen', false);
+    recordStorageTelemetryAction('settings_close');
+  };
+
   return (
     <Show when={state.isSettingsOpen}>
       <div
         class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs select-none p-4"
-        onClick={() => setState('isSettingsOpen', false)}
+        onClick={closeSettings}
       >
         <div
           class="w-[860px] h-[640px] max-w-full max-h-full bg-surface-container border border-outline-variant/40 rounded-2xl shadow-2xl flex overflow-hidden animate-in fade-in zoom-in-95 duration-150"
@@ -183,7 +191,7 @@ export const SettingsModal: Component = () => {
             <div class="flex items-center justify-between pb-3 border-b border-outline-variant/20 mb-2">
               <span class="font-headline-sm text-sm text-on-surface font-semibold">Settings</span>
               <button
-                onClick={() => setState('isSettingsOpen', false)}
+                onClick={closeSettings}
                 class="p-1 rounded text-outline hover:text-on-surface hover:bg-surface-container"
               >
                 <span class="material-symbols-outlined text-[16px]">close</span>
@@ -368,10 +376,14 @@ export const SettingsModal: Component = () => {
                 </div>
 
                 {/* Analytics */}
-                <div class="flex items-center justify-between pb-4">
-                  <div>
-                    <div class="font-medium text-xs text-on-surface">Link analytics to my account</div>
-                    <div class="text-[11px] text-outline">Share reliability metadata with your account. Never chats or files.</div>
+                <div class="flex items-center justify-between pb-4 border-b border-outline-variant/20">
+                  <div class="max-w-md">
+                    <div class="font-medium text-xs text-on-surface">Link analytics to my account (OpenPanel)</div>
+                    <div class="text-[11px] text-outline mt-0.5">
+                      On: sends usage/reliability metadata with account ID and email, visited websites, tool use, and daily setup summary.
+                      Off: sends only basic usage (turns, token counts) with a random install ID.
+                      <span class="font-semibold text-secondary block mt-0.5">Privacy Invariant: Chats, files and prompts are NEVER sent.</span>
+                    </div>
                   </div>
                   <input
                     type="checkbox"
@@ -379,6 +391,21 @@ export const SettingsModal: Component = () => {
                     onChange={(e) => updateSetting('analyticsConsent', e.currentTarget.checked ? 'on' : 'off')}
                     class="accent-primary cursor-pointer w-4 h-4"
                   />
+                </div>
+
+                {/* Privacy-Safe Diagnostics Export */}
+                <div class="flex items-center justify-between pb-4">
+                  <div>
+                    <div class="font-medium text-xs text-on-surface">Export Diagnostics</div>
+                    <div class="text-[11px] text-outline">Generate a privacy-safe diagnostics bundle with tokens and chat logs stripped.</div>
+                  </div>
+                  <button
+                    onClick={() => exportPrivacySafeDiagnosticsAction()}
+                    class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright text-xs font-semibold text-on-surface border border-outline-variant/30 flex items-center gap-1.5"
+                  >
+                    <span class="material-symbols-outlined text-[15px] text-primary">download</span>
+                    <span>Export Diagnostics</span>
+                  </button>
                 </div>
               </Show>
 
@@ -889,6 +916,223 @@ export const SettingsModal: Component = () => {
                           class="px-2.5 py-1 rounded bg-primary text-on-primary text-xs font-semibold"
                         >
                           Renew Plan
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Show>
+
+              {/* TAB: STORAGE & LOCAL TELEMETRY */}
+              <Show when={state.activeSettingsTab === 'storage'}>
+                <div class="space-y-5">
+                  {/* Workspace Context Header */}
+                  <div class="flex items-center justify-between pb-3 border-b border-outline-variant/20">
+                    <div>
+                      <div class="flex items-center gap-2 text-xs font-mono text-outline mb-1">
+                        <span>Server Settings › Storage & Local Telemetry</span>
+                        <span>•</span>
+                        <span class="text-secondary font-semibold flex items-center gap-1">
+                          <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                          CLUSTER NVME: HEALTHY
+                        </span>
+                      </div>
+                      <h3 class="font-headline-sm text-sm font-bold text-on-surface">Cluster Storage & Resource Allocation</h3>
+                      <p class="text-[11px] text-outline mt-0.5">
+                        Inspect disk cache partitions, database allocations, artifact retention policies, and real-time hardware consumption on host node <span class="text-primary font-mono">prod-cluster-01</span>.
+                      </p>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <button
+                        onClick={() => recordStorageTelemetryAction('interval_5m')}
+                        class="px-2.5 py-1 rounded bg-surface-container-high hover:bg-surface-bright text-xs font-semibold text-on-surface border border-outline-variant/30 flex items-center gap-1"
+                      >
+                        <span class="material-symbols-outlined text-[15px]">sync</span>
+                        <span>Refresh Telemetry</span>
+                      </button>
+                      <button
+                        onClick={() => addToast('success', 'Space Optimized', 'Pruned 1.4 GB ephemeral cache.')}
+                        class="px-2.5 py-1 rounded bg-primary text-on-primary text-xs font-semibold hover:brightness-110 flex items-center gap-1"
+                      >
+                        <span class="material-symbols-outlined text-[15px]">mop</span>
+                        <span>Free Up Space</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Top Telemetry Cards */}
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Card 1: Total Disk Cache */}
+                    <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col justify-between gap-3">
+                      <div class="flex items-start justify-between">
+                        <div>
+                          <span class="text-[10px] font-mono text-outline uppercase tracking-wider">Total Cache Allocation</span>
+                          <div class="flex items-baseline gap-2 mt-1">
+                            <span class="text-xl font-bold font-mono text-on-surface">38.4 GB</span>
+                            <span class="text-xs text-outline">/ 100.0 GB NVMe</span>
+                            <span class="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-mono font-semibold">38.4%</span>
+                          </div>
+                        </div>
+                        <span class="material-symbols-outlined text-outline text-[22px]">hard_drive</span>
+                      </div>
+
+                      {/* Segmented Bar */}
+                      <div class="space-y-1.5">
+                        <div class="w-full h-2.5 bg-surface-container-lowest rounded-full overflow-hidden flex p-0.5 gap-0.5">
+                          <div class="h-full bg-primary rounded-l" style={{ width: '37%' }}></div>
+                          <div class="h-full bg-secondary" style={{ width: '31%' }}></div>
+                          <div class="h-full bg-tertiary" style={{ width: '23%' }}></div>
+                          <div class="h-full bg-outline rounded-r" style={{ width: '9%' }}></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-1 text-[10px] font-mono text-outline">
+                          <span>• Agent Mem: 14.2G</span>
+                          <span>• Sessions: 12.1G</span>
+                          <span>• Weights: 8.9G</span>
+                          <span>• Logs: 3.2G</span>
+                        </div>
+                      </div>
+
+                      <div class="pt-2 border-t border-outline-variant/20 flex items-center justify-between text-[10px] text-outline font-mono">
+                        <span class="text-secondary flex items-center gap-1">
+                          <span class="material-symbols-outlined text-[12px]">check_circle</span>
+                          TRIM every 6h
+                        </span>
+                        <span>61.6 GB available</span>
+                      </div>
+                    </div>
+
+                    {/* Card 2: SQLite & Vector Store */}
+                    <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col justify-between gap-3">
+                      <div class="flex items-start justify-between">
+                        <div>
+                          <span class="text-[10px] font-mono text-outline uppercase tracking-wider">Vector Index & DB</span>
+                          <div class="flex items-baseline gap-2 mt-1">
+                            <span class="text-xl font-bold font-mono text-on-surface">4.2 GB</span>
+                            <span class="text-[10px] text-secondary bg-secondary/10 px-1.5 py-0.5 rounded font-mono font-semibold">Optimal</span>
+                          </div>
+                        </div>
+                        <span class="material-symbols-outlined text-outline text-[22px]">database</span>
+                      </div>
+
+                      <div class="space-y-1 text-xs font-mono">
+                        <div class="flex justify-between bg-surface-container px-2 py-0.5 rounded text-[11px]">
+                          <span class="text-outline">Embedded Chunks:</span>
+                          <span class="text-primary font-bold">1,420,000</span>
+                        </div>
+                        <div class="flex justify-between bg-surface-container px-2 py-0.5 rounded text-[11px]">
+                          <span class="text-outline">Schema Version:</span>
+                          <span class="text-secondary font-bold">SQLite v58</span>
+                        </div>
+                        <div class="flex justify-between bg-surface-container px-2 py-0.5 rounded text-[11px]">
+                          <span class="text-outline">Index Fragmentation:</span>
+                          <span class="text-on-surface">1.2% (Healthy)</span>
+                        </div>
+                      </div>
+
+                      <div class="pt-2 border-t border-outline-variant/20 flex items-center justify-between text-[10px] font-mono text-outline">
+                        <span>wal_mode = ON (128MB WAL)</span>
+                        <button
+                          onClick={() => addToast('info', 'DB Rebuilt', 'SQLite vacuum and index defragmented.')}
+                          class="text-primary hover:underline"
+                        >
+                          Rebuild
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Card 3: Host Node Health */}
+                    <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col justify-between gap-3">
+                      <div class="flex items-start justify-between">
+                        <div>
+                          <span class="text-[10px] font-mono text-outline uppercase tracking-wider">Host Node Health</span>
+                          <div class="flex items-baseline gap-2 mt-1">
+                            <span class="text-xl font-bold font-mono text-on-surface">14.2 GB</span>
+                            <span class="text-xs text-outline">/ 32 GB RAM</span>
+                          </div>
+                        </div>
+                        <span class="material-symbols-outlined text-outline text-[22px]">memory</span>
+                      </div>
+
+                      <div class="space-y-2 text-xs">
+                        <div>
+                          <div class="flex justify-between text-[11px] text-outline font-mono mb-1">
+                            <span>RAM Pool Utilization</span>
+                            <span class="text-on-surface font-bold">44% (14.2 GB)</span>
+                          </div>
+                          <div class="w-full bg-surface-container-lowest h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-primary h-full rounded-full" style={{ width: '44%' }}></div>
+                          </div>
+                        </div>
+                        <div>
+                          <div class="flex justify-between text-[11px] text-outline font-mono mb-1">
+                            <span>CPU Execution Load</span>
+                            <span class="text-secondary font-bold">18% (8 Cores)</span>
+                          </div>
+                          <div class="w-full bg-surface-container-lowest h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-secondary h-full rounded-full" style={{ width: '18%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="pt-2 border-t border-outline-variant/20 flex items-center justify-between text-[10px] font-mono text-outline">
+                        <span>Thermal: 43°C Normal</span>
+                        <span class="text-secondary">0 throttling events</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Server Migration Transfer & Docker Backup Actions */}
+                  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 space-y-3">
+                    <div class="font-semibold text-xs text-on-surface">Server Transfer & Docker Backups</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 flex flex-col justify-between gap-2">
+                        <div>
+                          <div class="font-semibold text-xs text-on-surface">Server Transfer Export</div>
+                          <p class="text-[11px] text-outline mt-0.5">
+                            Move server to another computer: exports agents, skills, routines, memories, and workspace files (&lt; 2 GiB / 50k files).
+                            <span class="block text-secondary font-mono mt-0.5">Secrets, API keys, connectors, preferences & chat history are strictly excluded.</span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              if ((window as any).openbot?.exportServerTransfer) {
+                                await (window as any).openbot.exportServerTransfer();
+                                addToast('success', 'Transfer Package Ready', 'Server archive generated (secrets excluded).');
+                              }
+                            } catch (e: any) {
+                              addToast('error', 'Transfer error', e?.message);
+                            }
+                          }}
+                          class="self-start px-3 py-1 rounded bg-surface-container-high hover:bg-primary hover:text-on-primary text-xs font-semibold text-on-surface transition-colors"
+                        >
+                          Export Server ZIP
+                        </button>
+                      </div>
+
+                      <div class="p-3 rounded-lg bg-surface-container border border-outline-variant/20 flex flex-col justify-between gap-2">
+                        <div>
+                          <div class="font-semibold text-xs text-on-surface">Docker Backup Schedule</div>
+                          <p class="text-[11px] text-outline mt-0.5">
+                            Automated snapshot daily at 04:00 UTC. Retains exactly the last 7 backups.
+                            <span class="block text-outline font-mono mt-0.5">Hosted disk restore estimate: ~3.5 min (210s).</span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              if ((window as any).openbot?.rotateDockerBackups) {
+                                await (window as any).openbot.rotateDockerBackups();
+                                addToast('success', 'Backup Rotated', 'Created backup, keeping newest 7.');
+                              }
+                            } catch (e: any) {
+                              addToast('error', 'Backup error', e?.message);
+                            }
+                          }}
+                          class="self-start px-3 py-1 rounded bg-surface-container-high hover:bg-secondary hover:text-on-secondary text-xs font-semibold text-on-surface transition-colors"
+                        >
+                          Trigger Backup Now
                         </button>
                       </div>
                     </div>

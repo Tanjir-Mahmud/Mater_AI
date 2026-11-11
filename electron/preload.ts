@@ -150,6 +150,9 @@ export interface OpenBotBridge {
   deleteHostedSite: (siteId: string) => Promise<any>;
   getEnterpriseSSOConfigs: () => Promise<any[]>;
   configureEnterpriseSSO: (params: any) => Promise<any>;
+
+  // Milestone 7, 8, 9 & extensibility
+  [key: string]: any;
 }
 
 const bridge: OpenBotBridge = {
@@ -365,6 +368,26 @@ const bridge: OpenBotBridge = {
   parseAndCleanDeepLink: (rawUrl: string) => ipcRenderer.invoke('web:parse-deeplink', rawUrl),
   evaluateMessageRetry: (hostCapabilities: string[]) => ipcRenderer.invoke('web:eval-retry', hostCapabilities),
   checkWebDesktopOnly: (feature: string) => ipcRenderer.invoke('web:check-desktop-only', feature),
+
+  // Milestone 9: Marketplace, Data & Release
+  getMarketplaceCounts: () => ipcRenderer.invoke('marketplace:get-counts'),
+  listMarketplaceItems: (filterType?: string) => ipcRenderer.invoke('marketplace:list-items', filterType),
+  getMarketplaceItem: (slug: string) => ipcRenderer.invoke('marketplace:get-item', slug),
+  resolveMarketplaceDeepLink: (linkUri: string) => ipcRenderer.invoke('marketplace:resolve-deeplink', linkUri),
+  createAgentTemplate: (agentId: string) => ipcRenderer.invoke('marketplace:create-template', agentId),
+  validateTransferPackage: (totalBytes: number, totalFiles: number) => ipcRenderer.invoke('transfer:validate-package', { totalBytes, totalFiles }),
+  exportServerTransfer: () => ipcRenderer.invoke('transfer:export-server'),
+  rotateDockerBackups: () => ipcRenderer.invoke('transfer:rotate-docker-backups'),
+  getHostedDiskRestoreStatus: () => ipcRenderer.invoke('transfer:get-restore-status'),
+  deleteAgentAndCleanup: (agentId: string) => ipcRenderer.invoke('transfer:delete-agent-cleanup', agentId),
+  exportPrivacySafeDiagnostics: () => ipcRenderer.invoke('telemetry:export-diagnostics'),
+  recordStorageTelemetry: (params: any) => ipcRenderer.invoke('telemetry:record-storage', params),
+  checkStorageAlertNotification: (newLevel: string) => ipcRenderer.invoke('telemetry:check-storage-alert', newLevel),
+  getSchemaVersion: () => ipcRenderer.invoke('db:get-schema-version'),
+  validateReleasePackage: (params: any) => ipcRenderer.invoke('release:validate-package', params),
+  recordGPUCrashState: (reason: string, elapsedSec: number) => ipcRenderer.invoke('telemetry:record-gpu-crash', { reason, elapsedSec }),
+  buildOpenPanelPayload: (params: any) => ipcRenderer.invoke('telemetry:build-openpanel-payload', params),
+  getOptOutInitialCheck: (countryCode: string) => ipcRenderer.invoke('telemetry:get-optout-check', countryCode),
 };
 
 contextBridge.exposeInMainWorld('openbot', bridge);
