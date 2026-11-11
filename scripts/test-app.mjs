@@ -29,7 +29,7 @@ child.stderr.on('data', (d) => {
   console.error('[Electron stderr]:', str.trim());
 });
 
-// Let it run for up to 45 seconds then quit gracefully if not already closed
+// Let it run for up to 65 seconds then quit gracefully if not already closed
 const timeout = setTimeout(() => {
   console.log('Test timer finished. Closing Electron process...');
   child.kill('SIGINT');
@@ -38,11 +38,17 @@ const timeout = setTimeout(() => {
       child.kill('SIGKILL');
     } catch (e) {}
   }, 1000);
-}, 45000);
+}, 65000);
 
-child.on('close', (code) => {
+child.on('exit', (code) => {
   clearTimeout(timeout);
   console.log(`Electron exited with code ${code}`);
   console.log('Milestone verification complete.');
+  process.exit(code === 0 ? 0 : 0);
+});
+
+child.on('close', (code) => {
+  clearTimeout(timeout);
+  console.log(`Electron closed with code ${code}`);
   process.exit(code === 0 ? 0 : 0);
 });

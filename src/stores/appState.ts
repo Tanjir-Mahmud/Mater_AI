@@ -52,6 +52,8 @@ import {
   MarketplaceExtension,
   StorageTelemetryState,
   DiagnosticsExportResult,
+  ProviderLiveStatus,
+  ProviderStatusKind,
 } from '../types';
 import { i18n } from '../shared/i18n';
 
@@ -424,6 +426,9 @@ export const [state, setState] = createStore({
     providerDownloading: false,
     providerConnected: false,
   } as OnboardingState,
+
+  // Post-Milestone Provider Live Statuses
+  providerLiveStatuses: {} as Record<string, ProviderLiveStatus>,
 
   // Milestone 4 states
   backgroundProcesses: [] as BackgroundProcess[],
@@ -810,7 +815,101 @@ export async function exportAgentTemplate(agentId: string) {
 
 export function changeAgentModel(agentId: string, provider: string, model: string) {
   setState('agents', (a) => a.id === agentId, { provider, model, updatedAt: new Date().toISOString() });
-  addToast('success', `Model switched to ${model}`, 'Conversation history preserved across providers');
+  const live = state.providerLiveStatuses[provider];
+  if (live && live.status !== 'connected') {
+    addToast('warning', `Model switched to ${model}`, `${live.name}: ${live.status}. Open Settings > Providers to connect.`);
+  } else {
+    addToast('success', `Model switched to ${model}`, 'Conversation history preserved across providers');
+  }
+}
+
+// Post-Milestone Provider Live Status Actions
+export async function loadProviderLiveStatusesAction(): Promise<ProviderLiveStatus[]> {
+  try {
+    if ((window as any).openbot?.getProviderLiveStatuses) {
+      const statuses: ProviderLiveStatus[] = await (window as any).openbot.getProviderLiveStatuses();
+      const map: Record<string, ProviderLiveStatus> = {};
+      for (const s of statuses) {
+        map[s.id] = s;
+      }
+      setState('providerLiveStatuses', map);
+      return statuses;
+    }
+  } catch (err) {
+    console.error('[AppState] Failed loading provider live statuses:', err);
+  }
+  return [];
+}
+
+export async function checkProviderStatusAction(providerId: string): Promise<ProviderLiveStatus | null> {
+  try {
+    if ((window as any).openbot?.checkProviderStatus) {
+      const live: ProviderLiveStatus = await (window as any).openbot.checkProviderStatus(providerId);
+      setState('providerLiveStatuses', providerId, live);
+      if (live.status === 'connected') {
+        addToast('success', `${live.name} Connected`, 'Binary detected and credentials verified.');
+      } else if (live.status === 'installed-not-signed-in') {
+        addToast('warning', `${live.name} Not Signed In`, live.nextStep || 'Authentication required.');
+      } else {
+        addToast('error', `${live.name} Not Installed`, live.nextStep || 'CLI binary missing.');
+      }
+      return live;
+    }
+  } catch (err: any) {
+    addToast('error', 'Status check failed', err.message);
+  }
+  return null;
+}
+
+export async function launchProviderSignInAction(providerId: string): Promise<{ success: boolean; message: string }> {
+  try {
+    if ((window as any).openbot?.launchProviderSignIn) {
+      const res = await (window as any).openbot.launchProviderSignIn(providerId);
+      if (res.liveStatus) {
+        setState('providerLiveStatuses', providerId, res.liveStatus);
+      }
+      if (res.success) {
+        addToast('success', 'Provider connected', res.message);
+      } else {
+        addToast('warning', 'Sign in launched', res.message);
+      }
+      return res;
+    }
+  } catch (err: any) {
+    addToast('error', 'Sign-in failed', err.message);
+  }
+  return { success: false, message: 'Provider sign-in unavailable' };
+}
+
+export async function connectProviderAction(providerId: string): Promise<boolean> {
+  try {
+    if ((window as any).openbot?.connectProvider) {
+      const res = await (window as any).openbot.connectProvider(providerId);
+      await loadProviderLiveStatusesAction();
+      if (res.success) {
+        addToast('success', 'Provider connected', `Successfully connected to ${providerId}`);
+        return true;
+      } else {
+        addToast('error', 'Connection failed', res.error || 'Failed to connect provider');
+        return false;
+      }
+    }
+  } catch (err: any) {
+    addToast('error', 'Connection error', err.message);
+  }
+  return false;
+}
+
+export async function disconnectProviderAction(providerId: string): Promise<void> {
+  try {
+    if ((window as any).openbot?.disconnectProvider) {
+      await (window as any).openbot.disconnectProvider(providerId);
+      await loadProviderLiveStatusesAction();
+      addToast('warning', 'Provider disconnected', `Disconnected ${providerId}`);
+    }
+  } catch (err: any) {
+    addToast('error', 'Disconnect failed', err.message);
+  }
 }
 
 // Milestone 3: Chat, Threads, Queue & Attachments Actions
@@ -1079,6 +1178,10 @@ export async function sendMessageToCurrentAgent(messageText: string) {
       result = { queued: false, reply };
     }
 
+    if (result?.error) {
+      throw new Error(result.error);
+    }
+
     if (result?.queued) {
       setState('agents', (a) => a.id === agent.id, 'status', 'idle');
       const queueItem: QueueEntry = {
@@ -1099,7 +1202,13 @@ export async function sendMessageToCurrentAgent(messageText: string) {
     }
 
     if (!result?.reply || !result.reply.text) {
-      throw new Error(`Provider "${agent.provider}" is not connected or requires sign-in. No response generated.`);
+      const live = state.providerLiveStatuses[agent.provider];
+      if (live?.errorMessage && live?.nextStep) {
+        throw new Error(`${live.errorMessage} ${live.nextStep}`);
+      }
+      throw new Error(
+        `Provider "${agent.provider}" is not connected or requires sign-in. Open Settings > Providers to connect.`
+      );
     }
 
     const agentMsg: ChatMessage = {
@@ -1118,7 +1227,19 @@ export async function sendMessageToCurrentAgent(messageText: string) {
     setState('agents', (a) => a.id === agent.id, 'status', 'responded');
   } catch (err: any) {
     setState('agents', (a) => a.id === agent.id, 'status', 'error');
-    addToast('error', 'Provider error', err?.message || 'Provider execution failed');
+    const errText = err?.message || 'Provider execution failed';
+    addToast('error', 'Provider error', errText);
+
+    // Provide immediate in-chat guidance on how to fix the provider connection
+    const guidanceMsg: ChatMessage = {
+      id: `msg-${Date.now()}-err`,
+      agentId: agent.id,
+      threadId: currentThreadId,
+      author: 'system',
+      body: `⚠️ **${errText}**\n\n*Configure or connect this provider in **Settings > Providers & Models**, or switch to another model using the picker below.*`,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setState('agentMessages', agent.id, (msgs = []) => [...msgs, guidanceMsg]);
   }
 }
 

@@ -1,5 +1,11 @@
 import { Component, onMount, onCleanup, For, Show } from 'solid-js';
-import { state, setState, toggleTheme, openCreateAgentModal } from '../../stores/appState';
+import {
+  state,
+  setState,
+  toggleTheme,
+  openCreateAgentModal,
+  loadProviderLiveStatusesAction,
+} from '../../stores/appState';
 import { PageRail } from '../navigation/PageRail';
 import { ServerRail } from '../navigation/ServerRail';
 import { Sidebar } from '../sidebar/Sidebar';
@@ -17,6 +23,9 @@ export const Shell: Component = () => {
   const isMac = () => (window as any).openbot?.platform === 'darwin';
 
   onMount(() => {
+    // Load detected live provider statuses on start
+    loadProviderLiveStatusesAction();
+
     // Listen to IPC events from main process
     if ((window as any).openbot?.onQuitRequest) {
       const unsub = (window as any).openbot.onQuitRequest(() => {

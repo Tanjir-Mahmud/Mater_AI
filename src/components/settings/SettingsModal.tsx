@@ -49,6 +49,11 @@ import {
   checkOfflineGraceAction,
   exportPrivacySafeDiagnosticsAction,
   recordStorageTelemetryAction,
+  loadProviderLiveStatusesAction,
+  checkProviderStatusAction,
+  launchProviderSignInAction,
+  connectProviderAction,
+  disconnectProviderAction,
 } from '../../stores/appState';
 import { SUPPORTED_LOCALES, i18n } from '../../shared/i18n';
 import { AppTheme, SendShortcut, HoldCmdQMode, LogoColor, ServerRole } from '../../types';
@@ -63,6 +68,7 @@ interface SettingsTabItem {
 
 const SETTINGS_TABS: SettingsTabItem[] = [
   { id: 'general', name: 'General', icon: 'tune', description: 'Control how OpenBot behaves on this computer.' },
+  { id: 'providers', name: 'Providers & Models', icon: 'psychology', description: 'Connect AI execution runtimes (OpenCode, Claude, Codex, Gemini) with honest live detection.' },
   { id: 'server_general', name: 'Server General', icon: 'dns', description: 'Server identity, logo, timezone and key rotation.' },
   { id: 'members', name: 'Members', icon: 'group', description: 'Publish server, invite teammates, and manage server roles.' },
   { id: 'roles', name: 'Roles & Access', icon: 'admin_panel_settings', description: 'Configure per-agent access levels (none/view/chat/manage).' },
@@ -120,7 +126,9 @@ export const SettingsModal: Component = () => {
 
   createEffect(() => {
     if (state.isSettingsOpen) {
-      if (state.activeSettingsTab === 'billing') {
+      if (state.activeSettingsTab === 'providers') {
+        loadProviderLiveStatusesAction();
+      } else if (state.activeSettingsTab === 'billing') {
         loadBillingState();
       } else if (state.activeSettingsTab === 'profile') {
         loadUserProfile();
@@ -406,6 +414,214 @@ export const SettingsModal: Component = () => {
                     <span class="material-symbols-outlined text-[15px] text-primary">download</span>
                     <span>Export Diagnostics</span>
                   </button>
+                </div>
+              </Show>
+
+              {/* TAB: PROVIDERS & MODELS */}
+              <Show when={state.activeSettingsTab === 'providers'}>
+                <div class="space-y-5">
+                  {/* Header Banner */}
+                  <div class="flex items-center justify-between p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[20px]">psychology</span>
+                        <h3 class="font-headline-sm text-sm font-bold text-on-surface">AI Providers & Execution Runtimes</h3>
+                      </div>
+                      <p class="text-[11px] text-outline mt-1 max-w-xl">
+                        OpenBot executes tasks directly against live CLI runtimes and verified account credentials.
+                        Never simulated or fabricated. Live status is detected on the spot.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        loadProviderLiveStatusesAction();
+                        addToast('info', 'Refreshing Providers', 'Probing CLI binaries and credentials on this computer...');
+                      }}
+                      class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-xs font-semibold text-on-surface border border-outline-variant/30 flex items-center gap-1.5 transition-colors"
+                      title="Re-probe all provider binaries and credentials"
+                    >
+                      <span class="material-symbols-outlined text-[15px]">refresh</span>
+                      <span>Check All Statuses</span>
+                    </button>
+                  </div>
+
+                  {/* Provider Cards */}
+                  <div class="grid grid-cols-1 gap-3.5">
+                    <For each={['opencode', 'claude', 'codex', 'gemini', 'cursor', 'cline', 'kimi', 'devin', 'copilot', 'mistral', 'hermes']}>
+                      {(providerId) => {
+                        const live = () => state.providerLiveStatuses[providerId] || {
+                          id: providerId,
+                          name: providerId,
+                          status: 'not-installed' as const,
+                          binaryName: providerId,
+                          binaryPath: null,
+                          isBinaryInstalled: false,
+                          isAuthenticated: false,
+                          installCommand: `npm install -g ${providerId}`,
+                          loginCommand: `${providerId} login`,
+                          loginUrl: `https://${providerId}.ai`,
+                          description: 'AI execution provider',
+                          models: [],
+                          errorMessage: `${providerId} is not installed.`,
+                          nextStep: `Install with npm install -g ${providerId}`,
+                        };
+
+                        const providerIcons: Record<string, string> = {
+                          opencode: 'code',
+                          claude: 'neurology',
+                          codex: 'psychology',
+                          gemini: 'auto_awesome',
+                          cursor: 'terminal',
+                          cline: 'smart_toy',
+                          kimi: 'bolt',
+                          devin: 'engineering',
+                          copilot: 'flight_takeoff',
+                          mistral: 'waves',
+                          hermes: 'satellite_alt',
+                        };
+
+                        return (
+                          <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col gap-3 transition-colors hover:border-outline-variant/50">
+                            {/* Card Top Row: Icon, Name, Live Status Pill, Actions */}
+                            <div class="flex items-start justify-between gap-3">
+                              <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary flex-shrink-0 shadow-sm border border-outline-variant/20">
+                                  <span class="material-symbols-outlined text-[22px]">
+                                    {providerIcons[providerId] || 'smart_toy'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <div class="flex items-center gap-2">
+                                    <span class="font-bold text-xs text-on-surface">{live().name}</span>
+                                    {/* Live Status Pill */}
+                                    <Show when={live().status === 'connected'}>
+                                      <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[12px]">check_circle</span>
+                                        Connected
+                                      </span>
+                                    </Show>
+                                    <Show when={live().status === 'installed-not-signed-in'}>
+                                      <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[12px]">warning</span>
+                                        Installed, not signed in
+                                      </span>
+                                    </Show>
+                                    <Show when={live().status === 'not-installed'}>
+                                      <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-container-highest text-outline border border-outline-variant/30 flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[12px]">cancel</span>
+                                        Not installed
+                                      </span>
+                                    </Show>
+                                  </div>
+                                  <p class="text-[11px] text-outline mt-0.5">{live().description}</p>
+                                </div>
+                              </div>
+
+                              {/* Action Buttons */}
+                              <div class="flex items-center gap-2 flex-shrink-0">
+                                <Show when={live().status === 'installed-not-signed-in'}>
+                                  <button
+                                    onClick={async () => {
+                                      await launchProviderSignInAction(providerId);
+                                    }}
+                                    class="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-on-primary text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+                                  >
+                                    <span class="material-symbols-outlined text-[15px]">login</span>
+                                    <span>Sign in</span>
+                                  </button>
+                                </Show>
+
+                                <button
+                                  onClick={async () => {
+                                    await checkProviderStatusAction(providerId);
+                                  }}
+                                  class="px-2.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium border border-outline-variant/30 flex items-center gap-1 transition-colors"
+                                  title="Re-check status"
+                                >
+                                  <span class="material-symbols-outlined text-[14px]">sync</span>
+                                  <span>Check Status</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Middle section: Binary path or install guidance */}
+                            <div class="pt-1 border-t border-outline-variant/15 flex flex-col gap-2">
+                              {/* If NOT INSTALLED: Show exact install command box */}
+                              <Show when={live().status === 'not-installed'}>
+                                <div class="p-2.5 rounded-lg bg-surface-container-lowest/80 border border-outline-variant/30 flex flex-col gap-1.5">
+                                  <div class="flex items-center justify-between text-[11px]">
+                                    <span class="text-error font-medium flex items-center gap-1">
+                                      <span class="material-symbols-outlined text-[13px]">info</span>
+                                      CLI binary not found on PATH
+                                    </span>
+                                    <span class="text-outline text-[10px]">Run in PowerShell / terminal:</span>
+                                  </div>
+                                  <div class="flex items-center justify-between bg-surface-container px-2.5 py-1.5 rounded font-mono text-xs text-primary border border-outline-variant/20">
+                                    <span class="select-all">{live().installCommand}</span>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(live().installCommand);
+                                        addToast('success', 'Copied to clipboard', live().installCommand);
+                                      }}
+                                      class="text-[10px] px-1.5 py-0.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition-colors ml-2 flex items-center gap-1 flex-shrink-0"
+                                      title="Copy install command"
+                                    >
+                                      <span class="material-symbols-outlined text-[12px]">content_copy</span>
+                                      Copy
+                                    </button>
+                                  </div>
+                                </div>
+                              </Show>
+
+                              {/* If INSTALLED BUT NOT SIGNED IN: Show binary path + terminal login hint */}
+                              <Show when={live().status === 'installed-not-signed-in'}>
+                                <div class="p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20 flex flex-col gap-1.5">
+                                  <div class="flex items-center justify-between text-[11px]">
+                                    <span class="text-amber-400 font-medium flex items-center gap-1">
+                                      <span class="material-symbols-outlined text-[13px]">key</span>
+                                      Binary found, but account authentication required
+                                    </span>
+                                    <span class="text-outline font-mono text-[10px] truncate max-w-xs">{live().binaryPath}</span>
+                                  </div>
+                                  <div class="text-[11px] text-outline">
+                                    Click <strong>Sign in</strong> above to launch authentication in a terminal, or execute in your terminal:{' '}
+                                    <code class="px-1.5 py-0.5 rounded bg-surface-container font-mono text-xs text-on-surface">
+                                      {live().loginCommand}
+                                    </code>
+                                  </div>
+                                </div>
+                              </Show>
+
+                              {/* If CONNECTED: Show verified path and models */}
+                              <Show when={live().status === 'connected'}>
+                                <div class="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 flex items-center justify-between text-[11px]">
+                                  <span class="text-emerald-400 font-medium flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[13px]">verified</span>
+                                    Binary verified and credentials authenticated
+                                  </span>
+                                  <span class="text-outline font-mono text-[10px] truncate max-w-xs">{live().binaryPath}</span>
+                                </div>
+                              </Show>
+
+                              {/* Models List */}
+                              <Show when={live().models && live().models.length > 0}>
+                                <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                  <span class="text-[10px] uppercase font-semibold text-outline">Models:</span>
+                                  <For each={live().models}>
+                                    {(m) => (
+                                      <span class="px-2 py-0.5 rounded bg-surface-container font-mono text-[10px] text-on-surface-variant border border-outline-variant/20">
+                                        {m.name} {m.free ? '(Free)' : ''}
+                                      </span>
+                                    )}
+                                  </For>
+                                </div>
+                              </Show>
+                            </div>
+                          </div>
+                        );
+                      }}
+                    </For>
+                  </div>
                 </div>
               </Show>
 

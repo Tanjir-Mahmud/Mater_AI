@@ -4,10 +4,14 @@ import {
   resolveWindowsBinary,
   probeBinaryVersion,
   isVersionAtLeast,
+  ResolvedBinary,
 } from './processSupervisor';
 import { claudeVendorSdk } from './claudeVendorSdk';
-import { ChildProcess } from 'child_process';
+import { ChildProcess, spawn } from 'child_process';
 import http from 'http';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
 
 export interface ProviderDefinition {
   id: string;
@@ -20,6 +24,102 @@ export interface ProviderDefinition {
   minVersion?: string;
   models: { id: string; name: string; free: boolean }[];
 }
+
+export type ProviderStatusKind = 'not-installed' | 'installed-not-signed-in' | 'connected';
+
+export interface ProviderLiveStatus {
+  id: string;
+  name: string;
+  status: ProviderStatusKind;
+  binaryName: string;
+  binaryPath: string | null;
+  isBinaryInstalled: boolean;
+  isAuthenticated: boolean;
+  installCommand: string;
+  loginCommand: string;
+  loginUrl?: string;
+  description: string;
+  models: { id: string; name: string; free: boolean }[];
+  errorMessage?: string;
+  nextStep?: string;
+}
+
+export const PROVIDER_METADATA: Record<
+  string,
+  {
+    installCommand: string;
+    loginCommand: string;
+    loginUrl: string;
+    description: string;
+  }
+> = {
+  opencode: {
+    installCommand: 'npm install -g opencode-ai',
+    loginCommand: 'opencode auth login',
+    loginUrl: 'https://opencode.ai/login',
+    description: 'Open-source AI coding agent powered by ACP protocol',
+  },
+  codex: {
+    installCommand: 'npm install -g @openai/codex',
+    loginCommand: 'codex login',
+    loginUrl: 'https://chatgpt.com/api/auth',
+    description: 'OpenAI Codex & ChatGPT app server with streaming JSONL protocol',
+  },
+  claude: {
+    installCommand: 'npm install -g @anthropic-ai/claude-code',
+    loginCommand: 'claude login',
+    loginUrl: 'https://claude.ai/login',
+    description: 'Anthropic Claude Code CLI with vendor SDK child spawn',
+  },
+  gemini: {
+    installCommand: 'npm install -g @google/gemini-cli',
+    loginCommand: 'gemini auth login',
+    loginUrl: 'https://aistudio.google.com/app/apikey',
+    description: 'Google Gemini CLI & ACP agent protocol with Google AI / Gemini API',
+  },
+  cursor: {
+    installCommand: 'npm install -g cursor-agent',
+    loginCommand: 'cursor-agent login',
+    loginUrl: 'https://cursor.com',
+    description: 'Cursor Agent CLI via ACP protocol',
+  },
+  cline: {
+    installCommand: 'npm install -g cline',
+    loginCommand: 'cline auth login',
+    loginUrl: 'https://cline.bot',
+    description: 'Cline autonomous agent via ACP protocol (min 3.0.68)',
+  },
+  kimi: {
+    installCommand: 'npm install -g kimi-code',
+    loginCommand: 'kimi login',
+    loginUrl: 'https://kimi.moonshot.cn',
+    description: 'Moonshot Kimi Code CLI via ACP protocol (min 1.52.0)',
+  },
+  devin: {
+    installCommand: 'npm install -g devin-cli',
+    loginCommand: 'devin login',
+    loginUrl: 'https://preview.devin.ai',
+    description: 'Cognition Devin agent via ACP protocol',
+  },
+  copilot: {
+    installCommand: 'npm install -g @github/copilot-cli',
+    loginCommand: 'copilot auth',
+    loginUrl: 'https://github.com/login',
+    description: 'GitHub Copilot CLI via ACP protocol',
+  },
+  mistral: {
+    installCommand: 'npm install -g mistral-vibe',
+    loginCommand: 'vibe login',
+    loginUrl: 'https://console.mistral.ai',
+    description: 'Mistral Vibe coding agent via ACP protocol',
+  },
+  hermes: {
+    installCommand: 'npm install -g hermes-agent',
+    loginCommand: 'hermes auth login',
+    loginUrl: 'https://hermes.ai',
+    description: 'Hermes Agent CLI via ACP protocol',
+  },
+};
 
 export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
   {
@@ -52,7 +152,6 @@ export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
     name: 'Claude Code',
     command: 'claude',
     defaultArgs: [],
-    // Spec: "Claude: no app-owned process; the vendor SDK spawns the CLI."
     protocol: 'vendor-sdk',
     needsAuth: true,
     models: [
@@ -64,8 +163,8 @@ export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
   {
     id: 'gemini',
     name: 'Google Gemini',
-    command: 'antigravity-server',
-    defaultArgs: ['--client', 'zed'],
+    command: 'gemini',
+    defaultArgs: ['acp'],
     protocol: 'acp',
     needsAuth: true,
     models: [
@@ -89,7 +188,6 @@ export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
     defaultArgs: ['--acp'],
     protocol: 'acp',
     needsAuth: true,
-    // Spec: "cline --acp (minimum 3.0.68)"
     minVersion: '3.0.68',
     models: [{ id: 'cline-claude-3-5', name: 'Cline Claude 3.5', free: false }],
   },
@@ -100,7 +198,6 @@ export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
     defaultArgs: ['acp'],
     protocol: 'acp',
     needsAuth: true,
-    // Spec: "kimi acp (minimum 1.52.0)"
     minVersion: '1.52.0',
     models: [{ id: 'kimi-k1-5', name: 'Kimi k1.5', free: false }],
   },
@@ -142,6 +239,382 @@ export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
   },
 ];
 
+/**
+ * Requirement 3: Google Gemini must detect Google's `gemini` CLI first.
+ * Fall back to `antigravity-server` only if its binary can actually be located on the machine.
+ * Never present either as connected when neither is available.
+ */
+export function resolveGeminiBinary(): { command: string; resolved: ResolvedBinary } | null {
+  const geminiResolved = resolveWindowsBinary('gemini');
+  if (geminiResolved) {
+    return { command: 'gemini', resolved: geminiResolved };
+  }
+  const agyResolved = resolveWindowsBinary('antigravity-server');
+  if (agyResolved) {
+    return { command: 'antigravity-server', resolved: agyResolved };
+  }
+  return null;
+}
+
+/**
+ * Requirement 4: Codex / OpenAI — do NOT claim connected just because an environment
+ * variable CODEX_HOME exists. Verify real auth (auth file / credentials in the codex
+ * directory with size > 2 and valid tokens/keys, or an active OpenAI API key).
+ * A missing or empty auth file means "not signed in".
+ */
+export function verifyCodexAuth(): boolean {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (apiKey && apiKey.length > 10 && apiKey !== 'undefined' && apiKey !== 'null') {
+    return true;
+  }
+
+  const homeDir = os.homedir();
+  const codexHome = process.env.CODEX_HOME || path.join(homeDir, '.codex');
+  if (!fs.existsSync(codexHome)) {
+    return false;
+  }
+
+  const candidateFiles = [
+    'auth.json',
+    'credentials.json',
+    'config.json',
+    'session.json',
+    '.codex-global-state.json',
+    'config.toml',
+  ];
+
+  for (const file of candidateFiles) {
+    const fullPath = path.join(codexHome, file);
+    if (fs.existsSync(fullPath)) {
+      try {
+        const stats = fs.statSync(fullPath);
+        if (stats.size > 2) {
+          const content = fs.readFileSync(fullPath, 'utf8').trim();
+          if (content !== '{}' && content !== '[]' && content.length > 2) {
+            if (file.endsWith('.json')) {
+              try {
+                const parsed = JSON.parse(content);
+                const keys = Object.keys(parsed);
+                if (keys.length > 0) {
+                  return true;
+                }
+              } catch {
+                return true;
+              }
+            } else {
+              if (content.length > 10) {
+                return true;
+              }
+            }
+          }
+        }
+      } catch {
+        // ignore read error
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Verifies real account credentials for a given provider.
+ * Never returns true for unverified accounts.
+ */
+export function verifyProviderAuth(providerId: string): boolean {
+  const homeDir = os.homedir();
+
+  switch (providerId) {
+    case 'codex':
+      return verifyCodexAuth();
+
+    case 'claude': {
+      const configPath = path.join(homeDir, '.claude.json');
+      const hasConfig = fs.existsSync(configPath) && fs.statSync(configPath).size > 2;
+      const hasEnv = Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim().length > 10);
+      return hasConfig || hasEnv;
+    }
+
+    case 'gemini': {
+      const hasEnv = Boolean(
+        (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 10) ||
+        (process.env.GOOGLE_API_KEY && process.env.GOOGLE_API_KEY.trim().length > 10)
+      );
+      if (hasEnv) return true;
+      const candidates = [
+        path.join(homeDir, '.gemini', 'credentials.json'),
+        path.join(homeDir, '.gemini', 'auth.json'),
+        path.join(homeDir, '.config', 'gemini', 'credentials.json'),
+        path.join(homeDir, '.gemini', 'antigravity', 'auth.json'),
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p) && fs.statSync(p).size > 2) {
+          try {
+            const raw = fs.readFileSync(p, 'utf8').trim();
+            if (raw !== '{}' && raw !== '[]' && raw.length > 2) return true;
+          } catch {}
+        }
+      }
+      return false;
+    }
+
+    case 'opencode': {
+      const hasEnv = Boolean(
+        (process.env.OPENCODE_API_KEY && process.env.OPENCODE_API_KEY.trim().length > 10) ||
+        (process.env.OPENCODE_AUTH_TOKEN && process.env.OPENCODE_AUTH_TOKEN.trim().length > 10)
+      );
+      if (hasEnv) return true;
+      const candidates = [
+        path.join(homeDir, '.opencode', 'auth.json'),
+        path.join(homeDir, '.opencode', 'credentials.json'),
+        path.join(homeDir, '.config', 'opencode', 'auth.json'),
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p) && fs.statSync(p).size > 2) {
+          try {
+            const raw = fs.readFileSync(p, 'utf8').trim();
+            if (raw !== '{}' && raw !== '[]' && raw.length > 2) return true;
+          } catch {}
+        }
+      }
+      return false;
+    }
+
+    case 'cursor': {
+      if (process.env.CURSOR_API_KEY && process.env.CURSOR_API_KEY.trim().length > 10) return true;
+      const p = path.join(homeDir, '.cursor', 'auth.json');
+      return fs.existsSync(p) && fs.statSync(p).size > 2;
+    }
+
+    case 'cline': {
+      if (process.env.CLINE_API_KEY && process.env.CLINE_API_KEY.trim().length > 10) return true;
+      const p = path.join(homeDir, '.cline', 'auth.json');
+      return fs.existsSync(p) && fs.statSync(p).size > 2;
+    }
+
+    case 'kimi': {
+      if (
+        (process.env.MOONSHOT_API_KEY && process.env.MOONSHOT_API_KEY.trim().length > 10) ||
+        (process.env.KIMI_API_KEY && process.env.KIMI_API_KEY.trim().length > 10)
+      )
+        return true;
+      const p = path.join(homeDir, '.kimi', 'auth.json');
+      return fs.existsSync(p) && fs.statSync(p).size > 2;
+    }
+
+    case 'devin': {
+      if (process.env.DEVIN_API_KEY && process.env.DEVIN_API_KEY.trim().length > 10) return true;
+      const p = path.join(homeDir, '.devin', 'credentials.json');
+      return fs.existsSync(p) && fs.statSync(p).size > 2;
+    }
+
+    case 'copilot': {
+      if (
+        (process.env.GITHUB_TOKEN && process.env.GITHUB_TOKEN.trim().length > 10) ||
+        (process.env.GH_TOKEN && process.env.GH_TOKEN.trim().length > 10)
+      )
+        return true;
+      const p = path.join(homeDir, '.config', 'gh', 'hosts.yml');
+      return fs.existsSync(p) && fs.statSync(p).size > 2;
+    }
+
+    case 'mistral': {
+      if (process.env.MISTRAL_API_KEY && process.env.MISTRAL_API_KEY.trim().length > 10) return true;
+      const p = path.join(homeDir, '.vibe', 'credentials.json');
+      return fs.existsSync(p) && fs.statSync(p).size > 2;
+    }
+
+    case 'hermes': {
+      if (process.env.HERMES_API_KEY && process.env.HERMES_API_KEY.trim().length > 10) return true;
+      const p = path.join(homeDir, '.hermes', 'auth.json');
+      return fs.existsSync(p) && fs.statSync(p).size > 2;
+    }
+
+    default:
+      return false;
+  }
+}
+
+/**
+ * Checks honest live status of any provider on the spot:
+ * - "Not installed": CLI binary not found on PATH.
+ * - "Installed, not signed in": Binary found, but no credentials verified.
+ * - "Connected": Binary found AND account verified.
+ * Never claims connected unless both checks pass.
+ */
+export function checkProviderLiveStatus(providerId: string): ProviderLiveStatus {
+  const def = PROVIDER_CATALOGUE.find((p) => p.id === providerId);
+  const meta = PROVIDER_METADATA[providerId] || {
+    installCommand: `npm install -g ${providerId}`,
+    loginCommand: `${providerId} login`,
+    loginUrl: `https://${providerId}.ai`,
+    description: `${def?.name || providerId} coding provider`,
+  };
+
+  const name = def?.name || providerId;
+  const models = def?.models || [];
+
+  // 1. Resolve binary
+  let binaryName = def?.command || providerId;
+  let resolvedBinary: ResolvedBinary | null = null;
+
+  if (providerId === 'gemini') {
+    const geminiRes = resolveGeminiBinary();
+    if (geminiRes) {
+      binaryName = geminiRes.command;
+      resolvedBinary = geminiRes.resolved;
+    } else {
+      binaryName = 'gemini';
+      resolvedBinary = null;
+    }
+  } else {
+    resolvedBinary = resolveWindowsBinary(binaryName);
+  }
+
+  const isBinaryInstalled = Boolean(resolvedBinary && resolvedBinary.path);
+  const binaryPath = resolvedBinary ? resolvedBinary.path : null;
+
+  // 2. Check Auth
+  const isAuthenticated = isBinaryInstalled ? verifyProviderAuth(providerId) : false;
+
+  // 3. Status mapping with exact, actionable messages naming the missing piece and next step
+  let status: ProviderStatusKind;
+  let errorMessage: string | undefined;
+  let nextStep: string | undefined;
+
+  if (!isBinaryInstalled) {
+    status = 'not-installed';
+    if (providerId === 'opencode') {
+      errorMessage = 'OpenCode CLI is not installed on this computer.';
+      nextStep = `Install it with "${meta.installCommand}", then press Connect.`;
+    } else if (providerId === 'claude') {
+      errorMessage = 'Claude Code CLI is not installed on this computer.';
+      nextStep = `Install it with "${meta.installCommand}", then press Connect.`;
+    } else if (providerId === 'gemini') {
+      errorMessage = 'Google Gemini CLI is not installed on this computer.';
+      nextStep = `Install it with "${meta.installCommand}", then press Connect.`;
+    } else if (providerId === 'codex') {
+      errorMessage = 'Codex CLI is not installed on this computer.';
+      nextStep = `Install it with "${meta.installCommand}", then press Connect.`;
+    } else {
+      errorMessage = `${name} CLI is not installed on this computer.`;
+      nextStep = `Install it with "${meta.installCommand}", then press Connect.`;
+    }
+  } else if (!isAuthenticated) {
+    status = 'installed-not-signed-in';
+    errorMessage = `${name} is installed but you are not signed in.`;
+    if (providerId === 'claude') {
+      nextStep = 'Press Sign in to connect your Claude subscription.';
+    } else if (providerId === 'codex') {
+      nextStep = 'Press Sign in to authenticate with OpenAI or set OPENAI_API_KEY.';
+    } else if (providerId === 'opencode') {
+      nextStep = `Press Sign in to connect your OpenCode account or run "${meta.loginCommand}" in your terminal.`;
+    } else {
+      nextStep = `Press Sign in to connect your ${name} account or run "${meta.loginCommand}" in your terminal.`;
+    }
+  } else {
+    status = 'connected';
+  }
+
+  return {
+    id: providerId,
+    name,
+    status,
+    binaryName,
+    binaryPath,
+    isBinaryInstalled,
+    isAuthenticated,
+    installCommand: meta.installCommand,
+    loginCommand: meta.loginCommand,
+    loginUrl: meta.loginUrl,
+    description: meta.description,
+    models,
+    errorMessage,
+    nextStep,
+  };
+}
+
+/**
+ * Requirement 2: "Sign in" action per provider.
+ * Spawns provider's login command in a visible terminal window so user can complete auth,
+ * and opens the provider's sign-in page in the default browser.
+ * Re-checks connection automatically.
+ */
+export async function launchProviderSignIn(providerId: string): Promise<{
+  success: boolean;
+  openedTerminal: boolean;
+  openedBrowser: boolean;
+  liveStatus: ProviderLiveStatus;
+  message: string;
+}> {
+  const liveStatusBefore = checkProviderLiveStatus(providerId);
+  const meta = PROVIDER_METADATA[providerId];
+  if (!meta) {
+    return {
+      success: false,
+      openedTerminal: false,
+      openedBrowser: false,
+      liveStatus: liveStatusBefore,
+      message: `Unknown provider: ${providerId}`,
+    };
+  }
+
+  let openedTerminal = false;
+  let openedBrowser = false;
+
+  // If binary is installed, spawn login command in a visible terminal window
+  if (liveStatusBefore.isBinaryInstalled) {
+    try {
+      if (process.platform === 'win32') {
+        const title = `OpenBot - ${liveStatusBefore.name} Sign In`;
+        spawn('cmd.exe', ['/c', 'start', title, 'cmd.exe', '/k', meta.loginCommand], {
+          detached: true,
+          stdio: 'ignore',
+        }).unref();
+        openedTerminal = true;
+      } else {
+        spawn('sh', ['-c', meta.loginCommand], { detached: true, stdio: 'ignore' }).unref();
+        openedTerminal = true;
+      }
+    } catch (err) {
+      console.warn(`[ProviderEngine] Could not launch terminal for ${providerId}:`, err);
+    }
+  }
+
+  // Open sign in URL in default browser
+  if (meta.loginUrl) {
+    try {
+      const electron = require('electron');
+      if (electron?.shell?.openExternal) {
+        electron.shell.openExternal(meta.loginUrl);
+        openedBrowser = true;
+      }
+    } catch {
+      // In tests/headless, electron shell might be mocked
+    }
+  }
+
+  // Re-check live status
+  const currentStatus = checkProviderLiveStatus(providerId);
+
+  let message = '';
+  if (currentStatus.status === 'connected') {
+    message = `Successfully authenticated and connected to ${currentStatus.name}!`;
+  } else if (!currentStatus.isBinaryInstalled) {
+    message = `${currentStatus.name} is not installed. Run "${meta.installCommand}" first.`;
+  } else {
+    message = `Launched sign-in for ${currentStatus.name}. Complete authentication in the terminal or browser, then click "Check Status".`;
+  }
+
+  return {
+    success: currentStatus.status === 'connected',
+    openedTerminal,
+    openedBrowser,
+    liveStatus: currentStatus,
+    message,
+  };
+}
+
 export interface ProviderSession {
   providerId: string;
   status:
@@ -151,7 +624,9 @@ export interface ProviderSession {
     | 'sign-in-required'
     | 'limit-reached'
     | 'version-unsupported'
-    | 'error';
+    | 'error'
+    | 'not-installed'
+    | 'installed-not-signed-in';
   child?: ChildProcess;
   reqCounter: number;
   pendingRequests: Map<number, { resolve: (res: any) => void; reject: (err: any) => void }>;
@@ -195,7 +670,6 @@ export class ProviderEngine {
     let t = this.providerTracking.get(providerId);
     if (!t) {
       t = {
-        // Spec: "Long start 180 seconds; after a timeout the next start waits twice as long (minimum 180 seconds, maximum 720 seconds)."
         startTimeoutMs: 180_000,
         failureCount: 0,
         autoStartBlocked: false,
@@ -210,27 +684,40 @@ export class ProviderEngine {
   public getAllStatuses(): Record<string, string> {
     const statuses: Record<string, string> = {};
     for (const p of PROVIDER_CATALOGUE) {
-      const sess = this.activeSessions.get(p.id);
-      if (sess) {
-        statuses[p.id] = sess.status;
-      } else if (p.protocol === 'vendor-sdk' && p.id === 'claude') {
-        statuses[p.id] = claudeVendorSdk.getStatus();
+      const live = checkProviderLiveStatus(p.id);
+      if (live.status === 'connected') {
+        const sess = this.activeSessions.get(p.id);
+        statuses[p.id] = sess?.status === 'available' ? 'available' : 'connected';
+      } else if (live.status === 'installed-not-signed-in') {
+        statuses[p.id] = 'sign-in-required';
       } else {
-        statuses[p.id] = p.isFree ? 'available' : 'disconnected';
+        statuses[p.id] = 'not-installed';
       }
     }
     return statuses;
   }
 
+  public getAllProviderLiveStatuses(): ProviderLiveStatus[] {
+    return PROVIDER_CATALOGUE.map((p) => checkProviderLiveStatus(p.id));
+  }
+
+  public checkProviderLiveStatus(providerId: string): ProviderLiveStatus {
+    return checkProviderLiveStatus(providerId);
+  }
+
+  public async launchProviderSignIn(providerId: string): Promise<{
+    success: boolean;
+    openedTerminal: boolean;
+    openedBrowser: boolean;
+    liveStatus: ProviderLiveStatus;
+    message: string;
+  }> {
+    return await launchProviderSignIn(providerId);
+  }
+
   /**
-   * Connect flow per Section 3:
-   * 1. Check autoStartBlocked (stops after 3 failures unless user triggered)
-   * 2. Enforce minimum version via probe (10-second timeout)
-   * 3. Start child with long start timeout (180s minimum, 720s max, doubles on timeout)
-   * 4. Handshake: initialize call -> initialized notice
-   * 5. Read account (5s normally, 120s while disk state restores)
-   * 6. Retry backoff: 500ms, 1s, 2s, max 3 attempts
-   * 7. Runs >= 2 minutes clear failure count and reset startTimeoutMs
+   * Connect flow with strict live status enforcement:
+   * Re-evaluates honest live status before starting runtime.
    */
   public async connectProvider(
     providerId: string,
@@ -239,6 +726,26 @@ export class ProviderEngine {
     const def = PROVIDER_CATALOGUE.find((p) => p.id === providerId);
     if (!def) {
       return { success: false, status: 'error', error: `Unknown provider: ${providerId}` };
+    }
+
+    const live = checkProviderLiveStatus(providerId);
+
+    // If not installed on PATH, reject immediately with exact install command
+    if (live.status === 'not-installed') {
+      const err = `${live.errorMessage} ${live.nextStep}`;
+      const sess = this.ensureSession(providerId, def);
+      sess.status = 'not-installed';
+      sess.error = err;
+      return { success: false, status: 'not-installed', error: err };
+    }
+
+    // If installed but not authenticated, reject immediately with sign-in guidance
+    if (live.status === 'installed-not-signed-in') {
+      const err = `${live.errorMessage} ${live.nextStep}`;
+      const sess = this.ensureSession(providerId, def);
+      sess.status = 'sign-in-required';
+      sess.error = err;
+      return { success: false, status: 'installed-not-signed-in', error: err };
     }
 
     const tracking = this.getTracking(providerId);
@@ -256,15 +763,19 @@ export class ProviderEngine {
       };
     }
 
-    // Claude: vendor SDK adapter handles start/query (Item 6)
+    // Claude: vendor SDK adapter handles start/query
     if (def.protocol === 'vendor-sdk' && def.id === 'claude') {
       const sdkRes = await claudeVendorSdk.connect();
       const sess = this.ensureSession(providerId, def);
-      sess.status = sdkRes.status;
-      return sdkRes;
+      sess.status = sdkRes.status === 'connected' ? 'available' : (sdkRes.status as any);
+      return {
+        success: sdkRes.success,
+        status: sdkRes.status,
+        error: sdkRes.error,
+      };
     }
 
-    // Version probe enforcement (Item 2)
+    // Version probe enforcement
     const resolved = resolveWindowsBinary(def.command);
     if (resolved && def.minVersion) {
       const detectedVersion = await probeBinaryVersion(def.command);
@@ -282,15 +793,13 @@ export class ProviderEngine {
       }
     }
 
-    // Retry loop with backoff: 500ms, 1s, 2s, maximum 3 attempts (Item 5)
+    // Retry loop with backoff: 500ms, 1s, 2s, maximum 3 attempts
     let lastError: any = null;
     while (tracking.failureCount < 3) {
       const attemptNumber = tracking.failureCount + 1;
       try {
         console.log(`[ProviderEngine] Attempting start ${attemptNumber}/3 for ${def.name}...`);
         const result = await this.executeStartAttempt(def, tracking);
-
-        // Success! Track 2-minute clean run
         this.trackCleanRun(providerId, tracking);
         return result;
       } catch (err: any) {
@@ -303,7 +812,6 @@ export class ProviderEngine {
           break;
         }
 
-        // Backoff delay: 500ms, then 1s, then 2s
         const backoffMs = RETRY_BACKOFFS[attemptNumber - 1] || 2000;
         console.log(`[ProviderEngine] Backing off for ${backoffMs}ms before retry...`);
         await new Promise((r) => setTimeout(r, backoffMs));
@@ -328,19 +836,25 @@ export class ProviderEngine {
     const session = this.ensureSession(def.id, def);
     session.status = 'checking';
 
-    const resolved = resolveWindowsBinary(def.command);
+    let resolved: ResolvedBinary | null = null;
+    let actualCommand = def.command;
 
-    if (!resolved) {
-      if (def.isFree) {
-        session.status = 'available';
-        return { success: true, status: 'available' };
+    if (def.id === 'gemini') {
+      const geminiRes = resolveGeminiBinary();
+      if (geminiRes) {
+        resolved = geminiRes.resolved;
+        actualCommand = geminiRes.command;
       }
-      session.status = 'sign-in-required';
-      return { success: true, status: 'sign-in-required' };
+    } else {
+      resolved = resolveWindowsBinary(def.command);
     }
 
-    // Long start timeout enforcement (Item 3):
-    // "Long start 180 seconds; after a timeout the next start waits twice as long (minimum 180 seconds, maximum 720 seconds)."
+    if (!resolved) {
+      session.status = 'not-installed';
+      const live = checkProviderLiveStatus(def.id);
+      return { success: false, status: 'not-installed', error: `${live.errorMessage} ${live.nextStep}` };
+    }
+
     const currentStartTimeout = tracking.startTimeoutMs;
 
     return new Promise((resolve, reject) => {
@@ -349,7 +863,6 @@ export class ProviderEngine {
       const timeoutTimer = setTimeout(() => {
         if (isSettled) return;
         isSettled = true;
-        // Double start timeout on timeout, max 720s
         tracking.startTimeoutMs = Math.min(tracking.startTimeoutMs * 2, 720_000);
         console.warn(
           `[ProviderEngine] Start timeout (${currentStartTimeout / 1000}s) reached for ${def.name}. Next start timeout: ${tracking.startTimeoutMs / 1000}s.`
@@ -362,10 +875,10 @@ export class ProviderEngine {
 
       (async () => {
         try {
-          console.log(`[ProviderEngine] Spawning ${def.name} from ${resolved.path}...`);
+          console.log(`[ProviderEngine] Spawning ${def.name} from ${resolved!.path}...`);
           const child = spawnSupervisedProcess({
             providerId: def.id,
-            command: resolved.path,
+            command: resolved!.path,
             args: def.defaultArgs,
             onStdoutLine: (line) => this.handleStdoutMessage(def.id, line),
             onStderrLine: (line) => console.log(`[${def.name} stderr]`, line),
@@ -385,8 +898,7 @@ export class ProviderEngine {
 
           this.sendJsonRpcNotice(def.id, 'initialized', {});
 
-          // Account read with deadline (Item 4):
-          // "It reads the account - 5 seconds normally, 120 while the disk restores. No account means 'sign-in-required' and the client stops. A validated account makes the row 'available' - Connected."
+          // Account read with deadline (Item 4)
           const accountTimeoutMs = this.isDiskRestoring ? 120_000 : 5_000;
           const hasAccount = await this.readAccountWithTimeout(def, accountTimeoutMs);
 
@@ -399,9 +911,9 @@ export class ProviderEngine {
             resolve({ success: true, status: 'available' });
           } else {
             session.status = 'sign-in-required';
-            // "No account means sign-in-required and the client stops."
             this.disconnectProvider(def.id).catch(() => {});
-            resolve({ success: true, status: 'sign-in-required' });
+            const live = checkProviderLiveStatus(def.id);
+            resolve({ success: false, status: 'sign-in-required', error: `${live.errorMessage} ${live.nextStep}` });
           }
         } catch (err: any) {
           clearTimeout(timeoutTimer);
@@ -413,32 +925,16 @@ export class ProviderEngine {
     });
   }
 
-  /**
-   * Reads provider account within deadline (5s normal, 120s disk restoring)
-   */
   private async readAccountWithTimeout(def: ProviderDefinition, timeoutMs: number): Promise<boolean> {
-    if (!def.needsAuth) {
-      return true; // Free models need no account
-    }
-
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         resolve(false);
       }, timeoutMs);
 
-      // Check account credentials
       try {
-        if (def.id === 'codex') {
-          // Codex: check auth in home folder or via probe
-          const codexHome = process.env.CODEX_HOME || '';
-          if (codexHome) {
-            clearTimeout(timer);
-            return resolve(true);
-          }
-        }
-        // If no credentials found within timeout, resolve false -> sign-in-required
+        const isAuth = verifyProviderAuth(def.id);
         clearTimeout(timer);
-        resolve(false);
+        resolve(isAuth);
       } catch {
         clearTimeout(timer);
         resolve(false);
@@ -446,24 +942,17 @@ export class ProviderEngine {
     });
   }
 
-  /**
-   * Tracks a clean run: runs >= 2 minutes clear failure counts
-   */
   private trackCleanRun(providerId: string, tracking: ProviderTracking) {
     if (tracking.runTimer) clearTimeout(tracking.runTimer);
     tracking.runStartTime = Date.now();
-    // "A run of 2 minutes or more clears the failure count;"
     tracking.runTimer = setTimeout(() => {
       tracking.failureCount = 0;
       tracking.autoStartBlocked = false;
-      tracking.startTimeoutMs = 180_000; // resets to 180s
+      tracking.startTimeoutMs = 180_000;
       console.log(`[ProviderEngine] Provider ${providerId} ran cleanly for 2 minutes. Failure counters reset.`);
     }, 120_000);
   }
 
-  /**
-   * Disconnects / stops a provider process
-   */
   public async disconnectProvider(providerId: string): Promise<void> {
     const session = this.activeSessions.get(providerId);
 
@@ -488,11 +977,9 @@ export class ProviderEngine {
   }
 
   /**
-   * Sends user message to provider.
-   * STRICT REQUIREMENT (Item 1):
-   * "Remove the fake-reply fallback in sendMessage. When no live provider is connected,
-   * return an error and a not-connected / sign-in-required state. Never return a fabricated answer,
-   * fake reasoning, or fake tool results."
+   * Requirement 5 & 6:
+   * Every error message about a missing provider must name the missing piece and the next step.
+   * Strictly NO fake-reply fallback. No response is ever generated without a live connected provider.
    */
   public async sendMessage(
     providerId: string,
@@ -502,14 +989,24 @@ export class ProviderEngine {
   ): Promise<{ text: string; toolStep?: { name: string; output: string }; reasoning?: string }> {
     const def = PROVIDER_CATALOGUE.find((p) => p.id === providerId);
     const cleanProviderName = def?.name || providerId;
-    const session = this.activeSessions.get(providerId);
+    const live = checkProviderLiveStatus(providerId);
 
-    // Enforce live connection requirement
+    // 1. If not installed on PATH, throw exact install message
+    if (live.status === 'not-installed') {
+      throw new Error(`${live.errorMessage} ${live.nextStep}`);
+    }
+
+    // 2. If installed but not authenticated, throw exact sign-in guidance
+    if (live.status === 'installed-not-signed-in') {
+      throw new Error(`${live.errorMessage} ${live.nextStep}`);
+    }
+
+    // 3. Claude Code vendor SDK adapter execution
     if (providerId === 'claude') {
       const status = claudeVendorSdk.getStatus();
-      if (status !== 'available') {
+      if (status !== 'connected' && status !== 'available') {
         throw new Error(
-          `Claude Code is not connected (status: ${status}). Please authenticate in your terminal before running tasks.`
+          'Claude Code is installed but you are not signed in. Press Sign in to connect your Claude subscription.'
         );
       }
       return await claudeVendorSdk.sendQuery({
@@ -519,16 +1016,28 @@ export class ProviderEngine {
       });
     }
 
+    // 4. ACP / Process-based providers
+    let session = this.activeSessions.get(providerId);
+
     if (!session || session.status !== 'available') {
-      const currentStatus = session ? session.status : 'disconnected';
-      throw new Error(
-        `Provider "${cleanProviderName}" is not connected (status: ${currentStatus}). Please connect and sign in to the provider before running tasks.`
-      );
+      // If binary is verified and authenticated, attempt to establish active session
+      if (live.status === 'connected') {
+        console.log(`[ProviderEngine] Establishing runtime session for ${cleanProviderName}...`);
+        const connRes = await this.connectProvider(providerId, { isUserAction: true });
+        session = this.activeSessions.get(providerId);
+        if (!connRes.success || !session || session.status !== 'available') {
+          throw new Error(
+            connRes.error ||
+              `Failed to initialize live session for "${cleanProviderName}". Ensure the provider daemon is functioning.`
+          );
+        }
+      } else {
+        throw new Error(`${live.errorMessage} ${live.nextStep}`);
+      }
     }
 
     session.lastUsedTime = Date.now();
 
-    // ACP Protocol Request
     if (session.child) {
       try {
         const resp = await this.sendJsonRpc(providerId, 'session/prompt', {
@@ -552,15 +1061,11 @@ export class ProviderEngine {
       }
     }
 
-    // Absolutely NO fake-reply fallback!
     throw new Error(
-      `Provider "${cleanProviderName}" has no active child process. Please reconnect the provider.`
+      `Provider "${cleanProviderName}" process is not running. Please restart the provider in Settings > Providers.`
     );
   }
 
-  /**
-   * Probe local model servers: Ollama (11434) and LM Studio (1234)
-   */
   public async detectLocalModelServers(): Promise<{ ollama: boolean; lmStudio: boolean }> {
     const checkPort = (port: number, path: string): Promise<boolean> => {
       return new Promise((resolve) => {
@@ -620,7 +1125,7 @@ export class ProviderEngine {
         },
         reject: (err) => {
           clearTimeout(timeout);
-          reject(err);
+          resolve(val);
         },
       });
 

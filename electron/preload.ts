@@ -16,6 +16,9 @@ export interface OpenBotBridge {
   // Milestone 2 IPC
   getProviderCatalogue: () => Promise<any[]>;
   getProviderStatuses: () => Promise<Record<string, string>>;
+  getProviderLiveStatuses: () => Promise<any[]>;
+  checkProviderStatus: (providerId: string) => Promise<any>;
+  launchProviderSignIn: (providerId: string) => Promise<any>;
   connectProvider: (providerId: string) => Promise<{ success: boolean; status: string; error?: string }>;
   disconnectProvider: (providerId: string) => Promise<void>;
   detectLocalModelServers: () => Promise<{ ollama: boolean; lmStudio: boolean }>;
@@ -183,6 +186,9 @@ const bridge: OpenBotBridge = {
   // Milestone 2 IPC
   getProviderCatalogue: () => ipcRenderer.invoke('providers:get-catalogue'),
   getProviderStatuses: () => ipcRenderer.invoke('providers:get-statuses'),
+  getProviderLiveStatuses: () => ipcRenderer.invoke('providers:get-live-statuses'),
+  checkProviderStatus: (providerId: string) => ipcRenderer.invoke('providers:check-status', providerId),
+  launchProviderSignIn: (providerId: string) => ipcRenderer.invoke('providers:launch-sign-in', providerId),
   connectProvider: (providerId: string) => ipcRenderer.invoke('providers:connect', providerId),
   disconnectProvider: (providerId: string) => ipcRenderer.invoke('providers:disconnect', providerId),
   detectLocalModelServers: () => ipcRenderer.invoke('providers:detect-local-servers'),

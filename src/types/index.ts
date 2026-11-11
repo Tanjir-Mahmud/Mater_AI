@@ -664,6 +664,27 @@ export interface DiagnosticsExportResult {
   exportedAt: string;
 }
 
+// Post-Milestone Provider Flow Types
+export type ProviderStatusKind = 'not-installed' | 'installed-not-signed-in' | 'connected';
+
+export interface ProviderLiveStatus {
+  id: string;
+  name: string;
+  status: ProviderStatusKind;
+  binaryName: string;
+  binaryPath: string | null;
+  isBinaryInstalled: boolean;
+  isAuthenticated: boolean;
+  installCommand: string;
+  loginCommand: string;
+  loginUrl?: string;
+  description: string;
+  models: { id: string; name: string; free: boolean }[];
+  errorMessage?: string;
+  nextStep?: string;
+}
+
+
 
 
 

@@ -33,15 +33,16 @@ export class ClaudeVendorSdkAdapter {
 
   public async connect(): Promise<{
     success: boolean;
-    status: 'available' | 'sign-in-required' | 'error';
+    status: 'connected' | 'available' | 'installed-not-signed-in' | 'sign-in-required' | 'not-installed' | 'error';
     error?: string;
   }> {
     const resolved = resolveWindowsBinary('claude');
     if (!resolved) {
+      this.isConnected = false;
       return {
         success: false,
-        status: 'sign-in-required',
-        error: 'Claude CLI is not installed on this system. Make sure "claude" is installed and available in PowerShell.',
+        status: 'not-installed',
+        error: 'Claude Code CLI is not installed on this computer. Install it with "npm install -g @anthropic-ai/claude-code", then press Connect.',
       };
     }
 
@@ -53,35 +54,51 @@ export class ClaudeVendorSdkAdapter {
     // Note per spec: "OpenBot uses the existing local provider login; it does not copy provider credentials."
     const homeDir = os.homedir();
     const configPath = path.join(homeDir, '.claude.json');
-    const hasConfig = fs.existsSync(configPath);
+    const hasConfig = fs.existsSync(configPath) && fs.statSync(configPath).size > 2;
+    const hasEnvKey = Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim().length > 0);
 
-    if (hasConfig) {
+    if (hasConfig || hasEnvKey) {
       this.isConnected = true;
-      return { success: true, status: 'available' };
+      return { success: true, status: 'connected' };
     } else {
       this.isConnected = false;
-      return { success: true, status: 'sign-in-required' };
+      return {
+        success: false,
+        status: 'installed-not-signed-in',
+        error: 'Claude Code is installed but you are not signed in. Press Sign in to connect your Claude subscription.',
+      };
     }
   }
 
-  public getStatus(): 'available' | 'sign-in-required' | 'disconnected' {
-    if (!this.isConnected) return 'sign-in-required';
-    return 'available';
+  public getStatus(): 'connected' | 'available' | 'installed-not-signed-in' | 'sign-in-required' | 'not-installed' {
+    const resolved = resolveWindowsBinary('claude');
+    if (!resolved) return 'not-installed';
+    const homeDir = os.homedir();
+    const configPath = path.join(homeDir, '.claude.json');
+    const hasConfig = fs.existsSync(configPath) && fs.statSync(configPath).size > 2;
+    const hasEnvKey = Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim().length > 0);
+    if (hasConfig || hasEnvKey) {
+      return 'connected';
+    }
+    return 'installed-not-signed-in';
   }
 
   public async sendQuery(options: ClaudeQueryOptions): Promise<ClaudeQueryResult> {
     const resolved = resolveWindowsBinary('claude');
     if (!resolved) {
       throw new Error(
-        'Claude Code CLI is not installed on this machine. Please install Claude Code and restart OpenBot.'
+        'Claude Code CLI is not installed on this computer. Install it with "npm install -g @anthropic-ai/claude-code", then press Connect.'
       );
     }
 
     const homeDir = os.homedir();
     const configPath = path.join(homeDir, '.claude.json');
-    if (!fs.existsSync(configPath)) {
+    const hasConfig = fs.existsSync(configPath) && fs.statSync(configPath).size > 2;
+    const hasEnvKey = Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim().length > 0);
+
+    if (!hasConfig && !hasEnvKey) {
       throw new Error(
-        'Claude Code is not signed in. Please run "claude login" in your terminal to authenticate.'
+        'Claude Code is installed but you are not signed in. Press Sign in to connect your Claude subscription.'
       );
     }
 

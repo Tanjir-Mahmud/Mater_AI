@@ -1,9 +1,19 @@
 import { app, BrowserWindow, ipcMain, screen, Menu, Tray, nativeTheme, shell, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import crypto from 'crypto';
 import { initDatabase, getDatabase, saveDatabase, getAgentWorkspaceDir, deleteAgentWorkspace } from './backend/db';
-import { providerEngine } from './backend/providerEngine';
+import {
+  providerEngine,
+  checkProviderLiveStatus,
+  resolveGeminiBinary,
+  verifyCodexAuth,
+  verifyProviderAuth,
+  launchProviderSignIn,
+  PROVIDER_METADATA,
+  PROVIDER_CATALOGUE,
+} from './backend/providerEngine';
 import { generateAgentFromPrompt } from './backend/agentGenerator';
 import { isVersionAtLeast } from './backend/processSupervisor';
 import { claudeVendorSdk } from './backend/claudeVendorSdk';
@@ -2350,8 +2360,170 @@ function createWindow() {
           console.log(`[Test] Mirroring to artifact dir skipped:`, e);
         }
 
+        // =========================================================================
+        // POST-MILESTONE TESTS: Provider Connection Flow
+        // =========================================================================
         console.log('=============================================================');
-        console.log('ALL MILESTONE 3, 4, 5, 6, 7, 8 & 9 (FINAL) VERIFICATION CHECKS PASSED.');
+        console.log('[Test] Running Post-Milestone Verification: Provider Connection Flow...');
+        console.log('=============================================================');
+
+        // 1. Binary Detection (Present vs Missing)
+        console.log('[Test] P-1. Testing binary detection (present vs missing)...');
+        const missingStatus = checkProviderLiveStatus('nonexistent-engine' as any);
+        if (missingStatus.isBinaryInstalled !== false || missingStatus.status !== 'not-installed') {
+          throw new Error(`Expected missing binary to report not-installed, got: ${missingStatus.status}`);
+        }
+        const claudeStatus = checkProviderLiveStatus('claude');
+        if (!claudeStatus.isBinaryInstalled || !claudeStatus.binaryPath) {
+          throw new Error('Expected claude binary to be detected on this test machine');
+        }
+        console.log(`[Test]    - Binary detection verified: missing binary is false, claude binary detected at ${claudeStatus.binaryPath}`);
+
+        // 2. Status Mapping for all three states (Not installed, Installed not signed in, Connected)
+        console.log('[Test] P-2. Testing status mapping for all three states...');
+        const allLiveStatuses = providerEngine.getAllProviderLiveStatuses();
+        if (allLiveStatuses.length !== 11) {
+          throw new Error(`Expected 11 catalogue providers, got: ${allLiveStatuses.length}`);
+        }
+        console.log(`[Test]    - Live status breakdown on host machine:`);
+        for (const s of allLiveStatuses) {
+          console.log(`       * ${s.name} (${s.id}): status=${s.status}, installed=${s.isBinaryInstalled}, auth=${s.isAuthenticated}`);
+        }
+        // Verify invariant: Never show as connected unless both binary found AND account verified
+        for (const s of allLiveStatuses) {
+          if (s.status === 'connected' && (!s.isBinaryInstalled || !s.isAuthenticated)) {
+            throw new Error(`Invariant violation: ${s.name} marked connected without binary and verified auth!`);
+          }
+          if (s.status === 'installed-not-signed-in' && (!s.isBinaryInstalled || s.isAuthenticated)) {
+            throw new Error(`Invariant violation: ${s.name} marked installed-not-signed-in incorrectly`);
+          }
+          if (s.status === 'not-installed' && s.isBinaryInstalled) {
+            throw new Error(`Invariant violation: ${s.name} marked not-installed but binary is present`);
+          }
+        }
+        console.log(`[Test]    - All three status states mapped honestly without simulation.`);
+
+        // 3. Google Gemini: `gemini` CLI first, fallback to `antigravity-server` only if binary located
+        console.log('[Test] P-3. Testing Google Gemini gemini-CLI-first detection & fallback...');
+        const geminiDetection = resolveGeminiBinary();
+        const geminiLive = checkProviderLiveStatus('gemini');
+        if (!geminiDetection) {
+          if (geminiLive.status !== 'not-installed' || geminiLive.isBinaryInstalled !== false) {
+            throw new Error('Gemini must be not-installed when neither gemini nor antigravity-server binary is present');
+          }
+          console.log('[Test]    - Neither binary installed: correctly reported not-installed with Google Gemini CLI install instructions.');
+        } else {
+          console.log(`[Test]    - Detected binary: ${geminiDetection.command} at ${geminiDetection.resolved.path}`);
+        }
+
+        // 4. Codex / OpenAI Real-Auth Check rejecting empty/missing auth file
+        console.log('[Test] P-4. Testing Codex real-auth check rejecting empty/missing auth file...');
+        const tempCodexDir = path.join(os.tmpdir(), `test-codex-${Date.now()}`);
+        fs.mkdirSync(tempCodexDir, { recursive: true });
+        const oldCodexHome = process.env.CODEX_HOME;
+        const oldOpenAiKey = process.env.OPENAI_API_KEY;
+        try {
+          process.env.CODEX_HOME = tempCodexDir;
+          delete process.env.OPENAI_API_KEY;
+
+          // Empty directory: must be false
+          if (verifyCodexAuth() !== false) {
+            throw new Error('Codex must NOT claim connected just because CODEX_HOME directory exists!');
+          }
+
+          // Empty auth.json (size <= 2 or "{}" / "[]")
+          fs.writeFileSync(path.join(tempCodexDir, 'auth.json'), '{}');
+          if (verifyCodexAuth() !== false) {
+            throw new Error('Codex must NOT claim connected with empty "{}" auth file!');
+          }
+
+          // 0-byte auth file
+          fs.writeFileSync(path.join(tempCodexDir, 'credentials.json'), '');
+          if (verifyCodexAuth() !== false) {
+            throw new Error('Codex must NOT claim connected with 0-byte credentials file!');
+          }
+
+          // Real credentials file with actual content
+          fs.writeFileSync(path.join(tempCodexDir, 'auth.json'), JSON.stringify({ token: 'sk-proj-test123456789' }));
+          if (verifyCodexAuth() !== true) {
+            throw new Error('Codex should verify valid credentials file with tokens');
+          }
+
+          // Test OPENAI_API_KEY override
+          fs.unlinkSync(path.join(tempCodexDir, 'auth.json'));
+          process.env.OPENAI_API_KEY = 'sk-test-live-openai-key-value-12345';
+          if (verifyCodexAuth() !== true) {
+            throw new Error('Codex should verify active OPENAI_API_KEY');
+          }
+          console.log(`[Test]    - Codex auth successfully verified: empty dir, 0-byte file, and "{}" correctly rejected.`);
+        } finally {
+          process.env.CODEX_HOME = oldCodexHome;
+          if (oldOpenAiKey) process.env.OPENAI_API_KEY = oldOpenAiKey;
+          else delete process.env.OPENAI_API_KEY;
+          try { fs.rmSync(tempCodexDir, { recursive: true, force: true }); } catch {}
+        }
+
+        // 5. Error messages naming the missing piece and next step
+        console.log('[Test] P-5. Testing descriptive error messages naming missing piece and next step...');
+        let openCodeError = '';
+        try {
+          await providerEngine.sendMessage('opencode', 'opencode-free', 'Hello');
+        } catch (err: any) {
+          openCodeError = err.message;
+        }
+        if (!openCodeError.includes('OpenCode') || (!openCodeError.includes('npm install -g opencode-ai') && !openCodeError.includes('Sign in') && !openCodeError.includes('opencode auth login'))) {
+          throw new Error(`OpenCode error message must name the missing piece and next step, got: "${openCodeError}"`);
+        }
+        console.log(`[Test]    - OpenCode error correctly descriptive: "${openCodeError}"`);
+
+        let missingCliError = '';
+        try {
+          await providerEngine.sendMessage('cursor', 'cursor-fast', 'Hello');
+        } catch (err: any) {
+          missingCliError = err.message;
+        }
+        if (!missingCliError.includes('not installed') || !missingCliError.includes('Install it with')) {
+          throw new Error(`Missing CLI error message must name install command, got: "${missingCliError}"`);
+        }
+        console.log(`[Test]    - Missing CLI error correctly descriptive: "${missingCliError}"`);
+
+        // 6. Sign-in re-check after auth
+        console.log('[Test] P-6. Testing launchProviderSignIn re-checking live status...');
+        const signInResult = await providerEngine.launchProviderSignIn('opencode');
+        if (typeof signInResult.success !== 'boolean' || !signInResult.liveStatus || !signInResult.message) {
+          throw new Error('launchProviderSignIn must return success, liveStatus and message');
+        }
+        console.log(`[Test]    - Sign in action result for OpenCode: openedTerminal=${signInResult.openedTerminal}, openedBrowser=${signInResult.openedBrowser}, message="${signInResult.message}"`);
+
+        // 7. Settled Shell Screenshot showing new Provider Setup Panel in Settings
+        console.log('[Test] P-7. Capturing main settled shell UI screenshot for Provider Setup Panel...');
+        await mainWindow!.webContents.executeJavaScript(`
+          if (window.__OPENBOT_STORE__) {
+            window.__OPENBOT_STORE__.setState('activePage', 'agents');
+            window.__OPENBOT_STORE__.setState('isSettingsOpen', true);
+            window.__OPENBOT_STORE__.setState('activeSettingsTab', 'providers');
+          }
+        `);
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const imgProviders = await mainWindow!.webContents.capturePage();
+        const distScreenshotProv = path.resolve('dist/provider-setup-panel.png');
+        const repoScreenshotProv = path.join(screenshotsDir, 'provider-setup-panel.png');
+        const artifactScreenshotProv = path.join(artifactDir, 'provider-setup-panel.png');
+
+        fs.writeFileSync(distScreenshotProv, imgProviders.toPNG());
+        fs.writeFileSync(repoScreenshotProv, imgProviders.toPNG());
+        console.log(`[Test] P-7. Provider Setup Panel screenshot saved to: ${distScreenshotProv} and ${repoScreenshotProv}`);
+        try {
+          if (!fs.existsSync(artifactDir)) fs.mkdirSync(artifactDir, { recursive: true });
+          fs.writeFileSync(artifactScreenshotProv, imgProviders.toPNG());
+          console.log(`[Test] Screenshot also mirrored to artifact directory: ${artifactScreenshotProv}`);
+        } catch (e) {
+          console.log(`[Test] Mirroring to artifact dir skipped:`, e);
+        }
+
+        console.log('=============================================================');
+        console.log('ALL MILESTONES & POST-MILESTONE PROVIDER FLOW CHECKS PASSED.');
         console.log('=============================================================');
         setTimeout(() => app.quit(), 500);
       } catch (err) {
@@ -2640,6 +2812,18 @@ ipcMain.handle('providers:get-catalogue', () => {
 
 ipcMain.handle('providers:get-statuses', () => {
   return providerEngine.getAllStatuses();
+});
+
+ipcMain.handle('providers:get-live-statuses', () => {
+  return providerEngine.getAllProviderLiveStatuses();
+});
+
+ipcMain.handle('providers:check-status', (_event, providerId: string) => {
+  return providerEngine.checkProviderLiveStatus(providerId);
+});
+
+ipcMain.handle('providers:launch-sign-in', async (_event, providerId: string) => {
+  return await providerEngine.launchProviderSignIn(providerId);
 });
 
 ipcMain.handle('providers:connect', async (_event, providerId: string) => {

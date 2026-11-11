@@ -927,42 +927,125 @@ export const MainWorkspace: Component = () => {
                 </div>
                 <div class="max-h-72 overflow-y-auto flex flex-col gap-1 pr-1">
                   <For each={AVAILABLE_MODELS}>
-                    {(group) => (
-                      <div class="flex flex-col gap-0.5">
-                        <span class="text-[10px] font-bold text-outline uppercase tracking-wider px-2 pt-1">
-                          {group.group}
-                        </span>
-                        <For each={group.models}>
-                          {(m) => (
-                            <button
-                              onClick={() => {
-                                changeAgentModel(currentAgent()!.id, m.provider, m.name);
-                                setIsModelPickerOpen(false);
-                              }}
-                              class={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-all ${
-                                currentAgent()?.model === m.name
-                                  ? 'bg-primary-container text-on-primary-container font-semibold'
-                                  : 'hover:bg-surface-container-high text-on-surface'
-                              }`}
-                            >
-                              <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-[14px] text-primary">smart_toy</span>
-                                <span>{m.name}</span>
-                              </div>
-                              <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-container-highest text-outline">
-                                {m.badge}
+                    {(group) => {
+                      const groupProvider = () => group.models[0]?.provider;
+                      const groupStatus = () => state.providerLiveStatuses[groupProvider()]?.status || 'not-installed';
+                      return (
+                        <div class="flex flex-col gap-0.5">
+                          <div class="flex items-center justify-between px-2 pt-1.5 pb-0.5">
+                            <span class="text-[10px] font-bold text-outline uppercase tracking-wider">
+                              {group.group}
+                            </span>
+                            {/* Live Provider Status Indicator */}
+                            <Show when={groupStatus() === 'connected'}>
+                              <span class="text-[9px] font-semibold text-emerald-400 flex items-center gap-0.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                Connected
                               </span>
-                            </button>
-                          )}
-                        </For>
-                      </div>
-                    )}
+                            </Show>
+                            <Show when={groupStatus() === 'installed-not-signed-in'}>
+                              <span class="text-[9px] font-semibold text-amber-400 flex items-center gap-0.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                Sign in
+                              </span>
+                            </Show>
+                            <Show when={groupStatus() === 'not-installed'}>
+                              <span class="text-[9px] font-semibold text-outline flex items-center gap-0.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-outline" />
+                                Not installed
+                              </span>
+                            </Show>
+                          </div>
+                          <For each={group.models}>
+                            {(m) => {
+                              const provStatus = () => state.providerLiveStatuses[m.provider]?.status || 'not-installed';
+                              return (
+                                <button
+                                  onClick={() => {
+                                    changeAgentModel(currentAgent()!.id, m.provider, m.name);
+                                    setIsModelPickerOpen(false);
+                                  }}
+                                  class={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-all ${
+                                    currentAgent()?.model === m.name
+                                      ? 'bg-primary-container text-on-primary-container font-semibold'
+                                      : 'hover:bg-surface-container-high text-on-surface'
+                                  }`}
+                                >
+                                  <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[14px] text-primary">smart_toy</span>
+                                    <span>{m.name}</span>
+                                  </div>
+                                  <div class="flex items-center gap-1.5">
+                                    <Show when={provStatus() === 'connected'}>
+                                      <span class="material-symbols-outlined text-[12px] text-emerald-400" title="Connected">check</span>
+                                    </Show>
+                                    <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-container-highest text-outline">
+                                      {m.badge}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            }}
+                          </For>
+                        </div>
+                      );
+                    }}
                   </For>
+                </div>
+                {/* Manage Providers shortcut */}
+                <div class="p-1.5 border-t border-outline-variant/20 mt-1">
+                  <button
+                    onClick={() => {
+                      setIsModelPickerOpen(false);
+                      setState('activeSettingsTab', 'providers');
+                      setState('isSettingsOpen', true);
+                    }}
+                    class="w-full py-1.5 px-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">tune</span>
+                    <span>Configure Providers in Settings...</span>
+                  </button>
                 </div>
               </div>
             </Show>
 
             <div class="flex flex-col rounded-xl bg-surface-container border border-outline-variant/30 focus-within:border-primary/60 transition-colors shadow-sm">
+              {/* Inline Provider Warning Banner */}
+              <Show when={currentAgent()}>
+                {() => {
+                  const agentProv = () => currentAgent()?.provider || 'opencode';
+                  const live = () => state.providerLiveStatuses[agentProv()];
+                  return (
+                    <Show when={live() && live()?.status !== 'connected'}>
+                      <div class={`px-3 py-1.5 rounded-t-xl text-xs flex items-center justify-between border-b ${
+                        live()?.status === 'not-installed'
+                          ? 'bg-error-container/20 border-error/20 text-error'
+                          : 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                      }`}>
+                        <div class="flex items-center gap-1.5 truncate">
+                          <span class="material-symbols-outlined text-[14px]">
+                            {live()?.status === 'not-installed' ? 'cancel' : 'key'}
+                          </span>
+                          <span class="font-medium truncate">
+                            {live()?.status === 'not-installed'
+                              ? `${live()?.name} CLI is not installed on this computer.`
+                              : `${live()?.name} is installed but you are not signed in.`}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setState('activeSettingsTab', 'providers');
+                            setState('isSettingsOpen', true);
+                          }}
+                          class="px-2 py-0.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-[11px] font-semibold text-on-surface underline ml-2 flex-shrink-0 cursor-pointer"
+                        >
+                          {live()?.status === 'not-installed' ? 'Install Command' : 'Sign In Now'}
+                        </button>
+                      </div>
+                    </Show>
+                  );
+                }}
+              </Show>
               {/* Hidden file input */}
               <input
                 type="file"
