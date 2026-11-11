@@ -77,7 +77,7 @@ const PROVIDERS: ProviderOption[] = [
 ];
 
 export const OnboardingModal: Component = () => {
-  const getApi = () => (window as any).bissbot || (window as any).openbot;
+  const getApi = () => (window as any).bissbot;
   const isMac = () => getApi()?.platform === 'darwin';
 
   const [step, setStep] = createSignal<

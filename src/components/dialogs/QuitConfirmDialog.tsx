@@ -5,7 +5,7 @@ import { i18n } from '../../shared/i18n';
 export const QuitConfirmDialog: Component = () => {
   const handleConfirm = () => {
     setState('isQuitDialogOpen', false);
-    const api = (window as any).bissbot || (window as any).openbot;
+    const api = (window as any).bissbot;
     if (api?.confirmQuit) {
       api.confirmQuit();
     } else {

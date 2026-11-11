@@ -37,7 +37,7 @@ export const MobileCompanionModal: Component = () => {
   const handlePromptAgent = async () => {
     if (!promptText().trim()) return;
     try {
-      const api = (window as any).bissbot || (window as any).openbot;
+      const api = (window as any).bissbot;
       if (api?.createAgentFromMobilePrompt) {
         const res = await api.createAgentFromMobilePrompt(promptText().trim());
         addToast('success', 'Mobile Agent Created', `Created agent "${res.name}" from prompt.`);

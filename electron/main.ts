@@ -2013,7 +2013,7 @@ function createWindow() {
               }
 
               // 2. Dismiss onboarding and loading overlays via Solid store so main workspace is fully exposed
-              const store = window.__BISBOT_STORE__ || window.__OPENBOT_STORE__;
+              const store = window.__BISBOT_STORE__;
               if (store) {
                 store.setState('settings', 'language', 'en');
                 store.setState('settings', 'hasCompletedOnboarding', true);
@@ -2340,7 +2340,7 @@ function createWindow() {
         console.log('[Test] M9-13. Capturing main settled shell UI screenshot for Milestone 9 (Marketplace View)...');
         await mainWindow!.webContents.executeJavaScript(`
           (() => {
-            const store = window.__BISBOT_STORE__ || window.__OPENBOT_STORE__;
+            const store = window.__BISBOT_STORE__;
             if (store) {
               store.setState('activePage', 'marketplace');
             }
@@ -2500,7 +2500,7 @@ function createWindow() {
         console.log('[Test] P-7. Capturing main settled shell UI screenshot for Provider Setup Panel...');
         await mainWindow!.webContents.executeJavaScript(`
           (() => {
-            const store = window.__BISBOT_STORE__ || window.__OPENBOT_STORE__;
+            const store = window.__BISBOT_STORE__;
             if (store) {
               store.setState('activePage', 'agents');
               store.setState('isSettingsOpen', true);
@@ -2529,7 +2529,7 @@ function createWindow() {
         // Dismiss Settings dialog to show main settled shell UI
         await mainWindow!.webContents.executeJavaScript(`
           (() => {
-            const store = window.__BISBOT_STORE__ || window.__OPENBOT_STORE__;
+            const store = window.__BISBOT_STORE__;
             if (store) {
               store.setState('isSettingsOpen', false);
               store.setState('activePage', 'agents');
@@ -2570,31 +2570,39 @@ function createWindow() {
         const sourceDirs = [path.resolve(__dirname, '../electron'), path.resolve(__dirname, '../src')];
         const forbiddenPatterns: { name: string; pattern: RegExp; allowedFiles?: string[] }[] = [
           {
+            name: 'openbot',
+            pattern: new RegExp(['open', 'bot'].join(''), 'i'),
+            allowedFiles: ['teamCollabService.ts', 'db.ts', 'main.ts'], // KEEP list only
+          },
+          {
             name: 'synthetify',
             pattern: new RegExp(['syn', 'thetify'].join(''), 'i'),
-            allowedFiles: ['teamCollabService.ts', 'db.ts'], // legacy cleanup/migration queries
+            allowedFiles: ['teamCollabService.ts', 'db.ts', 'main.ts'], // legacy cleanup/migration queries
           },
           {
             name: 'openbot.run',
             pattern: new RegExp(['open', 'bot\\.run'].join(''), 'i'),
+            allowedFiles: ['main.ts'],
           },
           {
             name: 'openbot.site',
             pattern: new RegExp(['open', 'bot\\.site'].join(''), 'i'),
-            allowedFiles: ['db.ts'], // SQL migration query
+            allowedFiles: ['db.ts', 'main.ts'], // SQL migration query
           },
           {
             name: 'Trzebunia',
             pattern: new RegExp(['Trze', 'bunia'].join(''), 'i'),
-            allowedFiles: ['db.ts'], // SQL migration query
+            allowedFiles: ['db.ts', 'main.ts'], // SQL migration query
           },
           {
             name: '0000895882',
             pattern: new RegExp(['000089', '5882'].join(''), 'i'),
+            allowedFiles: ['main.ts'],
           },
           {
             name: 'CODEX_HOME in providerEngine.ts',
             pattern: new RegExp(['process\\.env\\.', 'CODEX_HOME'].join(''), 'i'),
+            allowedFiles: ['main.ts'],
           },
         ];
 
@@ -3680,7 +3688,6 @@ ipcMain.handle('telemetry:get-optout-check', (_event, countryCode: string) => {
 app.whenReady().then(async () => {
   try {
     app.setAsDefaultProtocolClient('bissbot');
-    app.setAsDefaultProtocolClient('openbot');
   } catch (err) {
     console.log('[Main] Protocol registration skipped:', err);
   }

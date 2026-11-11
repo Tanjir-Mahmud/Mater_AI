@@ -93,7 +93,7 @@ const SETTINGS_TABS: SettingsTabItem[] = [
 
 export const SettingsModal: Component = () => {
   const [searchQuery, setSearchQuery] = createSignal('');
-  const getApi = () => (window as any).bissbot || (window as any).openbot;
+  const getApi = () => (window as any).bissbot;
   const isMac = () => getApi()?.platform === 'darwin';
 
   const visibleTabs = () => {

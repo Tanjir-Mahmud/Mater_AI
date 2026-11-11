@@ -51,7 +51,7 @@ export class ClaudeVendorSdkAdapter {
     console.log(`[ClaudeVendorSdk] Probed Claude version: ${version || 'unknown'}`);
 
     // Check vendor authentication state in home directory (~/.claude.json)
-    // Note per spec: "OpenBot uses the existing local provider login; it does not copy provider credentials."
+    // Note per spec: "BissBot uses the existing local provider login; it does not copy provider credentials."
     const homeDir = os.homedir();
     const configPath = path.join(homeDir, '.claude.json');
     const hasConfig = fs.existsSync(configPath) && fs.statSync(configPath).size > 2;

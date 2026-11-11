@@ -92,7 +92,7 @@ export const AgentSetupModal: Component = () => {
 
     try {
       let draft: any = null;
-      const api = (window as any).bissbot || (window as any).openbot;
+      const api = (window as any).bissbot;
       if (api?.generateAgentDraft) {
         draft = await api.generateAgentDraft(prompt);
       }

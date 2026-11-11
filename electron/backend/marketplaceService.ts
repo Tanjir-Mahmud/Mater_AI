@@ -308,10 +308,6 @@ export class MarketplaceService {
       slug = linkUri.replace('bissbot://plugin/', '').split('?')[0].split('/')[0];
     } else if (linkUri.startsWith('bissbot://marketplace/')) {
       slug = linkUri.replace('bissbot://marketplace/', '').split('?')[0].split('/')[0];
-    } else if (linkUri.startsWith('openbot://plugin/')) {
-      slug = linkUri.replace('openbot://plugin/', '').split('?')[0].split('/')[0];
-    } else if (linkUri.startsWith('openbot://marketplace/')) {
-      slug = linkUri.replace('openbot://marketplace/', '').split('?')[0].split('/')[0];
     } else if (linkUri.includes('?plugin=')) {
       const parts = linkUri.split('?plugin=');
       slug = (parts[1] || '').split('&')[0];

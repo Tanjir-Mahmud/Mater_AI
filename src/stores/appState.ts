@@ -103,6 +103,56 @@ const initialServers: ServerInfo[] = [
 // Seed agents matching design
 const initialAgents: Agent[] = [
   {
+    id: 'agent-research-desk',
+    name: 'Research Desk',
+    role: 'Sourced Research',
+    avatar: '--',
+    avatarColor: 'bg-emerald-500 text-white',
+    status: 'idle',
+    unreadCount: 0,
+    section: 'pinned',
+    isPinned: true,
+    model: 'Gemini 3.8 Flash',
+    provider: 'gemini',
+    reasoningLevel: 'high',
+    notificationLevel: 'all',
+    browserProfile: 'shared',
+    workspacePath: 'Agents/research-desk',
+    sections: {
+      systemDirective: 'Answer research questions with sourced, dated claims, and keep facts apart from inference.',
+      executionBoundaries: 'Inputs: public sources in bissbot_browser, and documents in installed plugins.',
+      memoryPolicy: 'Persist sourced evidence briefs and confidence scores. Review every 20 turns.',
+      fallbackStrategies: 'Label unknown claims when primary sources are unavailable.',
+    },
+    createdAt: '2026-11-03T10:00:00Z',
+    updatedAt: '2026-11-03T10:00:00Z',
+  },
+  {
+    id: 'agent-ceo',
+    name: 'CEO',
+    role: 'Executive',
+    avatar: '•’',
+    avatarColor: 'bg-purple-600 text-white',
+    status: 'idle',
+    unreadCount: 0,
+    section: 'pinned',
+    isPinned: true,
+    model: 'Claude 3.5 Sonnet',
+    provider: 'claude',
+    reasoningLevel: 'high',
+    notificationLevel: 'all',
+    browserProfile: 'shared',
+    workspacePath: 'Agents/ceo',
+    sections: {
+      systemDirective: 'Executive leadership and strategic coordination across teams.',
+      executionBoundaries: 'Direct communication with all agents and servers.',
+      memoryPolicy: 'Persist strategic goals and decisions.',
+      fallbackStrategies: 'Delegate to specialized agents.',
+    },
+    createdAt: '2026-11-03T10:00:00Z',
+    updatedAt: '2026-11-03T10:00:00Z',
+  },
+  {
     id: 'agent-kestrel',
     name: 'Kestrel',
     role: 'Senior Architect',
@@ -253,6 +303,16 @@ const initialAgents: Agent[] = [
 ];
 
 const initialAgentMessages: Record<string, ChatMessage[]> = {
+  'agent-research-desk': [],
+  'agent-ceo': [
+    {
+      id: 'ceo-1',
+      agentId: 'agent-ceo',
+      author: 'agent',
+      body: 'Understood. Standing by as executive coordinator.',
+      createdAt: 'Nov 3',
+    },
+  ],
   'agent-vanguard': [
     {
       id: 'vanguard-1',
@@ -372,7 +432,7 @@ export const [state, setState] = createStore({
   pinnedPages: ['agents', 'schedule', 'tasks', 'workflows', 'usage'] as PageId[],
   selectedServerId: 'server-local',
   servers: initialServers,
-  selectedAgentId: 'agent-kestrel',
+  selectedAgentId: 'agent-research-desk',
   selectedChannelId: null as string | null,
   selectedPersonId: null as string | null,
   agents: initialAgents,
@@ -627,7 +687,6 @@ export const [state, setState] = createStore({
 
 if (typeof window !== 'undefined') {
   (window as any).__BISBOT_STORE__ = { state, setState };
-  (window as any).__OPENBOT_STORE__ = { state, setState };
 }
 
 export function selectPage(page: PageId) {
@@ -680,8 +739,8 @@ export function toggleTheme(theme?: 'dark' | 'light' | 'system') {
     }
   }
 
-  if ((window as any).openbot?.saveSettings) {
-    (window as any).openbot.saveSettings(state.settings);
+  if ((window as any).bissbot?.saveSettings) {
+    (window as any).bissbot.saveSettings(state.settings);
   }
 }
 
@@ -766,8 +825,8 @@ export async function saveAgentFromSetup(agentData: Partial<Agent>): Promise<Age
       updatedAt: new Date().toISOString(),
     };
 
-    if ((window as any).openbot?.createAgent) {
-      await (window as any).openbot.createAgent(newAgent);
+    if ((window as any).bissbot?.createAgent) {
+      await (window as any).bissbot.createAgent(newAgent);
     }
 
     setState('agents', (prev) => [newAgent, ...prev]);
@@ -782,8 +841,8 @@ export async function deleteAgent(agentId: string) {
   const agent = state.agents.find((a) => a.id === agentId);
   if (!agent) return;
 
-  if ((window as any).openbot?.deleteAgent) {
-    await (window as any).openbot.deleteAgent(agentId);
+  if ((window as any).bissbot?.deleteAgent) {
+    await (window as any).bissbot.deleteAgent(agentId);
   }
 
   const remaining = state.agents.filter((a) => a.id !== agentId);
@@ -804,8 +863,8 @@ export async function exportAgentTemplate(agentId: string) {
   const agent = state.agents.find((a) => a.id === agentId);
   if (!agent) return;
 
-  if ((window as any).openbot?.exportAgentTemplate) {
-    const res = await (window as any).openbot.exportAgentTemplate(agentId);
+  if ((window as any).bissbot?.exportAgentTemplate) {
+    const res = await (window as any).bissbot.exportAgentTemplate(agentId);
     if (res?.template?.publicUrl) {
       addToast('success', 'Agent template exported', res.template.publicUrl);
       return res.template;
@@ -827,8 +886,8 @@ export function changeAgentModel(agentId: string, provider: string, model: strin
 // Post-Milestone Provider Live Status Actions
 export async function loadProviderLiveStatusesAction(): Promise<ProviderLiveStatus[]> {
   try {
-    if ((window as any).openbot?.getProviderLiveStatuses) {
-      const statuses: ProviderLiveStatus[] = await (window as any).openbot.getProviderLiveStatuses();
+    if ((window as any).bissbot?.getProviderLiveStatuses) {
+      const statuses: ProviderLiveStatus[] = await (window as any).bissbot.getProviderLiveStatuses();
       const map: Record<string, ProviderLiveStatus> = {};
       for (const s of statuses) {
         map[s.id] = s;
@@ -844,8 +903,8 @@ export async function loadProviderLiveStatusesAction(): Promise<ProviderLiveStat
 
 export async function checkProviderStatusAction(providerId: string): Promise<ProviderLiveStatus | null> {
   try {
-    if ((window as any).openbot?.checkProviderStatus) {
-      const live: ProviderLiveStatus = await (window as any).openbot.checkProviderStatus(providerId);
+    if ((window as any).bissbot?.checkProviderStatus) {
+      const live: ProviderLiveStatus = await (window as any).bissbot.checkProviderStatus(providerId);
       setState('providerLiveStatuses', providerId, live);
       if (live.status === 'connected') {
         addToast('success', `${live.name} Connected`, 'Binary detected and credentials verified.');
@@ -864,8 +923,8 @@ export async function checkProviderStatusAction(providerId: string): Promise<Pro
 
 export async function launchProviderSignInAction(providerId: string): Promise<{ success: boolean; message: string }> {
   try {
-    if ((window as any).openbot?.launchProviderSignIn) {
-      const res = await (window as any).openbot.launchProviderSignIn(providerId);
+    if ((window as any).bissbot?.launchProviderSignIn) {
+      const res = await (window as any).bissbot.launchProviderSignIn(providerId);
       if (res.liveStatus) {
         setState('providerLiveStatuses', providerId, res.liveStatus);
       }
@@ -884,8 +943,8 @@ export async function launchProviderSignInAction(providerId: string): Promise<{ 
 
 export async function connectProviderAction(providerId: string): Promise<boolean> {
   try {
-    if ((window as any).openbot?.connectProvider) {
-      const res = await (window as any).openbot.connectProvider(providerId);
+    if ((window as any).bissbot?.connectProvider) {
+      const res = await (window as any).bissbot.connectProvider(providerId);
       await loadProviderLiveStatusesAction();
       if (res.success) {
         addToast('success', 'Provider connected', `Successfully connected to ${providerId}`);
@@ -903,8 +962,8 @@ export async function connectProviderAction(providerId: string): Promise<boolean
 
 export async function disconnectProviderAction(providerId: string): Promise<void> {
   try {
-    if ((window as any).openbot?.disconnectProvider) {
-      await (window as any).openbot.disconnectProvider(providerId);
+    if ((window as any).bissbot?.disconnectProvider) {
+      await (window as any).bissbot.disconnectProvider(providerId);
       await loadProviderLiveStatusesAction();
       addToast('warning', 'Provider disconnected', `Disconnected ${providerId}`);
     }
@@ -924,9 +983,9 @@ export async function createThreadForAgent(agentId: string, title?: string): Pro
   const threadTitle = title || `Thread ${currentThreads.length + 1}`;
   let newThread: Thread;
 
-  if ((window as any).openbot?.createThread) {
+  if ((window as any).bissbot?.createThread) {
     try {
-      newThread = await (window as any).openbot.createThread(agentId, threadTitle, 'main');
+      newThread = await (window as any).bissbot.createThread(agentId, threadTitle, 'main');
     } catch (err: any) {
       addToast('error', 'Failed to create thread', err.message);
       return null;
@@ -951,9 +1010,9 @@ export async function createThreadForAgent(agentId: string, title?: string): Pro
 
 export async function switchAgentThread(agentId: string, threadId: string) {
   setState('activeThreadId', agentId, threadId);
-  if ((window as any).openbot?.getMessages) {
+  if ((window as any).bissbot?.getMessages) {
     try {
-      const msgs = await (window as any).openbot.getMessages(threadId);
+      const msgs = await (window as any).bissbot.getMessages(threadId);
       if (msgs && msgs.length > 0) {
         setState('agentMessages', agentId, msgs);
       }
@@ -965,8 +1024,8 @@ export async function switchAgentThread(agentId: string, threadId: string) {
 
 export async function renameAgentThread(agentId: string, threadId: string, newTitle: string) {
   if (!newTitle.trim()) return;
-  if ((window as any).openbot?.renameThread) {
-    await (window as any).openbot.renameThread(threadId, newTitle.trim());
+  if ((window as any).bissbot?.renameThread) {
+    await (window as any).bissbot.renameThread(threadId, newTitle.trim());
   }
   setState('threads', agentId, (threads = []) =>
     threads.map((t) => (t.id === threadId ? { ...t, title: newTitle.trim() } : t))
@@ -975,8 +1034,8 @@ export async function renameAgentThread(agentId: string, threadId: string, newTi
 }
 
 export async function closeAgentThread(agentId: string, threadId: string) {
-  if ((window as any).openbot?.closeThread) {
-    await (window as any).openbot.closeThread(threadId);
+  if ((window as any).bissbot?.closeThread) {
+    await (window as any).bissbot.closeThread(threadId);
   }
   const remaining = (state.threads[agentId] || []).filter((t) => t.id !== threadId);
   setState('threads', agentId, remaining);
@@ -999,9 +1058,9 @@ export async function branchFromMessage(agentId: string, threadId: string, messa
   }
 
   let branchThread: Thread;
-  if ((window as any).openbot?.branchThreadFromMessage) {
+  if ((window as any).bissbot?.branchThreadFromMessage) {
     try {
-      branchThread = await (window as any).openbot.branchThreadFromMessage(
+      branchThread = await (window as any).bissbot.branchThreadFromMessage(
         threadId,
         messageId,
         `Branch: Exploration`
@@ -1036,9 +1095,9 @@ export async function compactActiveThread() {
   const threadId = state.activeThreadId[agentId];
   if (!threadId) return;
 
-  if ((window as any).openbot?.compactThread) {
+  if ((window as any).bissbot?.compactThread) {
     try {
-      const res = await (window as any).openbot.compactThread(threadId, 2);
+      const res = await (window as any).bissbot.compactThread(threadId, 2);
       if (res?.success) {
         addToast('success', 'Thread compacted', `Context window condensed (${res.compactedTurns} turns summarized)`);
         await switchAgentThread(agentId, threadId);
@@ -1109,24 +1168,24 @@ export function clearComposerAttachments() {
 }
 
 export async function pauseAgentQueue(agentId: string) {
-  if ((window as any).openbot?.pauseQueue) {
-    await (window as any).openbot.pauseQueue(agentId);
+  if ((window as any).bissbot?.pauseQueue) {
+    await (window as any).bissbot.pauseQueue(agentId);
   }
   setState('queuePaused', agentId, true);
   addToast('warning', 'Message queue paused', 'Subsequent messages will wait in queue');
 }
 
 export async function resumeAgentQueue(agentId: string) {
-  if ((window as any).openbot?.resumeQueue) {
-    await (window as any).openbot.resumeQueue(agentId);
+  if ((window as any).bissbot?.resumeQueue) {
+    await (window as any).bissbot.resumeQueue(agentId);
   }
   setState('queuePaused', agentId, false);
   addToast('success', 'Message queue resumed', 'Processing pending turns FIFO');
 }
 
 export async function cancelQueueItem(agentId: string, queueId: string) {
-  if ((window as any).openbot?.cancelQueuedMessage) {
-    await (window as any).openbot.cancelQueuedMessage(queueId);
+  if ((window as any).bissbot?.cancelQueuedMessage) {
+    await (window as any).bissbot.cancelQueuedMessage(queueId);
   }
   setState('agentQueues', agentId, (q = []) => q.filter((item) => item.id !== queueId));
   addToast('success', 'Queued task cancelled');
@@ -1160,8 +1219,8 @@ export async function sendMessageToCurrentAgent(messageText: string) {
 
   try {
     let result: any = null;
-    if ((window as any).openbot?.submitTurnMessage) {
-      result = await (window as any).openbot.submitTurnMessage({
+    if ((window as any).bissbot?.submitTurnMessage) {
+      result = await (window as any).bissbot.submitTurnMessage({
         agentId: agent.id,
         threadId: currentThreadId,
         providerId: agent.provider,
@@ -1169,8 +1228,8 @@ export async function sendMessageToCurrentAgent(messageText: string) {
         messageText: text,
         attachments,
       });
-    } else if ((window as any).openbot?.sendMessage) {
-      const reply = await (window as any).openbot.sendMessage({
+    } else if ((window as any).bissbot?.sendMessage) {
+      const reply = await (window as any).bissbot.sendMessage({
         agentId: agent.id,
         providerId: agent.provider,
         model: agent.model,
@@ -1271,8 +1330,8 @@ export function handleApproval(agentId: string, messageId: string, approved: boo
 
 export async function loadBackgroundProcesses() {
   try {
-    if ((window as any).openbot?.getBackgroundProcesses) {
-      const procs = await (window as any).openbot.getBackgroundProcesses();
+    if ((window as any).bissbot?.getBackgroundProcesses) {
+      const procs = await (window as any).bissbot.getBackgroundProcesses();
       setState('backgroundProcesses', procs || []);
     }
   } catch (err) {
@@ -1282,8 +1341,8 @@ export async function loadBackgroundProcesses() {
 
 export async function startBackgroundProcessAction(command: string, agentId?: string, ports: number[] = [3000]) {
   try {
-    if ((window as any).openbot?.startBackgroundProcess) {
-      const proc = await (window as any).openbot.startBackgroundProcess(command, agentId, ports);
+    if ((window as any).bissbot?.startBackgroundProcess) {
+      const proc = await (window as any).bissbot.startBackgroundProcess(command, agentId, ports);
       setState('backgroundProcesses', (prev) => [proc, ...prev]);
       addToast('success', 'Background process started', `${command} (PID: ${proc.pid})`);
       return proc;
@@ -1295,8 +1354,8 @@ export async function startBackgroundProcessAction(command: string, agentId?: st
 
 export async function stopBackgroundProcessAction(id: string) {
   try {
-    if ((window as any).openbot?.stopBackgroundProcess) {
-      await (window as any).openbot.stopBackgroundProcess(id);
+    if ((window as any).bissbot?.stopBackgroundProcess) {
+      await (window as any).bissbot.stopBackgroundProcess(id);
       setState('backgroundProcesses', (prev) => prev.filter((p) => p.id !== id));
       addToast('warning', 'Process stopped', 'Process was terminated cleanly');
     }
@@ -1307,8 +1366,8 @@ export async function stopBackgroundProcessAction(id: string) {
 
 export async function loadMCPServers() {
   try {
-    if ((window as any).openbot?.getMCPServers) {
-      const servers = await (window as any).openbot.getMCPServers();
+    if ((window as any).bissbot?.getMCPServers) {
+      const servers = await (window as any).bissbot.getMCPServers();
       if (servers && servers.length) {
         setState('mcpServers', servers);
       }
@@ -1320,8 +1379,8 @@ export async function loadMCPServers() {
 
 export async function addMCPServerAction(server: { name: string; type?: 'stdio' | 'sse' | 'http'; command?: string; url?: string }) {
   try {
-    if ((window as any).openbot?.addMCPServer) {
-      const created = await (window as any).openbot.addMCPServer(server);
+    if ((window as any).bissbot?.addMCPServer) {
+      const created = await (window as any).bissbot.addMCPServer(server);
       setState('mcpServers', (prev) => [...prev, created]);
       setState('isMCPDirty', true);
       addToast('success', `MCP server "${created.name}" added`, 'Server available to agents on this computer');
@@ -1334,8 +1393,8 @@ export async function addMCPServerAction(server: { name: string; type?: 'stdio' 
 
 export async function testMCPServerAction(id: string) {
   try {
-    if ((window as any).openbot?.testMCPServer) {
-      const res = await (window as any).openbot.testMCPServer(id);
+    if ((window as any).bissbot?.testMCPServer) {
+      const res = await (window as any).bissbot.testMCPServer(id);
       if (res.success) {
         addToast('success', 'MCP Probe Successful', `Handshake responded in ${res.latencyMs}ms`);
       } else {
@@ -1350,8 +1409,8 @@ export async function testMCPServerAction(id: string) {
 
 export async function removeMCPServerAction(id: string) {
   try {
-    if ((window as any).openbot?.removeMCPServer) {
-      await (window as any).openbot.removeMCPServer(id);
+    if ((window as any).bissbot?.removeMCPServer) {
+      await (window as any).bissbot.removeMCPServer(id);
       setState('mcpServers', (prev) => prev.filter((s) => s.id !== id));
       setState('isMCPDirty', true);
       addToast('warning', 'MCP server removed', 'Server disconnected from workspace');
@@ -1363,8 +1422,8 @@ export async function removeMCPServerAction(id: string) {
 
 export async function saveMCPServersAction() {
   try {
-    if ((window as any).openbot?.markMCPSaved) {
-      await (window as any).openbot.markMCPSaved();
+    if ((window as any).bissbot?.markMCPSaved) {
+      await (window as any).bissbot.markMCPSaved();
       setState('isMCPDirty', false);
       addToast('success', 'MCP configuration saved', 'All tool bridges synced');
     }
@@ -1375,8 +1434,8 @@ export async function saveMCPServersAction() {
 
 export async function loadSkills() {
   try {
-    if ((window as any).openbot?.getSkills) {
-      const skills = await (window as any).openbot.getSkills();
+    if ((window as any).bissbot?.getSkills) {
+      const skills = await (window as any).bissbot.getSkills();
       if (skills && skills.length) {
         setState('skills', skills);
       }
@@ -1388,8 +1447,8 @@ export async function loadSkills() {
 
 export async function loadAgentSkills(agentId: string) {
   try {
-    if ((window as any).openbot?.getAgentSkills) {
-      const skills = await (window as any).openbot.getAgentSkills(agentId);
+    if ((window as any).bissbot?.getAgentSkills) {
+      const skills = await (window as any).bissbot.getAgentSkills(agentId);
       setState('agentSkills', agentId, skills || []);
     }
   } catch (err) {
@@ -1399,8 +1458,8 @@ export async function loadAgentSkills(agentId: string) {
 
 export async function attachSkillAction(agentId: string, skill: Skill) {
   try {
-    if ((window as any).openbot?.attachSkillToAgent) {
-      await (window as any).openbot.attachSkillToAgent(agentId, skill.id);
+    if ((window as any).bissbot?.attachSkillToAgent) {
+      await (window as any).bissbot.attachSkillToAgent(agentId, skill.id);
     }
     const current = state.agentSkills[agentId] || [];
     if (!current.some((s) => s.id === skill.id)) {
@@ -1414,8 +1473,8 @@ export async function attachSkillAction(agentId: string, skill: Skill) {
 
 export async function detachSkillAction(agentId: string, skillId: string) {
   try {
-    if ((window as any).openbot?.detachSkillFromAgent) {
-      await (window as any).openbot.detachSkillFromAgent(agentId, skillId);
+    if ((window as any).bissbot?.detachSkillFromAgent) {
+      await (window as any).bissbot.detachSkillFromAgent(agentId, skillId);
     }
     const current = state.agentSkills[agentId] || [];
     setState('agentSkills', agentId, current.filter((s) => s.id !== skillId));
@@ -1427,8 +1486,8 @@ export async function detachSkillAction(agentId: string, skillId: string) {
 
 export async function loadRoutines() {
   try {
-    if ((window as any).openbot?.getRoutines) {
-      const routines = await (window as any).openbot.getRoutines();
+    if ((window as any).bissbot?.getRoutines) {
+      const routines = await (window as any).bissbot.getRoutines();
       if (routines && routines.length) {
         setState('routines', routines);
       }
@@ -1440,8 +1499,8 @@ export async function loadRoutines() {
 
 export async function createRoutineAction(routine: any) {
   try {
-    if ((window as any).openbot?.createRoutine) {
-      const created = await (window as any).openbot.createRoutine(routine);
+    if ((window as any).bissbot?.createRoutine) {
+      const created = await (window as any).bissbot.createRoutine(routine);
       setState('routines', (prev) => [created, ...prev]);
       addToast('success', 'Automated routine created', routine.instruction?.substring(0, 50));
       return created;
@@ -1454,16 +1513,16 @@ export async function createRoutineAction(routine: any) {
 export async function downloadCalendarFeed() {
   try {
     let icsContent = '';
-    if ((window as any).openbot?.getCalendarFeed) {
-      icsContent = await (window as any).openbot.getCalendarFeed();
+    if ((window as any).bissbot?.getCalendarFeed) {
+      icsContent = await (window as any).bissbot.getCalendarFeed();
     } else {
-      icsContent = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//OpenBot//Automated Routines//EN\r\nEND:VCALENDAR';
+      icsContent = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//BissBot//Automated Routines//EN\r\nEND:VCALENDAR';
     }
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'openbot-routines-next-30-days.ics');
+    link.setAttribute('download', 'bissbot-routines-next-30-days.ics');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1475,8 +1534,8 @@ export async function downloadCalendarFeed() {
 
 export async function loadWorkflows() {
   try {
-    if ((window as any).openbot?.getWorkflows) {
-      const wfs = await (window as any).openbot.getWorkflows();
+    if ((window as any).bissbot?.getWorkflows) {
+      const wfs = await (window as any).bissbot.getWorkflows();
       if (wfs && wfs.length) {
         setState('workflows', wfs);
       }
@@ -1489,7 +1548,7 @@ export async function loadWorkflows() {
 export async function runWorkflowAction(workflowId: string) {
   try {
     addToast('success', 'Workflow Run Started', 'Executing DAG node dependencies across agents...');
-    const api = (window as any).bissbot || (window as any).openbot;
+    const api = (window as any).bissbot;
     if (api?.runWorkflow) {
       const run = await api.runWorkflow(workflowId);
       setState('workflowRuns', (prev) => [run, ...prev]);
@@ -1506,8 +1565,8 @@ export async function deleteWorkflowAction(id: string) {
     const target = state.workflows.find((w) => w.id === id);
     if (!target) return;
 
-    if ((window as any).openbot?.deleteWorkflow) {
-      const res = await (window as any).openbot.deleteWorkflow(id);
+    if ((window as any).bissbot?.deleteWorkflow) {
+      const res = await (window as any).bissbot.deleteWorkflow(id);
       setState('recentlyDeletedWorkflow', res.deletedWorkflow || target);
     } else {
       setState('recentlyDeletedWorkflow', target);
@@ -1525,8 +1584,8 @@ export async function restoreDeletedWorkflowAction() {
   if (!target) return;
 
   try {
-    if ((window as any).openbot?.restoreWorkflow) {
-      await (window as any).openbot.restoreWorkflow(target);
+    if ((window as any).bissbot?.restoreWorkflow) {
+      await (window as any).bissbot.restoreWorkflow(target);
     }
     setState('workflows', (prev) => [target, ...prev]);
     setState('recentlyDeletedWorkflow', null);
@@ -1538,12 +1597,12 @@ export async function restoreDeletedWorkflowAction() {
 
 export async function loadMemories(agentId: string) {
   try {
-    if ((window as any).openbot?.getMemories) {
-      const mems = await (window as any).openbot.getMemories(agentId);
+    if ((window as any).bissbot?.getMemories) {
+      const mems = await (window as any).bissbot.getMemories(agentId);
       setState('agentMemories', agentId, mems || []);
     }
-    if ((window as any).openbot?.getMemoryUsage) {
-      const usage = await (window as any).openbot.getMemoryUsage(agentId);
+    if ((window as any).bissbot?.getMemoryUsage) {
+      const usage = await (window as any).bissbot.getMemoryUsage(agentId);
       setState('agentMemoryUsage', agentId, usage);
     }
   } catch (err) {
@@ -1553,8 +1612,8 @@ export async function loadMemories(agentId: string) {
 
 export async function addMemoryAction(agentId: string, factText: string, isEssential: boolean = false) {
   try {
-    if ((window as any).openbot?.addMemory) {
-      const created = await (window as any).openbot.addMemory(agentId, factText, isEssential);
+    if ((window as any).bissbot?.addMemory) {
+      const created = await (window as any).bissbot.addMemory(agentId, factText, isEssential);
       const prev = state.agentMemories[agentId] || [];
       setState('agentMemories', agentId, [created, ...prev]);
       await loadMemories(agentId);
@@ -1568,8 +1627,8 @@ export async function addMemoryAction(agentId: string, factText: string, isEssen
 
 export async function deleteMemoryAction(agentId: string, memoryId: string) {
   try {
-    if ((window as any).openbot?.deleteMemory) {
-      await (window as any).openbot.deleteMemory(memoryId);
+    if ((window as any).bissbot?.deleteMemory) {
+      await (window as any).bissbot.deleteMemory(memoryId);
     }
     const prev = state.agentMemories[agentId] || [];
     setState('agentMemories', agentId, prev.filter((m) => m.id !== memoryId));
@@ -1582,8 +1641,8 @@ export async function deleteMemoryAction(agentId: string, memoryId: string) {
 
 export async function toggleBrowserPiPAction() {
   try {
-    if ((window as any).openbot?.toggleBrowserPiP) {
-      const active = await (window as any).openbot.toggleBrowserPiP();
+    if ((window as any).bissbot?.toggleBrowserPiP) {
+      const active = await (window as any).bissbot.toggleBrowserPiP();
       setState('isPiPActive', active);
       addToast(active ? 'success' : 'warning', active ? 'Browser Picture-in-Picture opened' : 'Picture-in-Picture closed');
     }
@@ -1594,8 +1653,8 @@ export async function toggleBrowserPiPAction() {
 
 export async function toggleComputerUseAction(enabled: boolean) {
   try {
-    if ((window as any).openbot?.setComputerUseEnabled) {
-      const res = await (window as any).openbot.setComputerUseEnabled(enabled);
+    if ((window as any).bissbot?.setComputerUseEnabled) {
+      const res = await (window as any).bissbot.setComputerUseEnabled(enabled);
       setState('computerUseStatus', 'enabled', res);
       setState('computerUseStatus', 'driverRunning', res);
       addToast(res ? 'success' : 'warning', res ? 'Computer Use driver active' : 'Computer Use disabled');
@@ -1611,8 +1670,8 @@ export async function toggleComputerUseAction(enabled: boolean) {
 
 export async function loadTeamServers() {
   try {
-    if ((window as any).openbot?.getTeamServers) {
-      const servers = await (window as any).openbot.getTeamServers();
+    if ((window as any).bissbot?.getTeamServers) {
+      const servers = await (window as any).bissbot.getTeamServers();
       if (servers && servers.length) {
         setState('servers', servers.map((s: any) => ({
           ...s,
@@ -1634,8 +1693,8 @@ export async function loadTeamServers() {
 
 export async function createTeamServerAction(server: { name: string; logo?: string; plan?: string; is_local?: boolean; timezone?: string }) {
   try {
-    if ((window as any).openbot?.createTeamServer) {
-      const created = await (window as any).openbot.createTeamServer(server);
+    if ((window as any).bissbot?.createTeamServer) {
+      const created = await (window as any).bissbot.createTeamServer(server);
       const serverInfo: ServerInfo = {
         id: created.id,
         name: created.name,
@@ -1657,8 +1716,8 @@ export async function createTeamServerAction(server: { name: string; logo?: stri
 
 export async function joinTeamServerAction(token: string, userEmail: string) {
   try {
-    if ((window as any).openbot?.joinTeamServer) {
-      const res = await (window as any).openbot.joinTeamServer(token, userEmail);
+    if ((window as any).bissbot?.joinTeamServer) {
+      const res = await (window as any).bissbot.joinTeamServer(token, userEmail);
       if (res.success && res.member) {
         setState('serverMembers', (prev) => [...prev, res.member]);
         addToast('success', 'Joined team server', `Signed in as ${userEmail}. Email invitation verified.`);
@@ -1674,8 +1733,8 @@ export async function joinTeamServerAction(token: string, userEmail: string) {
 
 export async function setPublishStateAction(serverId: string, publishState: 'reachable' | 'not-reachable') {
   try {
-    if ((window as any).openbot?.setPublishState) {
-      await (window as any).openbot.setPublishState(serverId, publishState);
+    if ((window as any).bissbot?.setPublishState) {
+      await (window as any).bissbot.setPublishState(serverId, publishState);
       setState('servers', (s) => s.id === serverId, 'publishState', publishState);
       addToast(
         'success',
@@ -1692,8 +1751,8 @@ export async function setPublishStateAction(serverId: string, publishState: 'rea
 
 export async function rotateServerKeyAction(serverId: string) {
   try {
-    if ((window as any).openbot?.rotateServerKey) {
-      const res = await (window as any).openbot.rotateServerKey(serverId);
+    if ((window as any).bissbot?.rotateServerKey) {
+      const res = await (window as any).bissbot.rotateServerKey(serverId);
       if (res.success) {
         addToast('success', 'Server key rotated', 'Dual-signed handover token generated. Paired computers, phones, and webhook routes remain connected.');
       }
@@ -1706,8 +1765,8 @@ export async function rotateServerKeyAction(serverId: string) {
 
 export async function restartServerAction(serverId: string) {
   try {
-    if ((window as any).openbot?.restartServer) {
-      const res = await (window as any).openbot.restartServer(serverId);
+    if ((window as any).bissbot?.restartServer) {
+      const res = await (window as any).bissbot.restartServer(serverId);
       addToast('warning', 'Server restarting', 'Takes about 1 minute. Running turns stopped; members temporarily disconnected; files and chats preserved.');
       return res;
     }
@@ -1718,8 +1777,8 @@ export async function restartServerAction(serverId: string) {
 
 export async function loadServerMembers(serverId: string) {
   try {
-    if ((window as any).openbot?.getServerMembers) {
-      const members = await (window as any).openbot.getServerMembers(serverId);
+    if ((window as any).bissbot?.getServerMembers) {
+      const members = await (window as any).bissbot.getServerMembers(serverId);
       if (members && members.length) {
         setState('serverMembers', members);
       }
@@ -1731,8 +1790,8 @@ export async function loadServerMembers(serverId: string) {
 
 export async function inviteServerMemberAction(serverId: string, email: string, name: string, role: ServerRole = 'member') {
   try {
-    if ((window as any).openbot?.inviteServerMember) {
-      const created = await (window as any).openbot.inviteServerMember(serverId, email, name, role);
+    if ((window as any).bissbot?.inviteServerMember) {
+      const created = await (window as any).bissbot.inviteServerMember(serverId, email, name, role);
       setState('serverMembers', (prev) => [...prev, created]);
       addToast('success', `Invited ${name}`, `Invitation sent to ${email} (Role: ${role})`);
       return created;
@@ -1744,8 +1803,8 @@ export async function inviteServerMemberAction(serverId: string, email: string, 
 
 export async function removeServerMemberAction(serverId: string, memberId: string) {
   try {
-    if ((window as any).openbot?.removeServerMember) {
-      await (window as any).openbot.removeServerMember(serverId, memberId);
+    if ((window as any).bissbot?.removeServerMember) {
+      await (window as any).bissbot.removeServerMember(serverId, memberId);
       setState('serverMembers', (prev) => prev.filter((m) => m.id !== memberId));
       addToast('warning', 'Member removed', 'Access to server and shared conversations revoked.');
     }
@@ -1756,8 +1815,8 @@ export async function removeServerMemberAction(serverId: string, memberId: strin
 
 export async function loadSharedTables() {
   try {
-    if ((window as any).openbot?.getSharedTables) {
-      const tables = await (window as any).openbot.getSharedTables();
+    if ((window as any).bissbot?.getSharedTables) {
+      const tables = await (window as any).bissbot.getSharedTables();
       if (tables && tables.length) {
         setState('sharedTables', tables.map((t: any) => ({
           ...t,
@@ -1773,8 +1832,8 @@ export async function loadSharedTables() {
 
 export async function createSharedTableAction(name: string, creatorAgentId: string, columns: string[]) {
   try {
-    if ((window as any).openbot?.createSharedTable) {
-      const created = await (window as any).openbot.createSharedTable(name, creatorAgentId, columns);
+    if ((window as any).bissbot?.createSharedTable) {
+      const created = await (window as any).bissbot.createSharedTable(name, creatorAgentId, columns);
       setState('sharedTables', (prev) => [...prev, {
         id: created.id,
         name: created.name,
@@ -1794,8 +1853,8 @@ export async function createSharedTableAction(name: string, creatorAgentId: stri
 
 export async function alterSharedTableAction(name: string, requestingAgentId: string, columns: string[]) {
   try {
-    if ((window as any).openbot?.alterSharedTable) {
-      await (window as any).openbot.alterSharedTable(name, requestingAgentId, columns);
+    if ((window as any).bissbot?.alterSharedTable) {
+      await (window as any).bissbot.alterSharedTable(name, requestingAgentId, columns);
       setState('sharedTables', (t) => t.name === name, 'columns', columns);
       addToast('success', `Shared table "${name}" updated`, 'Columns modified by creator');
     }
@@ -1806,8 +1865,8 @@ export async function alterSharedTableAction(name: string, requestingAgentId: st
 
 export async function dropSharedTableAction(name: string, requestingAgentId: string, isUser: boolean = false) {
   try {
-    if ((window as any).openbot?.dropSharedTable) {
-      await (window as any).openbot.dropSharedTable(name, requestingAgentId, isUser);
+    if ((window as any).bissbot?.dropSharedTable) {
+      await (window as any).bissbot.dropSharedTable(name, requestingAgentId, isUser);
       setState('sharedTables', (prev) => prev.filter((t) => t.name !== name));
       addToast('warning', `Shared table "${name}" dropped`, isUser ? 'Deleted by user' : 'Dropped by creator agent');
     }
@@ -1818,8 +1877,8 @@ export async function dropSharedTableAction(name: string, requestingAgentId: str
 
 export async function loadAuditLogs(serverId: string) {
   try {
-    if ((window as any).openbot?.getAuditLogs) {
-      const logs = await (window as any).openbot.getAuditLogs(serverId);
+    if ((window as any).bissbot?.getAuditLogs) {
+      const logs = await (window as any).bissbot.getAuditLogs(serverId);
       if (logs && logs.length) {
         setState('auditLogs', logs);
       }
@@ -1831,8 +1890,8 @@ export async function loadAuditLogs(serverId: string) {
 
 export async function createRemoteDesktopTestAction(serverId: string, targetName: string) {
   try {
-    if ((window as any).openbot?.createRemoteDesktopTest) {
-      const session = await (window as any).openbot.createRemoteDesktopTest(serverId, targetName);
+    if ((window as any).bissbot?.createRemoteDesktopTest) {
+      const session = await (window as any).bissbot.createRemoteDesktopTest(serverId, targetName);
       setState('activeRemoteDesktopSession', session);
       setState('isRemoteDesktopActive', true);
       addToast('success', 'Remote Desktop Test Panel', `Code: ${session.fourDigitCode}. Panel expires in 2 minutes.`);
@@ -1845,8 +1904,8 @@ export async function createRemoteDesktopTestAction(serverId: string, targetName
 
 export async function verifyRemoteDesktopTestAction(sessionId: string, code: string) {
   try {
-    if ((window as any).openbot?.verifyRemoteDesktopTest) {
-      const res = await (window as any).openbot.verifyRemoteDesktopTest(sessionId, code);
+    if ((window as any).bissbot?.verifyRemoteDesktopTest) {
+      const res = await (window as any).bissbot.verifyRemoteDesktopTest(sessionId, code);
       if (res.success) {
         addToast('success', 'Remote Desktop Connected', 'Verified with 4-digit code. Sunshine/Moonlight stream active.');
       } else {
@@ -1861,8 +1920,8 @@ export async function verifyRemoteDesktopTestAction(sessionId: string, code: str
 
 export async function stopAllRemoteControlAction() {
   try {
-    if ((window as any).openbot?.stopAllRemoteControl) {
-      await (window as any).openbot.stopAllRemoteControl();
+    if ((window as any).bissbot?.stopAllRemoteControl) {
+      await (window as any).bissbot.stopAllRemoteControl();
       setState('isRemoteDesktopActive', false);
       setState('activeRemoteDesktopSession', null);
       addToast('warning', 'Remote control stopped', 'All active remote desktop sessions terminated.');
@@ -1876,8 +1935,8 @@ export async function stopAllRemoteControlAction() {
 
 export async function loadConnectors() {
   try {
-    if ((window as any).openbot?.getConnectors) {
-      const data = await (window as any).openbot.getConnectors();
+    if ((window as any).bissbot?.getConnectors) {
+      const data = await (window as any).bissbot.getConnectors();
       setState('connectors', data);
       return data;
     }
@@ -1888,8 +1947,8 @@ export async function loadConnectors() {
 
 export async function connectConnectorAction(service: string, accountIdentifier: string, authPayload?: string) {
   try {
-    if ((window as any).openbot?.connectConnector) {
-      const res = await (window as any).openbot.connectConnector(service, accountIdentifier, authPayload);
+    if ((window as any).bissbot?.connectConnector) {
+      const res = await (window as any).bissbot.connectConnector(service, accountIdentifier, authPayload);
       if (res.success) {
         addToast('success', `${res.connector.name} connected`, `Configured as agent tools (${res.toolsCount || 0} tools added).`);
         await loadConnectors();
@@ -1903,8 +1962,8 @@ export async function connectConnectorAction(service: string, accountIdentifier:
 
 export async function disconnectConnectorAction(service: string) {
   try {
-    if ((window as any).openbot?.disconnectConnector) {
-      await (window as any).openbot.disconnectConnector(service);
+    if ((window as any).bissbot?.disconnectConnector) {
+      await (window as any).bissbot.disconnectConnector(service);
       addToast('warning', 'Connector disconnected', `Service "${service}" disconnected.`);
       await loadConnectors();
     }
@@ -1915,8 +1974,8 @@ export async function disconnectConnectorAction(service: string) {
 
 export async function loadMessagingConnections() {
   try {
-    if ((window as any).openbot?.getMessagingConnections) {
-      const data = await (window as any).openbot.getMessagingConnections();
+    if ((window as any).bissbot?.getMessagingConnections) {
+      const data = await (window as any).bissbot.getMessagingConnections();
       setState('messagingConnections', data);
       return data;
     }
@@ -1927,8 +1986,8 @@ export async function loadMessagingConnections() {
 
 export async function updateMessagingConnectionAction(id: string, updates: any) {
   try {
-    if ((window as any).openbot?.updateMessagingConnection) {
-      await (window as any).openbot.updateMessagingConnection(id, updates);
+    if ((window as any).bissbot?.updateMessagingConnection) {
+      await (window as any).bissbot.updateMessagingConnection(id, updates);
       await loadMessagingConnections();
     }
   } catch (err: any) {
@@ -1938,8 +1997,8 @@ export async function updateMessagingConnectionAction(id: string, updates: any) 
 
 export async function connectWhatsAppBaileysAction() {
   try {
-    if ((window as any).openbot?.connectWhatsAppBaileys) {
-      const res = await (window as any).openbot.connectWhatsAppBaileys();
+    if ((window as any).bissbot?.connectWhatsAppBaileys) {
+      const res = await (window as any).bissbot.connectWhatsAppBaileys();
       addToast('success', 'WhatsApp Connected', res.notice);
       await loadMessagingConnections();
       return res;
@@ -1951,8 +2010,8 @@ export async function connectWhatsAppBaileysAction() {
 
 export async function disconnectWhatsAppBaileysAction() {
   try {
-    if ((window as any).openbot?.disconnectWhatsAppBaileys) {
-      await (window as any).openbot.disconnectWhatsAppBaileys();
+    if ((window as any).bissbot?.disconnectWhatsAppBaileys) {
+      await (window as any).bissbot.disconnectWhatsAppBaileys();
       addToast('warning', 'WhatsApp Disconnected', 'Baileys client session stopped.');
       await loadMessagingConnections();
     }
@@ -1963,8 +2022,8 @@ export async function disconnectWhatsAppBaileysAction() {
 
 export async function loadVoiceSettings() {
   try {
-    if ((window as any).openbot?.getVoiceSettings) {
-      const data = await (window as any).openbot.getVoiceSettings();
+    if ((window as any).bissbot?.getVoiceSettings) {
+      const data = await (window as any).bissbot.getVoiceSettings();
       setState('voiceSettings', {
         dictationEngine: data.dictation_engine,
         dictationModel: data.dictation_model,
@@ -1993,8 +2052,8 @@ export async function loadVoiceSettings() {
 
 export async function updateVoiceSettingsAction(updates: any) {
   try {
-    if ((window as any).openbot?.updateVoiceSettings) {
-      await (window as any).openbot.updateVoiceSettings(updates);
+    if ((window as any).bissbot?.updateVoiceSettings) {
+      await (window as any).bissbot.updateVoiceSettings(updates);
       await loadVoiceSettings();
       addToast('success', 'Voice settings updated', 'Audio DSP and synthesis configuration saved.');
     }
@@ -2005,8 +2064,8 @@ export async function updateVoiceSettingsAction(updates: any) {
 
 export async function saveVoiceApiKeyAction(provider: string, apiKey: string) {
   try {
-    if ((window as any).openbot?.saveVoiceApiKey) {
-      await (window as any).openbot.saveVoiceApiKey(provider, apiKey);
+    if ((window as any).bissbot?.saveVoiceApiKey) {
+      await (window as any).bissbot.saveVoiceApiKey(provider, apiKey);
       addToast('success', 'API Key saved', `Saved key for ${provider}.`);
       await loadVoiceSettings();
     }
@@ -2017,8 +2076,8 @@ export async function saveVoiceApiKeyAction(provider: string, apiKey: string) {
 
 export async function removeVoiceApiKeyAction(provider: string) {
   try {
-    if ((window as any).openbot?.removeVoiceApiKey) {
-      await (window as any).openbot.removeVoiceApiKey(provider);
+    if ((window as any).bissbot?.removeVoiceApiKey) {
+      await (window as any).bissbot.removeVoiceApiKey(provider);
       addToast('warning', 'API Key removed', `Removed key for ${provider}.`);
       await loadVoiceSettings();
     }
@@ -2029,8 +2088,8 @@ export async function removeVoiceApiKeyAction(provider: string) {
 
 export async function configureVoiceServerAction(params: any) {
   try {
-    if ((window as any).openbot?.configureVoiceServer) {
-      const res = await (window as any).openbot.configureVoiceServer(params);
+    if ((window as any).bissbot?.configureVoiceServer) {
+      const res = await (window as any).bissbot.configureVoiceServer(params);
       for (const notice of res.notices) {
         addToast('success', 'Voice Server', notice);
       }
@@ -2044,8 +2103,8 @@ export async function configureVoiceServerAction(params: any) {
 
 export async function loadHostedSites() {
   try {
-    if ((window as any).openbot?.getHostedSites) {
-      const data = await (window as any).openbot.getHostedSites();
+    if ((window as any).bissbot?.getHostedSites) {
+      const data = await (window as any).bissbot.getHostedSites();
       setState('hostedSites', data);
       return data;
     }
@@ -2056,8 +2115,8 @@ export async function loadHostedSites() {
 
 export async function publishHostedSiteAction(params: { subdomain: string; siteTitle: string; authorAgentId?: string }) {
   try {
-    if ((window as any).openbot?.publishHostedSite) {
-      const res = await (window as any).openbot.publishHostedSite(params);
+    if ((window as any).bissbot?.publishHostedSite) {
+      const res = await (window as any).bissbot.publishHostedSite(params);
       addToast('success', 'Site Published', `Live at ${res.subdomain}.${res.domain} (expires in 30 days).`);
       await loadHostedSites();
       return res;
@@ -2069,8 +2128,8 @@ export async function publishHostedSiteAction(params: { subdomain: string; siteT
 
 export async function deleteHostedSiteAction(siteId: string) {
   try {
-    if ((window as any).openbot?.deleteHostedSite) {
-      const res = await (window as any).openbot.deleteHostedSite(siteId);
+    if ((window as any).bissbot?.deleteHostedSite) {
+      const res = await (window as any).bissbot.deleteHostedSite(siteId);
       addToast('warning', 'Site Deleted', res.message);
       await loadHostedSites();
       return res;
@@ -2086,8 +2145,8 @@ export async function deleteHostedSiteAction(siteId: string) {
 
 export async function loadUserProfile() {
   try {
-    if ((window as any).openbot?.getUserProfile) {
-      const profile = await (window as any).openbot.getUserProfile();
+    if ((window as any).bissbot?.getUserProfile) {
+      const profile = await (window as any).bissbot.getUserProfile();
       if (profile) setState('userProfile', profile);
       return profile;
     }
@@ -2098,8 +2157,8 @@ export async function loadUserProfile() {
 
 export async function loadAccountSessions() {
   try {
-    if ((window as any).openbot?.getAccountSessions) {
-      const sessions = await (window as any).openbot.getAccountSessions();
+    if ((window as any).bissbot?.getAccountSessions) {
+      const sessions = await (window as any).bissbot.getAccountSessions();
       setState('accountSessions', sessions || []);
       return sessions;
     }
@@ -2110,8 +2169,8 @@ export async function loadAccountSessions() {
 
 export async function disconnectSessionAction(sessionId: string) {
   try {
-    if ((window as any).openbot?.disconnectSession) {
-      const res = await (window as any).openbot.disconnectSession(sessionId);
+    if ((window as any).bissbot?.disconnectSession) {
+      const res = await (window as any).bissbot.disconnectSession(sessionId);
       if (res.notice) {
         addToast('warning', 'Session Disconnected', res.notice);
       } else {
@@ -2127,8 +2186,8 @@ export async function disconnectSessionAction(sessionId: string) {
 
 export async function loadExtendedSSO() {
   try {
-    if ((window as any).openbot?.getExtendedSSOConfig) {
-      const sso = await (window as any).openbot.getExtendedSSOConfig();
+    if ((window as any).bissbot?.getExtendedSSOConfig) {
+      const sso = await (window as any).bissbot.getExtendedSSOConfig();
       if (sso) setState('extendedSSO', sso);
       return sso;
     }
@@ -2139,8 +2198,8 @@ export async function loadExtendedSSO() {
 
 export async function verifySSODNSAction(domain: string) {
   try {
-    if ((window as any).openbot?.verifySSODNS) {
-      const res = await (window as any).openbot.verifySSODNS(domain);
+    if ((window as any).bissbot?.verifySSODNS) {
+      const res = await (window as any).bissbot.verifySSODNS(domain);
       addToast('success', 'DNS Verified', res.message);
       await loadExtendedSSO();
       return res;
@@ -2152,8 +2211,8 @@ export async function verifySSODNSAction(domain: string) {
 
 export async function generateSCIMTokenAction() {
   try {
-    if ((window as any).openbot?.generateSCIMToken) {
-      const res = await (window as any).openbot.generateSCIMToken();
+    if ((window as any).bissbot?.generateSCIMToken) {
+      const res = await (window as any).bissbot.generateSCIMToken();
       addToast('warning', 'SCIM Token Generated', res.warning);
       await loadExtendedSSO();
       return res;
@@ -2165,8 +2224,8 @@ export async function generateSCIMTokenAction() {
 
 export async function revokeSCIMTokenAction() {
   try {
-    if ((window as any).openbot?.revokeSCIMToken) {
-      await (window as any).openbot.revokeSCIMToken();
+    if ((window as any).bissbot?.revokeSCIMToken) {
+      await (window as any).bissbot.revokeSCIMToken();
       addToast('warning', 'SCIM Token Revoked', 'Directory provisioning synchronization halted.');
       await loadExtendedSSO();
     }
@@ -2177,8 +2236,8 @@ export async function revokeSCIMTokenAction() {
 
 export async function testBrowserSSOAction(provider: string) {
   try {
-    if ((window as any).openbot?.testBrowserSSO) {
-      const res = await (window as any).openbot.testBrowserSSO(provider);
+    if ((window as any).bissbot?.testBrowserSSO) {
+      const res = await (window as any).bissbot.testBrowserSSO(provider);
       addToast('success', 'SSO Test Sign-in', `Redirecting to identity provider (${provider})…`);
       return res;
     }
@@ -2189,8 +2248,8 @@ export async function testBrowserSSOAction(provider: string) {
 
 export async function loadMobileConnect() {
   try {
-    if ((window as any).openbot?.getMobileConnect) {
-      const data = await (window as any).openbot.getMobileConnect();
+    if ((window as any).bissbot?.getMobileConnect) {
+      const data = await (window as any).bissbot.getMobileConnect();
       if (data) setState('mobileConnect', data);
       return data;
     }
@@ -2201,8 +2260,8 @@ export async function loadMobileConnect() {
 
 export async function generateMobileCodeAction() {
   try {
-    if ((window as any).openbot?.generateMobileOneTimeCode) {
-      const res = await (window as any).openbot.generateMobileOneTimeCode();
+    if ((window as any).bissbot?.generateMobileOneTimeCode) {
+      const res = await (window as any).bissbot.generateMobileOneTimeCode();
       setState('mobileConnect', {
         ...state.mobileConnect,
         activeCode: res.code,
@@ -2218,8 +2277,8 @@ export async function generateMobileCodeAction() {
 
 export async function replaceMobileLinkAction() {
   try {
-    if ((window as any).openbot?.replaceMobilePermanentLink) {
-      const res = await (window as any).openbot.replaceMobilePermanentLink();
+    if ((window as any).bissbot?.replaceMobilePermanentLink) {
+      const res = await (window as any).bissbot.replaceMobilePermanentLink();
       addToast('warning', 'Permanent Link Replaced', res.warning);
       await loadMobileConnect();
       return res;
@@ -2231,8 +2290,8 @@ export async function replaceMobileLinkAction() {
 
 export async function revokeMobileLinkAction() {
   try {
-    if ((window as any).openbot?.revokeMobilePermanentLink) {
-      const res = await (window as any).openbot.revokeMobilePermanentLink();
+    if ((window as any).bissbot?.revokeMobilePermanentLink) {
+      const res = await (window as any).bissbot.revokeMobilePermanentLink();
       addToast('warning', 'Permanent Link Revoked', res.message);
       await loadMobileConnect();
       return res;
@@ -2244,16 +2303,16 @@ export async function revokeMobileLinkAction() {
 
 export async function loadBillingState() {
   try {
-    if ((window as any).openbot?.getCommercialLicence) {
-      const lic = await (window as any).openbot.getCommercialLicence();
+    if ((window as any).bissbot?.getCommercialLicence) {
+      const lic = await (window as any).bissbot.getCommercialLicence();
       setState('commercialLicence', lic);
     }
-    if ((window as any).openbot?.getHostedServerSubscriptions) {
-      const subs = await (window as any).openbot.getHostedServerSubscriptions();
+    if ((window as any).bissbot?.getHostedServerSubscriptions) {
+      const subs = await (window as any).bissbot.getHostedServerSubscriptions();
       setState('hostedServerSubscriptions', subs || []);
     }
-    if ((window as any).openbot?.checkOfflineGrace) {
-      const grace = await (window as any).openbot.checkOfflineGrace();
+    if ((window as any).bissbot?.checkOfflineGrace) {
+      const grace = await (window as any).bissbot.checkOfflineGrace();
       setState('offlineGrace', grace);
     }
   } catch (err: any) {
@@ -2263,8 +2322,8 @@ export async function loadBillingState() {
 
 export async function recordLicenceAcceptanceAction(params: any) {
   try {
-    if ((window as any).openbot?.recordLicenceAcceptance) {
-      const res = await (window as any).openbot.recordLicenceAcceptance(params);
+    if ((window as any).bissbot?.recordLicenceAcceptance) {
+      const res = await (window as any).bissbot.recordLicenceAcceptance(params);
       addToast('success', 'Licence Activated', res.message);
       await loadBillingState();
       return res;
@@ -2276,8 +2335,8 @@ export async function recordLicenceAcceptanceAction(params: any) {
 
 export async function cancelHostedSubscriptionAction(subId: string) {
   try {
-    if ((window as any).openbot?.cancelHostedServerSubscription) {
-      const res = await (window as any).openbot.cancelHostedServerSubscription(subId);
+    if ((window as any).bissbot?.cancelHostedServerSubscription) {
+      const res = await (window as any).bissbot.cancelHostedServerSubscription(subId);
       addToast('warning', 'Subscription Cancelled', res.message);
       await loadBillingState();
       return res;
@@ -2289,8 +2348,8 @@ export async function cancelHostedSubscriptionAction(subId: string) {
 
 export async function openStripePortalAction(subId?: string) {
   try {
-    if ((window as any).openbot?.openStripeCustomerPortal) {
-      const res = await (window as any).openbot.openStripeCustomerPortal(subId);
+    if ((window as any).bissbot?.openStripeCustomerPortal) {
+      const res = await (window as any).bissbot.openStripeCustomerPortal(subId);
       addToast('success', 'Stripe Customer Portal', `Opening customer portal: ${res.portalUrl}`);
       return res;
     }
@@ -2301,8 +2360,8 @@ export async function openStripePortalAction(subId?: string) {
 
 export async function openStripeCheckoutAction(planType: string, planId: string) {
   try {
-    if ((window as any).openbot?.openStripeCheckout) {
-      const res = await (window as any).openbot.openStripeCheckout(planType, planId);
+    if ((window as any).bissbot?.openStripeCheckout) {
+      const res = await (window as any).bissbot.openStripeCheckout(planType, planId);
       addToast('success', 'Stripe Checkout', `Opening secure checkout: ${res.checkoutUrl}`);
       return res;
     }
@@ -2313,8 +2372,8 @@ export async function openStripeCheckoutAction(planType: string, planId: string)
 
 export async function checkOfflineGraceAction() {
   try {
-    if ((window as any).openbot?.checkOfflineGrace) {
-      const res = await (window as any).openbot.checkOfflineGrace();
+    if ((window as any).bissbot?.checkOfflineGrace) {
+      const res = await (window as any).bissbot.checkOfflineGrace();
       setState('offlineGrace', res);
       if (res.isBlocked) {
         addToast('error', 'Sign-ins Blocked', res.message);
@@ -2339,8 +2398,8 @@ export async function verifyMobilePinAction(pin: string) {
       addToast('warning', 'No Mobile Device', 'No mobile companion is currently linked. Use Mobile Connect first.');
       return;
     }
-    if ((window as any).openbot?.verifyMobilePin) {
-      const res = await (window as any).openbot.verifyMobilePin(devId, pin);
+    if ((window as any).bissbot?.verifyMobilePin) {
+      const res = await (window as any).bissbot.verifyMobilePin(devId, pin);
       if (res.signedOut) {
         addToast('error', 'Device Signed Out', res.error || '10 failed PIN attempts.');
         setState('mobileDevice', 'isLocked', true);
@@ -2359,8 +2418,8 @@ export async function verifyMobilePinAction(pin: string) {
 
 export async function validateMobileUploadAction(fileName: string, byteSize: number) {
   try {
-    if ((window as any).openbot?.validateMobileUpload) {
-      return await (window as any).openbot.validateMobileUpload(fileName, byteSize);
+    if ((window as any).bissbot?.validateMobileUpload) {
+      return await (window as any).bissbot.validateMobileUpload(fileName, byteSize);
     }
   } catch (err: any) {
     return { allowed: false, error: err?.message };
@@ -2369,8 +2428,8 @@ export async function validateMobileUploadAction(fileName: string, byteSize: num
 
 export async function queueMobileOutboxAction(params: any) {
   try {
-    if ((window as any).openbot?.queueMobileOutbox) {
-      const res = await (window as any).openbot.queueMobileOutbox(params);
+    if ((window as any).bissbot?.queueMobileOutbox) {
+      const res = await (window as any).bissbot.queueMobileOutbox(params);
       addToast('success', 'Outbox Queued', 'Message stored locally. Will flush on host reconnect.');
       return res;
     }
@@ -2386,8 +2445,8 @@ export async function flushMobileOutboxAction() {
       addToast('info', 'No Device', 'No mobile device linked.');
       return;
     }
-    if ((window as any).openbot?.flushMobileOutbox) {
-      const res = await (window as any).openbot.flushMobileOutbox(devId);
+    if ((window as any).bissbot?.flushMobileOutbox) {
+      const res = await (window as any).bissbot.flushMobileOutbox(devId);
       if (res.syncedCount > 0) {
         addToast('success', 'Outbox Synced', `Flushed ${res.syncedCount} queued messages to host.`);
       }
@@ -2400,8 +2459,8 @@ export async function flushMobileOutboxAction() {
 
 export async function updateLiveActivityAction(params: any) {
   try {
-    if ((window as any).openbot?.updateLiveActivity) {
-      const res = await (window as any).openbot.updateLiveActivity(params);
+    if ((window as any).bissbot?.updateLiveActivity) {
+      const res = await (window as any).bissbot.updateLiveActivity(params);
       setState('activeLiveActivity', res);
       return res;
     }
@@ -2412,8 +2471,8 @@ export async function updateLiveActivityAction(params: any) {
 
 export async function acquireTabLockAction(hostId: string, accountId: string, tabId: string) {
   try {
-    if ((window as any).openbot?.acquireTabLock) {
-      const res = await (window as any).openbot.acquireTabLock(hostId, accountId, tabId);
+    if ((window as any).bissbot?.acquireTabLock) {
+      const res = await (window as any).bissbot.acquireTabLock(hostId, accountId, tabId);
       setState('webSessionLock', res);
       if (!res.acquired) {
         addToast('warning', 'Session Lock Active', res.message);
@@ -2427,8 +2486,8 @@ export async function acquireTabLockAction(hostId: string, accountId: string, ta
 
 export async function takeOverTabLockAction(hostId: string, accountId: string, tabId: string) {
   try {
-    if ((window as any).openbot?.takeOverTabLock) {
-      const res = await (window as any).openbot.takeOverTabLock(hostId, accountId, tabId);
+    if ((window as any).bissbot?.takeOverTabLock) {
+      const res = await (window as any).bissbot.takeOverTabLock(hostId, accountId, tabId);
       setState('webSessionLock', res);
       addToast('success', 'Session Taken Over', 'This tab now holds the active host session.');
       return res;
@@ -2440,8 +2499,8 @@ export async function takeOverTabLockAction(hostId: string, accountId: string, t
 
 export async function releaseTabLockAction(hostId: string, accountId: string, tabId: string) {
   try {
-    if ((window as any).openbot?.releaseTabLock) {
-      return await (window as any).openbot.releaseTabLock(hostId, accountId, tabId);
+    if ((window as any).bissbot?.releaseTabLock) {
+      return await (window as any).bissbot.releaseTabLock(hostId, accountId, tabId);
     }
   } catch (err: any) {
     console.error('Release tab lock error:', err);
@@ -2450,8 +2509,8 @@ export async function releaseTabLockAction(hostId: string, accountId: string, ta
 
 export async function inspectInlineMediaAction(fileName: string, byteSize: number, mimeType?: string) {
   try {
-    if ((window as any).openbot?.inspectInlineMedia) {
-      return await (window as any).openbot.inspectInlineMedia(fileName, byteSize, mimeType);
+    if ((window as any).bissbot?.inspectInlineMedia) {
+      return await (window as any).bissbot.inspectInlineMedia(fileName, byteSize, mimeType);
     }
   } catch (err: any) {
     return { renderMode: 'download_only', objectUrlPermitted: false, canAutoDownload: false };
@@ -2460,8 +2519,8 @@ export async function inspectInlineMediaAction(fileName: string, byteSize: numbe
 
 export async function requestDownloadSlotAction(fileId: string) {
   try {
-    if ((window as any).openbot?.requestDownloadSlot) {
-      const res = await (window as any).openbot.requestDownloadSlot(fileId);
+    if ((window as any).bissbot?.requestDownloadSlot) {
+      const res = await (window as any).bissbot.requestDownloadSlot(fileId);
       if (!res.granted) {
         addToast('warning', 'Download Queued', res.error || 'At most 2 files can download at once.');
       }
@@ -2474,8 +2533,8 @@ export async function requestDownloadSlotAction(fileId: string) {
 
 export async function cancelFileTransferAction(transferId: string) {
   try {
-    if ((window as any).openbot?.cancelFileTransfer) {
-      const res = await (window as any).openbot.cancelFileTransfer(transferId);
+    if ((window as any).bissbot?.cancelFileTransfer) {
+      const res = await (window as any).bissbot.cancelFileTransfer(transferId);
       addToast('warning', 'Transfer Cancelled', `File transfer ${transferId} cancelled via protocol frame.`);
       return res;
     }
@@ -2486,8 +2545,8 @@ export async function cancelFileTransferAction(transferId: string) {
 
 export async function parseAndCleanDeepLinkAction(rawUrl: string) {
   try {
-    if ((window as any).openbot?.parseAndCleanDeepLink) {
-      const res = await (window as any).openbot.parseAndCleanDeepLink(rawUrl);
+    if ((window as any).bissbot?.parseAndCleanDeepLink) {
+      const res = await (window as any).bissbot.parseAndCleanDeepLink(rawUrl);
       setState('pendingDeepLink', res);
       return res;
     }
@@ -2502,8 +2561,8 @@ export async function parseAndCleanDeepLinkAction(rawUrl: string) {
 
 export async function loadMarketplaceItemsAction(filterType?: string) {
   try {
-    if ((window as any).openbot?.listMarketplaceItems) {
-      const items = await (window as any).openbot.listMarketplaceItems(filterType);
+    if ((window as any).bissbot?.listMarketplaceItems) {
+      const items = await (window as any).bissbot.listMarketplaceItems(filterType);
       setState('marketplaceItems', items);
       return items;
     }
@@ -2514,8 +2573,8 @@ export async function loadMarketplaceItemsAction(filterType?: string) {
 
 export async function resolveMarketplaceDeepLinkAction(linkUri: string) {
   try {
-    if ((window as any).openbot?.resolveMarketplaceDeepLink) {
-      const res = await (window as any).openbot.resolveMarketplaceDeepLink(linkUri);
+    if ((window as any).bissbot?.resolveMarketplaceDeepLink) {
+      const res = await (window as any).bissbot.resolveMarketplaceDeepLink(linkUri);
       if (res.item) {
         setState('activeMarketplacePreview', res.item);
       }
@@ -2528,8 +2587,8 @@ export async function resolveMarketplaceDeepLinkAction(linkUri: string) {
 
 export async function recordStorageTelemetryAction(triggerSource: 'start' | 'interval_5m' | 'settings_close') {
   try {
-    if ((window as any).openbot?.recordStorageTelemetry) {
-      const metrics = await (window as any).openbot.recordStorageTelemetry({
+    if ((window as any).bissbot?.recordStorageTelemetry) {
+      const metrics = await (window as any).bissbot.recordStorageTelemetry({
         totalBytes: 100 * 1024 * 1024 * 1024,
         usedBytes: 38.4 * 1024 * 1024 * 1024,
         triggerSource,
@@ -2544,8 +2603,8 @@ export async function recordStorageTelemetryAction(triggerSource: 'start' | 'int
 
 export async function exportPrivacySafeDiagnosticsAction() {
   try {
-    if ((window as any).openbot?.exportPrivacySafeDiagnostics) {
-      const res = await (window as any).openbot.exportPrivacySafeDiagnostics();
+    if ((window as any).bissbot?.exportPrivacySafeDiagnostics) {
+      const res = await (window as any).bissbot.exportPrivacySafeDiagnostics();
       addToast('success', 'Diagnostics Exported', 'Privacy-safe bundle generated (zero chats/keys exported).');
       return res;
     }
@@ -2556,8 +2615,8 @@ export async function exportPrivacySafeDiagnosticsAction() {
 
 export async function exportServerTransferAction() {
   try {
-    if ((window as any).openbot?.exportServerTransfer) {
-      const res = await (window as any).openbot.exportServerTransfer();
+    if ((window as any).bissbot?.exportServerTransfer) {
+      const res = await (window as any).bissbot.exportServerTransfer();
       addToast('success', 'Server Package Ready', `Prepared transfer (${res.included.filesCount} files). Secrets and chats excluded.`);
       return res;
     }
@@ -2568,8 +2627,8 @@ export async function exportServerTransferAction() {
 
 export async function rotateDockerBackupsAction() {
   try {
-    if ((window as any).openbot?.rotateDockerBackups) {
-      const res = await (window as any).openbot.rotateDockerBackups();
+    if ((window as any).bissbot?.rotateDockerBackups) {
+      const res = await (window as any).bissbot.rotateDockerBackups();
       addToast('success', 'Docker Backup Rotated', `Schedule daily 04:00 (7 backups retained).`);
       return res;
     }

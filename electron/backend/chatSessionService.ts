@@ -60,7 +60,7 @@ export class ChatSessionService {
       for (const row of queueRows[0].values) {
         const id = row[0] as string;
         const state = row[6] as string;
-        // If a turn was running when OpenBot exited/crashed, revert it to queued
+        // If a turn was running when BissBot exited/crashed, revert it to queued
         if (state === 'running') {
           db.run(`UPDATE message_queue SET state = 'queued', updated_at = ? WHERE id = ?;`, [
             new Date().toISOString(),

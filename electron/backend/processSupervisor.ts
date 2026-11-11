@@ -30,10 +30,8 @@ export function resolveWindowsBinary(bareName: string): ResolvedBinary | null {
     return { path: bareName, isCmdWrapper: isCmd };
   }
 
-  // Check explicit override first
-  const bisbotKey = `BISBOT_${bareName.toUpperCase()}_PATH`;
-  const openbotKey = `OPENBOT_${bareName.toUpperCase()}_PATH`;
-  const overrideKey = process.env[bisbotKey] ? bisbotKey : openbotKey;
+  // Check explicit override
+  const overrideKey = `BISSBOT_${bareName.toUpperCase()}_PATH`;
   if (process.env[overrideKey] && fs.existsSync(process.env[overrideKey]!)) {
     const p = process.env[overrideKey]!;
     return { path: p, isCmdWrapper: p.endsWith('.cmd') || p.endsWith('.bat') };

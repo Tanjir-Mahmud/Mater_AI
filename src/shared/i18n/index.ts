@@ -133,7 +133,7 @@ export const DICTIONARY: Record<string, Record<string, string>> = {
     'onboarding.analytics_thanks': 'Thank you! The team owes you one.',
     'onboarding.terms_agreement': 'Continuing accepts the Terms of Service and acknowledges the Privacy Policy.',
     'onboarding.continue': 'Continue',
-    'onboarding.open_openbot': 'Open BissBot',
+    'onboarding.open_bissbot': 'Open BissBot',
 
     // Settings
     'settings.title': 'Settings',

@@ -500,28 +500,34 @@ export const MainWorkspace: Component = () => {
             <div class="flex items-center gap-3 min-w-0">
               <div class="flex items-center gap-2">
                 <div
-                  class={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs ${
-                    currentAgent()?.avatarColor || 'bg-primary-container text-on-primary-container'
+                  class={`w-6 h-6 rounded-full flex items-center justify-center font-mono font-bold text-[10px] tracking-widest ${
+                    currentAgent()?.id === 'agent-research-desk'
+                      ? 'bg-emerald-500 text-white'
+                      : currentAgent()?.id === 'agent-ceo'
+                      ? 'bg-purple-600 text-white'
+                      : currentAgent()?.avatarColor || 'bg-primary-container text-on-primary-container'
                   }`}
                 >
-                  {currentAgent()?.avatar?.length === 1 ? (
+                  {currentAgent()?.avatar === '--' || currentAgent()?.id === 'agent-research-desk' || currentAgent()?.id === 'agent-ceo' ? (
+                    '--'
+                  ) : currentAgent()?.avatar?.length === 1 ? (
                     currentAgent()?.avatar
                   ) : (
-                    <span class="material-symbols-outlined text-[15px]">
+                    <span class="material-symbols-outlined text-[13px]">
                       {currentAgent()?.avatar}
                     </span>
                   )}
                 </div>
-                <div class="flex items-center gap-1.5">
-                  <span class="font-headline-sm text-[13px] text-on-surface font-semibold">
+                <div class="flex items-center gap-2">
+                  <span class="font-headline-sm text-xs text-on-surface font-semibold truncate max-w-[140px]">
                     {currentChannel()?.name || currentAgent()?.name}
                   </span>
                   <button
                     onClick={() => setIsModelPickerOpen(!isModelPickerOpen())}
-                    class="px-2 py-0.5 rounded font-label-sm text-[10px] bg-surface-container-high hover:bg-surface-container-highest text-primary-fixed-dim font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                    class="px-2 py-0.5 rounded font-label-sm text-[10px] bg-surface-container-high hover:bg-surface-container-highest text-zinc-300 font-medium flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0"
                     title="Switch Model (Preserves Chat)"
                   >
-                    <span>{currentAgent()?.model || 'Claude 3.5 Sonnet'}</span>
+                    <span>{currentAgent()?.model || 'Gemini 3.8 Flash'}</span>
                     <span class="material-symbols-outlined text-[10px]">expand_more</span>
                   </button>
                 </div>
@@ -683,15 +689,27 @@ export const MainWorkspace: Component = () => {
               </div>
             </div>
 
-            {/* Empty State when no messages */}
+            {/* Empty State when no messages - matching Screenshot 2026-11-05 131045.png */}
             <Show when={currentMessages().length === 0}>
-              <div class="flex flex-col items-center justify-center p-8 text-center text-outline gap-2 my-auto">
-                <div class="w-12 h-12 rounded-xl bg-surface-container border border-outline-variant/30 flex items-center justify-center text-primary text-xl font-bold font-mono">
-                  {currentAgent()?.avatar?.length === 1 ? currentAgent()?.avatar : 'smart_toy'}
+              <div class="flex-1 flex flex-col items-center justify-center p-8 text-center my-auto animate-in fade-in duration-200">
+                {/* Emerald circular avatar with -- eyes */}
+                <div class="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center font-mono font-bold text-2xl tracking-widest shadow-lg shadow-emerald-500/20 mb-4 select-none">
+                  --
                 </div>
-                <span class="text-on-surface font-semibold text-sm">{currentAgent()?.name} is ready</span>
-                <span class="text-xs max-w-md">{currentAgent()?.role} • Operating in workspace {currentAgent()?.workspacePath}</span>
-                <span class="text-[11px] text-outline font-mono">Send a prompt below to begin collaborating.</span>
+                {/* Headline: Research Desk is ready. */}
+                <h2 class="text-2xl font-bold tracking-tight text-white mb-1.5">
+                  {currentAgent()?.name || 'Research Desk'} is ready.
+                </h2>
+                {/* Subheadline: Ask, then watch it work. */}
+                <p class="text-lg font-medium text-zinc-200 mb-4">
+                  Ask, then watch <span class="text-sky-400 font-semibold">it work.</span>
+                </p>
+                {/* Persona description block */}
+                <p class="text-xs text-zinc-400 max-w-md leading-relaxed mb-6 font-normal">
+                  {currentAgent()?.id === 'agent-research-desk'
+                    ? 'Research and fact check before answering. Deep dive and summarize sources.'
+                    : currentAgent()?.role || 'Operating in workspace ' + currentAgent()?.workspacePath}
+                </p>
               </div>
             </Show>
 
@@ -913,8 +931,8 @@ export const MainWorkspace: Component = () => {
             </For>
           </div>
 
-          {/* Composer Box */}
-          <div class="p-3 bg-surface-container-low border-t border-outline-variant/30 flex-shrink-0 relative">
+          {/* Composer Box matching New folder design */}
+          <div class="p-4 bg-transparent max-w-3xl mx-auto w-full flex flex-col gap-2 flex-shrink-0 relative">
             {/* Model Picker Popover */}
             <Show when={isModelPickerOpen()}>
               <div class="fixed inset-0 z-40" onClick={() => setIsModelPickerOpen(false)} />
@@ -1009,7 +1027,7 @@ export const MainWorkspace: Component = () => {
               </div>
             </Show>
 
-            <div class="flex flex-col rounded-xl bg-surface-container border border-outline-variant/30 focus-within:border-primary/60 transition-colors shadow-sm">
+            <div class="flex flex-col rounded-2xl bg-[#16161a] border border-zinc-700/60 focus-within:border-zinc-500 transition-all shadow-2xl p-2.5">
               {/* Inline Provider Warning Banner */}
               <Show when={currentAgent()}>
                 {() => {
@@ -1017,7 +1035,7 @@ export const MainWorkspace: Component = () => {
                   const live = () => state.providerLiveStatuses[agentProv()];
                   return (
                     <Show when={live() && live()?.status !== 'connected'}>
-                      <div class={`px-3 py-1.5 rounded-t-xl text-xs flex items-center justify-between border-b ${
+                      <div class={`px-3 py-1.5 rounded-xl text-xs flex items-center justify-between border mb-2 ${
                         live()?.status === 'not-installed'
                           ? 'bg-error-container/20 border-error/20 text-error'
                           : 'bg-amber-500/10 border-amber-500/20 text-amber-300'
@@ -1055,33 +1073,24 @@ export const MainWorkspace: Component = () => {
                 class="hidden"
               />
 
-              {/* Steer-while-working banner */}
-              <div class="px-3 py-1 bg-surface-container-lowest/60 border-b border-outline-variant/20 flex items-center justify-between text-[11px] font-label-sm text-outline">
-                <div class="flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-[13px] text-primary">navigation</span>
-                  <span>Steer agents while working (active)</span>
-                </div>
-                <span>Send with {state.settings.sendShortcut === 'enter' ? 'Enter' : '⌘Enter'}</span>
-              </div>
-
               {/* Attachment Preview Strip */}
               <Show when={state.composerAttachments.length > 0}>
-                <div class="px-3 pt-2 pb-1 border-b border-outline-variant/20 flex flex-wrap items-center gap-1.5 bg-surface-container-lowest/40">
-                  <div class="text-[10px] font-label-sm text-outline mr-1 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[13px] text-primary">attach_file</span>
+                <div class="px-2 pb-2 mb-1 border-b border-zinc-800 flex flex-wrap items-center gap-1.5">
+                  <div class="text-[10px] font-label-sm text-zinc-400 mr-1 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px] text-purple-400">attach_file</span>
                     <span>
                       {state.composerAttachments.length}/10 files · {formatBytes(state.composerAttachments.reduce((acc, f) => acc + f.size, 0))} / 250 MB
                     </span>
                   </div>
                   <For each={state.composerAttachments}>
                     {(att) => (
-                      <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface-container-high border border-outline-variant/30 text-[11px] font-mono text-on-surface">
-                        <span class="material-symbols-outlined text-[13px] text-primary">draft</span>
+                      <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-zinc-800/80 border border-zinc-700/50 text-[11px] font-mono text-zinc-200">
+                        <span class="material-symbols-outlined text-[13px] text-purple-400">draft</span>
                         <span class="max-w-[120px] truncate">{att.name}</span>
-                        <span class="text-[10px] text-outline">({formatBytes(att.size)})</span>
+                        <span class="text-[10px] text-zinc-400">({formatBytes(att.size)})</span>
                         <button
                           onClick={() => removeComposerAttachment(att.id)}
-                          class="w-3.5 h-3.5 rounded hover:bg-surface-container-highest flex items-center justify-center text-outline hover:text-error transition-colors"
+                          class="w-3.5 h-3.5 rounded hover:bg-zinc-700 flex items-center justify-center text-zinc-400 hover:text-red-400 transition-colors"
                           title="Remove file"
                         >
                           <span class="material-symbols-outlined text-[11px]">close</span>
@@ -1092,67 +1101,56 @@ export const MainWorkspace: Component = () => {
                 </div>
               </Show>
 
-              {/* Textarea */}
-              <textarea
-                value={inputText()}
-                onInput={(e) => setInputText(e.currentTarget.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={`Message ${currentAgent()?.name}...`}
-                rows={2}
-                class="w-full p-3 bg-transparent border-0 outline-none resize-none font-body-sm text-sm text-on-surface placeholder:text-outline"
-              />
+              {/* Main Input Row matching Screenshot 2026-11-05 131045.png */}
+              <div class="flex items-center gap-2.5 px-1">
+                {/* Plus button on the left: circular dark button */}
+                <button
+                  onClick={() => fileInputRef?.click()}
+                  class="w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-300 transition-colors flex-shrink-0 cursor-pointer"
+                  title="Attach file (100MB max per file, 250MB total, max 10 files)"
+                >
+                  <span class="material-symbols-outlined text-[18px]">add</span>
+                </button>
 
-              {/* Composer Controls Bar */}
-              <div class="px-3 py-2 flex items-center justify-between flex-shrink-0">
-                <div class="flex items-center gap-1">
-                  {/* Model Chip */}
-                  <button
-                    onClick={() => setIsModelPickerOpen(!isModelPickerOpen())}
-                    class="flex items-center gap-1 px-2 py-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-outline hover:text-on-surface font-label-sm text-[11px] transition-colors"
-                    title="Change Model (Preserves Chat)"
-                  >
-                    <span class="material-symbols-outlined text-[13px] text-primary">smart_toy</span>
-                    <span>{currentAgent()?.model}</span>
-                    <span class="material-symbols-outlined text-[11px]">expand_more</span>
-                  </button>
+                {/* Textarea */}
+                <textarea
+                  value={inputText()}
+                  onInput={(e) => setInputText(e.currentTarget.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={`Message ${currentAgent()?.name || 'Research Desk'}...`}
+                  rows={1}
+                  class="flex-1 bg-transparent border-0 outline-none resize-none font-body-sm text-sm text-zinc-100 placeholder:text-zinc-500 py-1"
+                />
 
-                  {/* Attachment button */}
-                  <button
-                    onClick={() => fileInputRef?.click()}
-                    class="p-1.5 rounded hover:bg-surface-container-high text-outline hover:text-on-surface transition-colors"
-                    title="Attach file (100MB max per file, 250MB total, max 10 files)"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">attach_file</span>
-                  </button>
-
-                  {/* Voice dictation button */}
+                {/* Right controls: Mic voice dictation + Send circle */}
+                <div class="flex items-center gap-1.5 flex-shrink-0">
                   <button
                     onClick={() => addToast('success', 'Voice dictation started')}
-                    class="p-1.5 rounded hover:bg-surface-container-high text-outline hover:text-on-surface transition-colors"
+                    class="w-8 h-8 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
                     title="Dictation (2 min limit)"
                   >
-                    <span class="material-symbols-outlined text-[16px]">mic</span>
+                    <span class="material-symbols-outlined text-[18px]">mic</span>
                   </button>
-                </div>
 
-                <div class="flex items-center gap-2">
-                  <span class="text-[10px] font-label-sm text-outline hidden sm:inline">
-                    {inputText().length} chars
-                  </span>
                   <button
                     onClick={handleSend}
                     disabled={!inputText().trim() && state.composerAttachments.length === 0}
-                    class={`px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold text-xs transition-all ${
+                    class={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
                       inputText().trim() || state.composerAttachments.length > 0
-                        ? 'bg-primary text-on-primary hover:brightness-110 press-scale'
-                        : 'bg-surface-container-high text-outline opacity-50 cursor-not-allowed'
+                        ? 'bg-white hover:bg-zinc-200 text-black font-bold shadow-md cursor-pointer'
+                        : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
                     }`}
+                    title="Send message"
                   >
-                    <span>Send</span>
-                    <span class="material-symbols-outlined text-[14px]">send</span>
+                    <span class="text-base font-bold leading-none">↑</span>
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Disclaimer subtitle under composer */}
+            <div class="text-[11px] text-zinc-500 text-center font-normal">
+              BissBot can make mistakes. Verify important info.
             </div>
           </div>
         </Show>

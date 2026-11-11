@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-export interface OpenBotBridge {
+export interface BissBotBridge {
   platform: string;
   getSettings: () => Promise<any>;
   saveSettings: (settings: any) => Promise<{ success: boolean; error?: string }>;
@@ -158,7 +158,7 @@ export interface OpenBotBridge {
   [key: string]: any;
 }
 
-const bridge: OpenBotBridge = {
+const bridge: BissBotBridge = {
   platform: process.platform,
   getSettings: () => ipcRenderer.invoke('app:get-settings'),
   saveSettings: (settings: any) => ipcRenderer.invoke('app:save-settings', settings),
@@ -396,7 +396,4 @@ const bridge: OpenBotBridge = {
   getOptOutInitialCheck: (countryCode: string) => ipcRenderer.invoke('telemetry:get-optout-check', countryCode),
 };
 
-export type BissBotBridge = OpenBotBridge;
-
 contextBridge.exposeInMainWorld('bissbot', bridge);
-contextBridge.exposeInMainWorld('openbot', bridge);

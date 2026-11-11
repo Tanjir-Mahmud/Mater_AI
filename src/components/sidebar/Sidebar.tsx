@@ -113,145 +113,20 @@ export const Sidebar: Component = () => {
 
   return (
     <nav
-      class="h-full bg-surface-container-low border-r border-outline-variant/30 flex flex-col select-none relative z-10 flex-shrink-0"
+      class="h-full bg-[#0c0c0e] border-r border-zinc-800/60 flex flex-col select-none relative z-10 flex-shrink-0"
       style={{ width: `${state.sidebarWidth}px` }}
       aria-label="Agent Navigation"
     >
-      {/* Sidebar Header */}
-      <div class="h-10 px-3 flex items-center justify-between border-b border-outline-variant/30 flex-shrink-0">
-        <div class="flex items-center gap-1 text-outline">
-          <button
-            class="w-6 h-6 rounded flex items-center justify-center hover:bg-surface-container hover:text-on-surface transition-colors"
-            title="Back"
-          >
-            <span class="material-symbols-outlined text-[15px]">arrow_back</span>
-          </button>
-          <button
-            class="w-6 h-6 rounded flex items-center justify-center hover:bg-surface-container hover:text-on-surface transition-colors"
-            title="Forward"
-          >
-            <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
-          </button>
-        </div>
-
-        <div class="flex items-center gap-1">
-          <button
-            onClick={() => markAllAsRead()}
-            class="w-6 h-6 rounded flex items-center justify-center text-outline hover:text-primary hover:bg-surface-container transition-colors"
-            title={i18n.t('sidebar.mark_all_read')}
-          >
-            <span class="material-symbols-outlined text-[16px]">done_all</span>
-          </button>
-
-          <button
-            onClick={() => setState('activePage', 'marketplace')}
-            class="w-6 h-6 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
-            title="Marketplace"
-          >
-            <span class="material-symbols-outlined text-[16px]">storefront</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setState('activeSettingsTab', 'general');
-              setState('isSettingsOpen', true);
-            }}
-            class="w-6 h-6 rounded flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
-            title="Server settings"
-          >
-            <span class="material-symbols-outlined text-[16px]">settings</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Switcher & Search Bar */}
-      <div class="p-2 flex flex-col gap-1.5 border-b border-outline-variant/20 flex-shrink-0">
-        <div class="flex items-center justify-between gap-1">
-          {/* Agents / Routines segmented control */}
-          <div class="flex-1 flex rounded bg-surface-container p-0.5 text-xs font-label-sm">
-            <button
-              onClick={() => setState('sidebarView', 'agents')}
-              class={`flex-1 py-1 rounded text-center transition-all ${
-                state.sidebarView === 'agents'
-                  ? 'bg-surface-container-high text-on-surface font-semibold shadow-xs'
-                  : 'text-outline hover:text-on-surface'
-              }`}
-            >
-              {i18n.t('sidebar.agents')}
-            </button>
-            <button
-              onClick={() => setState('sidebarView', 'routines')}
-              class={`flex-1 py-1 rounded text-center transition-all ${
-                state.sidebarView === 'routines'
-                  ? 'bg-surface-container-high text-on-surface font-semibold shadow-xs'
-                  : 'text-outline hover:text-on-surface'
-              }`}
-            >
-              {i18n.t('sidebar.routines')}
-            </button>
-          </div>
-
-          {/* New Button with Dropdown */}
-          <div class="relative">
-            <button
-              onClick={() => setIsNewMenuOpen(!isNewMenuOpen())}
-              class="w-7 h-7 rounded bg-primary text-on-primary hover:brightness-110 flex items-center justify-center transition-all"
-              title="New agent or folder"
-            >
-              <span class="material-symbols-outlined text-[16px]">add</span>
-            </button>
-
-            <Show when={isNewMenuOpen()}>
-              <div
-                class="fixed inset-0 z-40"
-                onClick={() => setIsNewMenuOpen(false)}
-              />
-              <div class="absolute right-0 top-8 w-44 bg-surface-container border border-outline-variant/40 rounded-lg shadow-xl p-1 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
-                <button
-                  onClick={() => {
-                    setIsNewMenuOpen(false);
-                    openCreateAgentModal();
-                  }}
-                  class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[12px] font-body-sm text-left"
-                >
-                  <span class="material-symbols-outlined text-[15px] text-primary">smart_toy</span>
-                  <span>{i18n.t('sidebar.new_agent')}</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsNewMenuOpen(false);
-                    addToast('success', 'Create new channel');
-                  }}
-                  class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[12px] font-body-sm text-left"
-                >
-                  <span class="material-symbols-outlined text-[15px] text-secondary">tag</span>
-                  <span>{i18n.t('sidebar.new_channel')}</span>
-                </button>
-                <div class="h-px bg-outline-variant/30 my-0.5" />
-                <button
-                  onClick={() => {
-                    setIsNewMenuOpen(false);
-                    addToast('success', 'Create new folder');
-                  }}
-                  class="flex items-center gap-2 px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[12px] font-body-sm text-left"
-                >
-                  <span class="material-symbols-outlined text-[15px] text-outline">create_new_folder</span>
-                  <span>{i18n.t('sidebar.new_folder')}</span>
-                </button>
-              </div>
-            </Show>
-          </div>
-        </div>
-
-        {/* Filter Input */}
-        <div class="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-container-lowest text-on-surface-variant border border-outline-variant/20 focus-within:border-primary/60 transition-colors">
-          <span class="material-symbols-outlined text-[15px] text-outline">tune</span>
+      {/* Switcher & Search Bar matching New folder design */}
+      <div class="p-2.5 flex flex-col gap-2 border-b border-zinc-800/60 flex-shrink-0 bg-[#0c0c0e]">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#141418] text-zinc-200 border border-zinc-800 focus-within:border-zinc-600 transition-colors">
+          <span class="material-symbols-outlined text-[16px] text-zinc-500">search</span>
           <input
             type="text"
-            placeholder={i18n.t('sidebar.search_placeholder')}
+            placeholder="Search"
             value={state.sidebarSearchQuery}
             onInput={(e) => setState('sidebarSearchQuery', e.currentTarget.value)}
-            class="bg-transparent border-0 outline-none font-body-sm text-[12px] text-on-surface placeholder:text-outline w-full"
+            class="bg-transparent border-0 outline-none font-body-sm text-xs text-zinc-100 placeholder:text-zinc-500 w-full"
           />
         </div>
       </div>
@@ -298,49 +173,70 @@ export const Sidebar: Component = () => {
                       <div
                         onClick={() => selectAgent(agent.id)}
                         onContextMenu={(e) => handleAgentContextMenu(e, agent.id)}
-                        class={`flex items-center justify-between px-2 py-1.5 rounded cursor-pointer transition-colors relative group ${
+                        class={`flex items-center justify-between p-2.5 rounded-xl mx-1 my-0.5 cursor-pointer transition-all relative group ${
                           isSelected()
-                            ? 'bg-surface-container text-on-surface shadow-xs'
-                            : 'hover:bg-surface-container/60 text-on-surface-variant hover:text-on-surface'
+                            ? 'bg-[#18181d] border border-zinc-700/60 shadow-xs text-white'
+                            : 'hover:bg-[#141418] border border-transparent text-zinc-300'
                         }`}
                       >
-                      <Show when={isSelected()}>
-                        <div class="absolute left-0 top-1 bottom-1 w-0.5 bg-primary rounded-full" />
-                      </Show>
+                        <Show when={isSelected()}>
+                          <div class="absolute left-0 top-2 bottom-2 w-0.5 bg-purple-500 rounded-full" />
+                        </Show>
 
-                      <div class="flex items-center gap-2 min-w-0 pl-1">
-                        <div
-                          class={`relative w-6 h-6 rounded flex items-center justify-center flex-shrink-0 font-label-sm text-[11px] font-semibold ${
-                            agent.avatarColor || 'bg-surface-container-high text-primary'
-                          }`}
-                        >
-                          {agent.avatar.length === 1 ? (
-                            agent.avatar
-                          ) : (
-                            <span class="material-symbols-outlined text-[15px]">
-                              {agent.avatar}
-                            </span>
-                          )}
-                          <span
-                            class={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-surface-container-low ${
-                              agent.status === 'idle'
-                                ? 'bg-secondary'
-                                : agent.status === 'waiting_approval' || agent.status === 'waiting_input'
-                                ? 'bg-tertiary'
-                                : 'bg-outline'
+                        <div class="flex items-center gap-2.5 min-w-0 pl-1 flex-1">
+                          {/* Circular Avatar matching New folder screenshot */}
+                          <div
+                            class={`relative w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-mono text-xs font-bold tracking-widest ${
+                              agent.id === 'agent-research-desk'
+                                ? 'bg-emerald-500 text-white'
+                                : agent.id === 'agent-ceo'
+                                ? 'bg-purple-600 text-white'
+                                : agent.avatarColor || 'bg-zinc-800 text-zinc-200'
                             }`}
-                          />
-                        </div>
+                          >
+                            {agent.avatar === '--' || agent.id === 'agent-research-desk' || agent.id === 'agent-ceo' ? (
+                              '--'
+                            ) : agent.avatar.length === 1 ? (
+                              agent.avatar
+                            ) : (
+                              <span class="material-symbols-outlined text-[16px]">{agent.avatar}</span>
+                            )}
+                            <span
+                              class={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-black ${
+                                agent.status === 'idle'
+                                  ? 'bg-emerald-400'
+                                  : agent.status === 'waiting_approval' || agent.status === 'waiting_input'
+                                  ? 'bg-amber-400'
+                                  : 'bg-zinc-500'
+                              }`}
+                            />
+                          </div>
 
-                        <div class="flex flex-col min-w-0">
-                          <span class="font-body-sm text-[12px] font-semibold truncate leading-tight">
-                            {agent.name}
-                          </span>
-                          <span class="text-[10px] text-outline truncate leading-tight">
-                            {agent.role}
-                          </span>
+                          <div class="flex flex-col min-w-0 flex-1">
+                            <div class="flex items-center justify-between">
+                              <div class="flex items-center gap-1.5 truncate">
+                                <span class="font-medium text-xs truncate">
+                                  {agent.name}
+                                </span>
+                                <Show when={agent.id === 'agent-research-desk'}>
+                                  <span class="text-[9px] font-semibold px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400">
+                                    New
+                                  </span>
+                                </Show>
+                              </div>
+                              <span class="text-[10px] text-zinc-500 font-mono flex-shrink-0">
+                                Nov 3
+                              </span>
+                            </div>
+                            <span class="text-[11px] text-zinc-400 truncate mt-0.5">
+                              {agent.id === 'agent-research-desk'
+                                ? 'No messages yet'
+                                : agent.id === 'agent-ceo'
+                                ? 'Understood. Standing by as executive coordinator.'
+                                : agent.role}
+                            </span>
+                          </div>
                         </div>
-                      </div>
 
                       <div class="flex items-center gap-1.5 flex-shrink-0">
                         <Show when={agent.statusMessage}>

@@ -529,11 +529,11 @@ export class IntegrationsVoiceService {
   }
 
   // =============================================================
-  // 7. WEBHOOKS (OpenBot & Standard Webhooks Formats)
+  // 7. WEBHOOKS (BissBot & Standard Webhooks Formats)
   // =============================================================
 
   public formatWebhookPayload(
-    format: 'bissbot' | 'standard' | 'openbot',
+    format: 'bissbot' | 'standard',
     eventType: string,
     data: any,
     secretKey?: string
@@ -580,8 +580,6 @@ export class IntegrationsVoiceService {
         headers: {
           'x-bissbot-event': eventType,
           'x-bissbot-signature': signature,
-          'x-openbot-event': eventType,
-          'x-openbot-signature': signature,
           'content-type': 'application/json',
         },
       };

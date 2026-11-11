@@ -27,7 +27,7 @@ export interface AppSettings {
   sendShortcut: SendShortcut;
   showAgentSteps: boolean;
   compactMessageActions: boolean;
-  externalLinks: 'default' | 'openbot' | 'other' | 'command';
+  externalLinks: 'default' | 'bissbot' | 'other' | 'command';
   externalLinksCommand?: string;
   launchAtLogin: boolean;
   fastConnectionToServers: boolean;
